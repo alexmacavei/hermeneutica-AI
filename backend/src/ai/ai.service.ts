@@ -12,14 +12,19 @@ export interface HermeneuticaCards {
   philology: string;
 }
 
+interface CardPrompt {
+  title: string;
+  prompt: string;
+}
+
 interface HermeneuticaPromptConfig {
   system: string;
   user_template: string;
   cards: {
-    hermeneutics: { title: string; prompt: string };
-    philosophy: { title: string; prompt: string };
-    patristics: { title: string; prompt: string };
-    philology: { title: string; prompt: string };
+    hermeneutics: CardPrompt;
+    philosophy: CardPrompt;
+    patristics: CardPrompt;
+    philology: CardPrompt;
   };
 }
 
@@ -29,9 +34,12 @@ export class AiService {
   private readonly openai: OpenAI;
   private readonly prompts: HermeneuticaPromptConfig;
   private readonly model: string;
+  private readonly hasApiKey: boolean;
+  private readonly systemMessage: string;
 
   constructor(private readonly configService: ConfigService) {
     const apiKey = this.configService.get<string>('openai.apiKey') ?? '';
+    this.hasApiKey = apiKey.length > 0;
     this.model =
       this.configService.get<string>('openai.model') ?? 'gpt-4o';
 
@@ -44,6 +52,12 @@ export class AiService {
     );
     const raw = fs.readFileSync(promptFile, 'utf-8');
     this.prompts = yaml.load(raw) as HermeneuticaPromptConfig;
+
+    // Pre-build system message with all per-card instructions (cached for lifetime of service)
+    const cardInstructions = Object.entries(this.prompts.cards)
+      .map(([key, card]) => `### ${card.title} (field: "${key}")\n${card.prompt}`)
+      .join('\n\n');
+    this.systemMessage = `${this.prompts.system}\n\n## Instrucțiuni per card:\n${cardInstructions}`;
   }
 
   async generateFourCards(
@@ -51,6 +65,10 @@ export class AiService {
     reference: string,
     language: string = 'Sinodală Română',
   ): Promise<HermeneuticaCards> {
+    if (!this.hasApiKey) {
+      return this.getFallbackCards(reference, text);
+    }
+
     const userMessage = this.prompts.user_template
       .replace('{reference}', reference)
       .replace('{language}', language)
@@ -60,7 +78,7 @@ export class AiService {
       const completion = await this.openai.chat.completions.create({
         model: this.model,
         messages: [
-          { role: 'system', content: this.prompts.system },
+          { role: 'system', content: this.systemMessage },
           { role: 'user', content: userMessage },
         ],
         temperature: 0.7,

@@ -77,14 +77,18 @@ export class VerseHighlightDirective {
 
     if (!anchorVerse || !focusVerse) return null;
 
-    const startVerse = anchorVerse.getAttribute('data-verse') ?? '';
-    const endVerse = focusVerse.getAttribute('data-verse') ?? '';
+    const anchorNum = parseInt(anchorVerse.getAttribute('data-verse') ?? '0', 10);
+    const focusNum = parseInt(focusVerse.getAttribute('data-verse') ?? '0', 10);
 
-    if (startVerse === endVerse) {
-      return `${this.bookName} ${this.chapterNumber}:${startVerse}`;
+    // Normalize so range is always ascending (handles bottom-to-top drag)
+    const startVerseNum = Math.min(anchorNum, focusNum);
+    const endVerseNum = Math.max(anchorNum, focusNum);
+
+    if (startVerseNum === endVerseNum) {
+      return `${this.bookName} ${this.chapterNumber}:${startVerseNum}`;
     }
 
-    return `${this.bookName} ${this.chapterNumber}:${startVerse}-${endVerse}`;
+    return `${this.bookName} ${this.chapterNumber}:${startVerseNum}-${endVerseNum}`;
   }
 
   private findVerseEl(node: Node): HTMLElement | null {

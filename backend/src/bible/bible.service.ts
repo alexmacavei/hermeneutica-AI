@@ -1,4 +1,4 @@
-import { Injectable, NotFoundException } from '@nestjs/common';
+import { Injectable, NotFoundException, BadRequestException } from '@nestjs/common';
 import * as path from 'path';
 import * as fs from 'fs';
 
@@ -19,24 +19,36 @@ export interface VerseRange {
   verses: string[];
 }
 
+/** Allow-list of valid Bible file identifiers to prevent path traversal. */
+const ALLOWED_LANGUAGES = new Set(['sinodala-ro', 'greaca-nt']);
+
 @Injectable()
 export class BibleService {
   private readonly bibleCache = new Map<string, BibleData>();
 
   private loadBible(language: string): BibleData {
+    if (!ALLOWED_LANGUAGES.has(language)) {
+      throw new BadRequestException(
+        `Invalid language: ${language}. Allowed: ${[...ALLOWED_LANGUAGES].join(', ')}`,
+      );
+    }
+
     if (this.bibleCache.has(language)) {
       return this.bibleCache.get(language)!;
     }
 
-    const filePath = path.join(
-      __dirname,
-      '..',
-      '..',
-      '..',
-      'data',
-      'bibles',
-      `${language}.json`,
-    );
+    // Resolve data directory: configurable via DATA_DIR env, defaults to ../data relative to cwd
+    const defaultDataRoot = path.resolve(process.cwd(), '..', 'data');
+    const dataRoot = process.env['DATA_DIR']
+      ? path.resolve(process.env['DATA_DIR'])
+      : defaultDataRoot;
+
+    // Ensure the resolved path is an absolute path (no traversal via env injection)
+    if (!path.isAbsolute(dataRoot)) {
+      throw new BadRequestException('Invalid DATA_DIR configuration.');
+    }
+
+    const filePath = path.join(dataRoot, 'bibles', `${language}.json`);
 
     if (!fs.existsSync(filePath)) {
       throw new NotFoundException(`Bible file not found: ${language}`);

@@ -1,10 +1,10 @@
 import { Component, OnInit } from '@angular/core';
 import { CommonModule } from '@angular/common';
 import { HttpClient } from '@angular/common/http';
-import { MatButtonModule } from '@angular/material/button';
-import { MatIconModule } from '@angular/material/icon';
-import { MatSnackBar, MatSnackBarModule } from '@angular/material/snack-bar';
-import { BehaviorSubject, catchError, finalize, of } from 'rxjs';
+import { ButtonModule } from 'primeng/button';
+import { ToastModule } from 'primeng/toast';
+import { MessageService } from 'primeng/api';
+import { catchError, finalize, of } from 'rxjs';
 
 import { BibleSelectorComponent, BibleNavigation } from './bible-selector.component';
 import { BibleTextComponent } from './bible-text.component';
@@ -19,14 +19,16 @@ type BibleData = Record<string, Record<string, Record<string, Record<string, str
   standalone: true,
   imports: [
     CommonModule,
-    MatButtonModule,
-    MatIconModule,
-    MatSnackBarModule,
+    ButtonModule,
+    ToastModule,
     BibleSelectorComponent,
     BibleTextComponent,
     ResultsViewerComponent,
   ],
+  providers: [MessageService],
   template: `
+    <p-toast position="top-right"></p-toast>
+
     <div class="viewer-shell">
       <!-- Navbar -->
       <header class="top-bar">
@@ -41,8 +43,8 @@ type BibleData = Record<string, Record<string, Record<string, Record<string, str
       </header>
 
       <!-- Main Layout -->
-      <main class="main-layout" [class.with-results]="analysisResult || analyzing">
-        <!-- Bible Text Panel (70%) -->
+      <main class="main-layout">
+        <!-- Bible Text Panel -->
         <section class="bible-panel">
           <app-bible-text
             [bookName]="currentBook"
@@ -54,22 +56,30 @@ type BibleData = Record<string, Record<string, Record<string, Record<string, str
 
           <!-- Footer navigation -->
           <footer class="verse-footer">
-            <button mat-icon-button (click)="prevChapter()" [disabled]="!hasPrevChapter()">
-              <mat-icon>chevron_left</mat-icon>
-            </button>
+            <button
+              pButton
+              icon="pi pi-chevron-left"
+              class="p-button-text p-button-rounded nav-btn"
+              (click)="prevChapter()"
+              [disabled]="!hasPrevChapter()"
+            ></button>
             <span class="footer-ref" *ngIf="selectedSelection">
               📌 {{ selectedSelection.range }}
             </span>
             <span class="footer-ref no-selection" *ngIf="!selectedSelection">
               Selectează un verset pentru analiză
             </span>
-            <button mat-icon-button (click)="nextChapter()" [disabled]="!hasNextChapter()">
-              <mat-icon>chevron_right</mat-icon>
-            </button>
+            <button
+              pButton
+              icon="pi pi-chevron-right"
+              class="p-button-text p-button-rounded nav-btn"
+              (click)="nextChapter()"
+              [disabled]="!hasNextChapter()"
+            ></button>
           </footer>
         </section>
 
-        <!-- Analysis Panel (30%) -->
+        <!-- Analysis Panel -->
         <aside class="analysis-panel" *ngIf="analysisResult || analyzing">
           <app-results-viewer
             [result]="analysisResult"
@@ -81,15 +91,16 @@ type BibleData = Record<string, Record<string, Record<string, Record<string, str
       <!-- Big Analyze Button -->
       <div class="analyze-bar">
         <button
-          mat-raised-button
+          pButton
+          label="🎓 Analizează Selecția"
+          icon="pi pi-search"
+          iconPos="left"
           class="analyze-btn"
           [class.analyze-btn-pulse]="!!selectedSelection && !analyzing"
           [disabled]="!selectedSelection || analyzing"
+          [loading]="analyzing"
           (click)="analyze()"
-        >
-          <mat-icon>school</mat-icon>
-          🎓 Analizează Selecția
-        </button>
+        ></button>
 
         <span class="selection-preview" *ngIf="selectedSelection">
           "{{ selectedSelection.text | slice:0:60 }}{{ selectedSelection.text.length > 60 ? '…' : '' }}"
@@ -105,8 +116,6 @@ type BibleData = Record<string, Record<string, Record<string, Record<string, str
       flex-direction: column;
       background: var(--bg-dark);
     }
-
-    /* Top Bar */
     .top-bar {
       background: #0a0a1f;
       border-bottom: 2px solid rgba(26, 35, 126, 0.6);
@@ -115,7 +124,6 @@ type BibleData = Record<string, Record<string, Record<string, Record<string, str
       flex-wrap: wrap;
       gap: 12px;
     }
-
     .brand {
       padding: 12px 24px;
       display: flex;
@@ -123,44 +131,29 @@ type BibleData = Record<string, Record<string, Record<string, Record<string, str
       gap: 10px;
       white-space: nowrap;
     }
-
-    .brand-cross {
-      color: var(--gold);
-      font-size: 1.8rem;
-    }
-
+    .brand-cross { color: var(--gold); font-size: 1.8rem; }
     .brand-title {
       color: var(--text-light);
       font-size: 1.1rem;
       font-weight: 500;
       font-family: 'Palatino Linotype', serif;
     }
-
-    /* Main Layout */
-    .main-layout {
-      flex: 1;
-      display: flex;
-      overflow: hidden;
-    }
-
+    .main-layout { flex: 1; display: flex; overflow: hidden; }
     .bible-panel {
       flex: 1;
       display: flex;
       flex-direction: column;
       overflow-y: auto;
-      max-height: calc(100vh - 180px);
+      max-height: calc(100vh - 160px);
     }
-
     .analysis-panel {
       width: 40%;
       min-width: 320px;
       border-left: 1px solid rgba(121, 134, 203, 0.2);
       overflow-y: auto;
-      max-height: calc(100vh - 180px);
+      max-height: calc(100vh - 160px);
       background: rgba(10, 10, 30, 0.5);
     }
-
-    /* Footer */
     .verse-footer {
       padding: 10px 24px;
       background: #0a0a1f;
@@ -169,20 +162,11 @@ type BibleData = Record<string, Record<string, Record<string, Record<string, str
       align-items: center;
       justify-content: space-between;
     }
-
-    .footer-ref {
-      color: var(--text-muted);
-      font-size: 0.85rem;
-    }
-
-    .no-selection {
-      font-style: italic;
-      opacity: 0.6;
-    }
-
-    /* Analyze Bar */
+    .footer-ref { color: var(--text-muted); font-size: 0.85rem; }
+    .no-selection { font-style: italic; opacity: 0.6; }
+    .nav-btn { color: var(--text-muted) !important; }
     .analyze-bar {
-      padding: 16px 24px;
+      padding: 14px 24px;
       background: #0a0a1f;
       border-top: 2px solid rgba(198, 40, 40, 0.4);
       display: flex;
@@ -190,31 +174,31 @@ type BibleData = Record<string, Record<string, Record<string, Record<string, str
       gap: 20px;
       flex-wrap: wrap;
     }
-
-    .analyze-btn {
-      background: var(--cross-red) !important;
-      color: white !important;
-      font-size: 1.1rem !important;
-      padding: 0 28px !important;
-      height: 48px !important;
-      letter-spacing: 0.5px;
-      font-weight: 600 !important;
-      border-radius: 24px !important;
+    :host ::ng-deep .analyze-btn.p-button {
+      background: var(--cross-red);
+      border-color: var(--cross-red);
+      color: white;
+      font-size: 1rem;
+      font-weight: 600;
+      padding: 10px 28px;
+      border-radius: 24px;
+      height: 46px;
     }
-
-    .analyze-btn:disabled {
-      background: rgba(198, 40, 40, 0.3) !important;
-      color: rgba(255,255,255,0.4) !important;
+    :host ::ng-deep .analyze-btn.p-button:not(:disabled):hover {
+      background: #b71c1c;
+      border-color: #b71c1c;
     }
-
+    :host ::ng-deep .analyze-btn.p-button:disabled {
+      background: rgba(198, 40, 40, 0.3);
+      border-color: rgba(198, 40, 40, 0.3);
+      color: rgba(255, 255, 255, 0.4);
+    }
     .selection-preview {
       color: var(--text-muted);
       font-style: italic;
       font-size: 0.9rem;
       flex: 1;
     }
-
-    /* Responsive */
     @media (max-width: 768px) {
       .main-layout { flex-direction: column; }
       .analysis-panel {
@@ -239,12 +223,10 @@ export class BibleViewerComponent implements OnInit {
   analysisResult: AnalysisResult | null = null;
   analyzing = false;
 
-  private readonly bibleDataSubject = new BehaviorSubject<BibleData>({});
-
   constructor(
     private readonly http: HttpClient,
     private readonly analysisService: AnalysisService,
-    private readonly snackBar: MatSnackBar,
+    private readonly messageService: MessageService,
   ) {}
 
   ngOnInit(): void {
@@ -256,13 +238,17 @@ export class BibleViewerComponent implements OnInit {
       .get<BibleData>(`assets/bibles/${language}.json`)
       .pipe(
         catchError(() => {
-          this.snackBar.open('Eroare la încărcarea Bibliei.', 'OK', { duration: 4000 });
+          this.messageService.add({
+            severity: 'error',
+            summary: 'Eroare',
+            detail: 'Eroare la încărcarea Bibliei.',
+            life: 4000,
+          });
           return of({} as BibleData);
         }),
       )
       .subscribe((data) => {
         this.bibleData = data;
-        this.bibleDataSubject.next(data);
         this.loadChapter();
       });
   }
@@ -301,7 +287,6 @@ export class BibleViewerComponent implements OnInit {
   onVerseSelected(selection: VerseSelection): void {
     this.selectedSelection = selection;
 
-    // Extract verse numbers from range like "Matei 5:3" or "Matei 5:3-7"
     const match = /(\d+)(?:-(\d+))?$/.exec(selection.range);
     if (match) {
       const start = parseInt(match[1], 10);
@@ -330,11 +315,12 @@ export class BibleViewerComponent implements OnInit {
       .pipe(
         catchError((err) => {
           console.error('Analysis error', err);
-          this.snackBar.open(
-            'Eroare la analiză. Verificați conexiunea și configurarea API.',
-            'OK',
-            { duration: 5000 },
-          );
+          this.messageService.add({
+            severity: 'error',
+            summary: 'Eroare analiză',
+            detail: 'Verificați conexiunea și configurarea API.',
+            life: 5000,
+          });
           return of(null);
         }),
         finalize(() => {

@@ -40,16 +40,16 @@ services:
         condition: service_healthy
     restart: unless-stopped
 
-  # Angular Frontend Dev Server
+  # Angular Frontend (Nginx serves on port 80)
   frontend:
     build:
       context: ./frontend
       dockerfile: Dockerfile
     container_name: hermeneutica-ui
     environment:
-      NODE_ENV: development
+      NODE_ENV: production
     ports:
-      - '4200:4200'
+      - '4200:80'
     depends_on:
       - backend
     restart: unless-stopped

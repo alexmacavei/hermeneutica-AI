@@ -1,7 +1,7 @@
 import { Component, Input } from '@angular/core';
 import { CommonModule } from '@angular/common';
-import { MatCardModule } from '@angular/material/card';
-import { MatProgressSpinnerModule } from '@angular/material/progress-spinner';
+import { CardModule } from 'primeng/card';
+import { ProgressSpinnerModule } from 'primeng/progressspinner';
 import { AnalysisResult } from '../services/analysis.service';
 
 interface AnalysisCard {
@@ -14,12 +14,12 @@ interface AnalysisCard {
 @Component({
   selector: 'app-results-viewer',
   standalone: true,
-  imports: [CommonModule, MatCardModule, MatProgressSpinnerModule],
+  imports: [CommonModule, CardModule, ProgressSpinnerModule],
   template: `
     <div class="results-section" *ngIf="result || loading">
       <!-- Header -->
       <div class="results-header" *ngIf="result">
-        <span class="material-icons reference-icon">book</span>
+        <i class="pi pi-book reference-icon"></i>
         <div class="reference-info">
           <h3 class="reference-title">{{ result.reference }}</h3>
           <p class="reference-text">{{ result.text | slice:0:120 }}{{ result.text.length > 120 ? '...' : '' }}</p>
@@ -29,47 +29,46 @@ interface AnalysisCard {
 
       <!-- Loading spinner -->
       <div class="loading-state" *ngIf="loading">
-        <mat-progress-spinner mode="indeterminate" diameter="60" color="accent"></mat-progress-spinner>
+        <p-progressSpinner strokeWidth="4" animationDuration=".8s"></p-progressSpinner>
         <p>Analiza hermeneutică în curs… 🎓</p>
       </div>
 
       <!-- 4 Cards Grid -->
       <div class="cards-grid" *ngIf="result && !loading">
-        <mat-card
+        <p-card
           *ngFor="let card of cardDefs"
           class="analysis-card {{ card.cssClass }}"
+          [styleClass]="'analysis-card-inner'"
         >
-          <mat-card-header>
-            <mat-card-title>
+          <ng-template pTemplate="header">
+            <div class="card-header-row">
               <span class="card-icon">{{ card.icon }}</span>
-              {{ card.title }}
-            </mat-card-title>
-          </mat-card-header>
-          <mat-card-content>
-            <p class="card-content-text">{{ result.cards[card.key] }}</p>
-          </mat-card-content>
-        </mat-card>
+              <span class="card-title">{{ card.title }}</span>
+            </div>
+          </ng-template>
+          <p class="card-content-text">{{ result.cards[card.key] }}</p>
+        </p-card>
       </div>
     </div>
   `,
   styles: [`
     .results-section {
-      padding: 24px;
+      padding: 20px;
     }
 
     .results-header {
       display: flex;
       align-items: flex-start;
-      gap: 16px;
-      margin-bottom: 24px;
-      padding: 16px;
+      gap: 14px;
+      margin-bottom: 20px;
+      padding: 14px;
       background: rgba(26, 35, 126, 0.4);
       border-radius: 8px;
       border: 1px solid rgba(121, 134, 203, 0.3);
     }
 
     .reference-icon {
-      font-size: 2rem;
+      font-size: 1.8rem;
       color: var(--gold);
       margin-top: 4px;
     }
@@ -81,20 +80,20 @@ interface AnalysisCard {
     .reference-title {
       color: var(--gold);
       margin: 0 0 4px;
-      font-size: 1.2rem;
+      font-size: 1.1rem;
     }
 
     .reference-text {
       color: var(--text-muted);
       margin: 0;
       font-style: italic;
-      font-size: 0.9rem;
+      font-size: 0.85rem;
     }
 
     .language-badge {
       background: rgba(26, 35, 126, 0.8);
       color: var(--text-muted);
-      padding: 4px 10px;
+      padding: 3px 10px;
       border-radius: 12px;
       font-size: 0.75rem;
       border: 1px solid rgba(121, 134, 203, 0.4);
@@ -105,56 +104,69 @@ interface AnalysisCard {
       display: flex;
       flex-direction: column;
       align-items: center;
-      gap: 20px;
+      gap: 16px;
       padding: 40px;
       color: var(--text-muted);
     }
 
     .cards-grid {
       display: grid;
-      grid-template-columns: repeat(auto-fit, minmax(280px, 1fr));
-      gap: 20px;
+      grid-template-columns: repeat(auto-fit, minmax(260px, 1fr));
+      gap: 16px;
     }
 
     .analysis-card {
-      background: var(--bg-card) !important;
-      color: var(--text-light) !important;
-      border-radius: 8px !important;
+      display: contents;
     }
 
-    :host ::ng-deep .analysis-card {
-      .mat-mdc-card-header {
-        padding: 16px 16px 8px;
-      }
-      .mat-mdc-card-title {
-        color: var(--text-light);
-        font-size: 1rem;
-        font-weight: 600;
-        display: flex;
-        align-items: center;
-        gap: 8px;
-      }
-      .mat-mdc-card-content {
-        padding: 8px 16px 16px;
-      }
+    :host ::ng-deep .analysis-card-inner {
+      background: var(--bg-card);
+      color: var(--text-light);
+      border-radius: 8px;
+      border: 1px solid rgba(121, 134, 203, 0.15);
+
+      .p-card-body { padding: 0; }
+      .p-card-content { padding: 12px 16px 16px; }
+    }
+
+    :host ::ng-deep .card-hermeneutics .p-card {
+      border-left: 4px solid #7986cb;
+    }
+    :host ::ng-deep .card-philosophy .p-card {
+      border-left: 4px solid #4dd0e1;
+    }
+    :host ::ng-deep .card-patristics .p-card {
+      border-left: 4px solid var(--gold);
+    }
+    :host ::ng-deep .card-philology .p-card {
+      border-left: 4px solid #a5d6a7;
+    }
+
+    .card-header-row {
+      display: flex;
+      align-items: center;
+      gap: 8px;
+      padding: 12px 16px 4px;
+      border-bottom: 1px solid rgba(121, 134, 203, 0.1);
     }
 
     .card-icon {
-      font-size: 1.3rem;
+      font-size: 1.2rem;
+    }
+
+    .card-title {
+      color: var(--text-light);
+      font-weight: 600;
+      font-size: 0.95rem;
     }
 
     .card-content-text {
       color: #b0bec5;
       line-height: 1.7;
-      font-size: 0.9rem;
+      font-size: 0.88rem;
       white-space: pre-line;
       margin: 0;
     }
-
-    .card-hermeneutics { border-left: 4px solid #7986cb; }
-    .card-philosophy   { border-left: 4px solid #4dd0e1; }
-    .card-patristics   { border-left: 4px solid var(--gold); }
-    .card-philology    { border-left: 4px solid #a5d6a7; }
   `],
 })
 export class ResultsViewerComponent {
