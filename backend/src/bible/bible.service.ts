@@ -1,117 +1,216 @@
-import { Injectable, NotFoundException, BadRequestException } from '@nestjs/common';
-import * as path from 'path';
-import * as fs from 'fs';
+import {
+  Injectable,
+  Logger,
+  NotFoundException,
+  BadRequestException,
+  InternalServerErrorException,
+} from '@nestjs/common';
 
-export interface BibleData {
-  [testament: string]: {
-    [book: string]: {
-      [chapter: string]: {
-        [verse: string]: string;
-      };
-    };
+const BIBLE_API_BASE = 'https://bible.helloao.org/api';
+
+// ─── Upstream API types ────────────────────────────────────────────────────
+
+interface ApiTranslation {
+  id: string;
+  name: string;
+  englishName: string;
+  language: string;
+  textDirection: string;
+  availableFormats?: string[];
+}
+
+interface ApiBook {
+  id: string;
+  name: string;
+  numChapters: number;
+  order?: number;
+}
+
+interface ApiVerseContent {
+  type: string;
+  number?: number;
+  content?: (string | { text?: string })[];
+}
+
+interface ApiChapterResponse {
+  // Format A (newer): chapter.content array
+  chapter?: {
+    number: number;
+    content: ApiVerseContent[];
   };
+  // Format B (simplified): flat verses array
+  verses?: { verse: number; text: string }[];
 }
 
-export interface VerseRange {
-  testament: string;
-  book: string;
-  chapter: string;
-  verses: string[];
+// ─── Public types (returned to controllers) ────────────────────────────────
+
+export interface Translation {
+  id: string;
+  name: string;
+  englishName: string;
+  language: string;
+  textDirection: string;
 }
 
-/** Allow-list of valid Bible file identifiers to prevent path traversal. */
-const ALLOWED_LANGUAGES = new Set(['sinodala-ro', 'greaca-nt']);
+export interface Book {
+  id: string;
+  name: string;
+  numChapters: number;
+}
+
+export interface BibleVerse {
+  number: string;
+  text: string;
+}
+
+// ─── Service ───────────────────────────────────────────────────────────────
 
 @Injectable()
 export class BibleService {
-  private readonly bibleCache = new Map<string, BibleData>();
+  private readonly logger = new Logger(BibleService.name);
 
-  private loadBible(language: string): BibleData {
-    if (!ALLOWED_LANGUAGES.has(language)) {
-      throw new BadRequestException(
-        `Invalid language: ${language}. Allowed: ${[...ALLOWED_LANGUAGES].join(', ')}`,
-      );
-    }
+  // Simple in-memory caches – populated on first request
+  private cachedTranslations: Translation[] | null = null;
+  private readonly booksCache = new Map<string, Book[]>();
+  private readonly chapterCache = new Map<string, BibleVerse[]>();
 
-    if (this.bibleCache.has(language)) {
-      return this.bibleCache.get(language)!;
-    }
+  // ── Public methods ─────────────────────────────────────────────────────
 
-    // Resolve data directory: configurable via DATA_DIR env, defaults to ../data relative to cwd
-    const defaultDataRoot = path.resolve(process.cwd(), '..', 'data');
-    const dataRoot = process.env['DATA_DIR']
-      ? path.resolve(process.env['DATA_DIR'])
-      : defaultDataRoot;
+  async getTranslations(): Promise<Translation[]> {
+    if (this.cachedTranslations) return this.cachedTranslations;
 
-    // Ensure the resolved path is an absolute path (no traversal via env injection)
-    if (!path.isAbsolute(dataRoot)) {
-      throw new BadRequestException('Invalid DATA_DIR configuration.');
-    }
+    const data = await this.fetchJson<{ translations: ApiTranslation[] }>(
+      `${BIBLE_API_BASE}/available_translations.json`,
+    );
 
-    const filePath = path.join(dataRoot, 'bibles', `${language}.json`);
+    this.cachedTranslations = data.translations.map((t) => ({
+      id: t.id,
+      name: t.name,
+      englishName: t.englishName,
+      language: t.language,
+      textDirection: t.textDirection,
+    }));
 
-    if (!fs.existsSync(filePath)) {
-      throw new NotFoundException(`Bible file not found: ${language}`);
-    }
-
-    const raw = fs.readFileSync(filePath, 'utf-8');
-    const data = JSON.parse(raw) as BibleData;
-    this.bibleCache.set(language, data);
-    return data;
+    return this.cachedTranslations;
   }
 
-  getChapter(
-    language: string,
-    testament: string,
-    book: string,
-    chapter: string,
-  ): Record<string, string> {
-    const bible = this.loadBible(language);
-    const verses = bible[testament]?.[book]?.[chapter];
-    if (!verses) {
-      throw new NotFoundException(
-        `Chapter not found: ${testament} / ${book} / ${chapter}`,
-      );
+  async getBooks(translationId: string): Promise<Book[]> {
+    this.validateSegment(translationId, 'translationId');
+
+    if (this.booksCache.has(translationId)) {
+      return this.booksCache.get(translationId)!;
     }
+
+    const data = await this.fetchJson<{ books: ApiBook[] }>(
+      `${BIBLE_API_BASE}/${translationId}/books.json`,
+    );
+
+    const books: Book[] = data.books.map((b) => ({
+      id: b.id,
+      name: b.name,
+      numChapters: b.numChapters,
+    }));
+
+    this.booksCache.set(translationId, books);
+    return books;
+  }
+
+  async getChapter(
+    translationId: string,
+    bookId: string,
+    chapter: number,
+  ): Promise<BibleVerse[]> {
+    this.validateSegment(translationId, 'translationId');
+    this.validateSegment(bookId, 'bookId');
+
+    // Sanity-check the chapter number.  Psalms (150), Revelation (22) are the
+    // practical upper bounds; 200 gives comfortable headroom without permitting
+    // obviously invalid values that would just produce API 404s.
+    if (chapter < 1 || chapter > 200) {
+      throw new BadRequestException('chapter must be between 1 and 200');
+    }
+
+    const cacheKey = `${translationId}/${bookId}/${chapter}`;
+    if (this.chapterCache.has(cacheKey)) {
+      return this.chapterCache.get(cacheKey)!;
+    }
+
+    const data = await this.fetchJson<ApiChapterResponse>(
+      `${BIBLE_API_BASE}/${translationId}/${bookId}/${chapter}.json`,
+    );
+
+    const verses = this.parseVerses(data);
+    this.chapterCache.set(cacheKey, verses);
     return verses;
   }
 
-  getVerse(
-    language: string,
-    testament: string,
-    book: string,
-    chapter: string,
-    verse: string,
+  // ── Private helpers ────────────────────────────────────────────────────
+
+  /**
+   * Handles both response shapes returned by the API:
+   *   Shape A (newer): { chapter: { content: [{type:'verse', number, content:[...]}] } }
+   *   Shape B (older):  { verses: [{ verse, text }] }
+   */
+  private parseVerses(data: ApiChapterResponse): BibleVerse[] {
+    if (Array.isArray(data.verses) && data.verses.length > 0) {
+      return data.verses.map((v) => ({
+        number: String(v.verse),
+        text: v.text,
+      }));
+    }
+
+    if (data.chapter?.content) {
+      return data.chapter.content
+        .filter((item) => item.type === 'verse' && item.number != null)
+        .map((item) => ({
+          number: String(item.number),
+          text: this.extractText(item.content ?? []),
+        }));
+    }
+
+    return [];
+  }
+
+  private extractText(
+    content: (string | { text?: string })[],
   ): string {
-    const verses = this.getChapter(language, testament, book, chapter);
-    const text = verses[verse];
-    if (!text) {
-      throw new NotFoundException(
-        `Verse not found: ${book} ${chapter}:${verse}`,
+    return content
+      .map((c) => (typeof c === 'string' ? c : (c.text ?? '')))
+      .join(' ')
+      .trim();
+  }
+
+  /**
+   * Validates path segments to prevent path traversal attacks.
+   * Only alphanumeric characters, hyphens, and underscores are allowed.
+   */
+  private validateSegment(value: string, name: string): void {
+    if (!/^[a-zA-Z0-9_-]+$/.test(value)) {
+      throw new BadRequestException(`Invalid ${name}: "${value}"`);
+    }
+  }
+
+  private async fetchJson<T>(url: string): Promise<T> {
+    let response: Response;
+    try {
+      response = await fetch(url);
+    } catch (error) {
+      this.logger.error(`Network error fetching ${url}`, error);
+      throw new InternalServerErrorException(
+        'Cannot reach the Bible API. Check network connectivity.',
       );
     }
-    return text;
-  }
 
-  getBooks(language: string, testament: string): string[] {
-    const bible = this.loadBible(language);
-    const testamentData = bible[testament];
-    if (!testamentData) {
-      throw new NotFoundException(`Testament not found: ${testament}`);
+    if (response.status === 404) {
+      throw new NotFoundException(`Bible resource not found: ${url}`);
     }
-    return Object.keys(testamentData);
-  }
 
-  getChapters(
-    language: string,
-    testament: string,
-    book: string,
-  ): string[] {
-    const bible = this.loadBible(language);
-    const bookData = bible[testament]?.[book];
-    if (!bookData) {
-      throw new NotFoundException(`Book not found: ${book}`);
+    if (!response.ok) {
+      throw new InternalServerErrorException(
+        `Bible API returned HTTP ${response.status}`,
+      );
     }
-    return Object.keys(bookData);
+
+    return response.json() as Promise<T>;
   }
 }

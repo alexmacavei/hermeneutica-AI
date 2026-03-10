@@ -1,18 +1,26 @@
-import { Component, EventEmitter, Input, OnChanges, Output } from '@angular/core';
+import {
+  Component,
+  EventEmitter,
+  OnInit,
+  Output,
+} from '@angular/core';
 import { CommonModule } from '@angular/common';
 import { FormsModule } from '@angular/forms';
 import { DropdownModule } from 'primeng/dropdown';
+import { BibleApiService, Translation, Book } from '../services/bible-api.service';
 
 export interface BibleNavigation {
-  testament: string;
-  book: string;
-  chapter: string;
-  language: string;
+  translationId: string;
+  translationName: string;
+  bookId: string;
+  bookName: string;
+  chapter: number;
+  numChapters: number;
 }
 
-interface SelectOption {
+interface SelectOption<T = string> {
   label: string;
-  value: string;
+  value: T;
 }
 
 @Component({
@@ -21,44 +29,43 @@ interface SelectOption {
   imports: [CommonModule, FormsModule, DropdownModule],
   template: `
     <div class="selector-bar">
+      <!-- Translation -->
       <p-dropdown
-        [options]="testamentOptions"
-        [(ngModel)]="selectedTestament"
-        (ngModelChange)="onTestamentChange()"
+        [options]="translationOptions"
+        [(ngModel)]="selectedTranslationId"
+        (ngModelChange)="onTranslationChange()"
         optionLabel="label"
         optionValue="value"
-        placeholder="Testament"
+        placeholder="Traducere..."
+        [filter]="true"
+        filterBy="label"
         styleClass="selector-dropdown"
       ></p-dropdown>
 
+      <!-- Book -->
       <p-dropdown
         [options]="bookOptions"
-        [(ngModel)]="selectedBook"
+        [(ngModel)]="selectedBookId"
         (ngModelChange)="onBookChange()"
         optionLabel="label"
         optionValue="value"
-        placeholder="Carte"
+        placeholder="Carte..."
+        [filter]="true"
+        filterBy="label"
         styleClass="selector-dropdown"
+        [disabled]="bookOptions.length === 0"
       ></p-dropdown>
 
+      <!-- Chapter -->
       <p-dropdown
         [options]="chapterOptions"
         [(ngModel)]="selectedChapter"
         (ngModelChange)="onNavigate()"
         optionLabel="label"
         optionValue="value"
-        placeholder="Capitol"
+        placeholder="Capitol..."
         styleClass="selector-dropdown"
-      ></p-dropdown>
-
-      <p-dropdown
-        [options]="languageOptions"
-        [(ngModel)]="selectedLanguage"
-        (ngModelChange)="onNavigate()"
-        optionLabel="label"
-        optionValue="value"
-        placeholder="Limbă"
-        styleClass="selector-dropdown"
+        [disabled]="chapterOptions.length === 0"
       ></p-dropdown>
     </div>
   `,
@@ -72,105 +79,132 @@ interface SelectOption {
     }
 
     :host ::ng-deep .selector-dropdown {
-      min-width: 140px;
+      min-width: 150px;
 
       .p-dropdown {
         background: rgba(30, 30, 60, 0.9);
         border: 1px solid rgba(121, 134, 203, 0.4);
         border-radius: 6px;
       }
-
       .p-dropdown-label {
         color: #e8eaf6;
         font-size: 0.9rem;
         padding: 6px 10px;
       }
-
-      .p-dropdown-trigger {
-        color: #9fa8da;
-      }
-
+      .p-dropdown-trigger { color: #9fa8da; }
       .p-dropdown-panel {
         background: #1e1e2e;
         border: 1px solid rgba(121, 134, 203, 0.3);
       }
-
       .p-dropdown-item {
         color: #e8eaf6;
         font-size: 0.9rem;
         &:hover { background: rgba(121, 134, 203, 0.2); }
         &.p-highlight { background: rgba(26, 35, 126, 0.6); }
       }
+      .p-dropdown-filter {
+        background: rgba(26, 26, 50, 0.95);
+        color: #e8eaf6;
+        border: 1px solid rgba(121, 134, 203, 0.4);
+      }
     }
   `],
 })
-export class BibleSelectorComponent implements OnChanges {
-  @Input() bibleData: Record<string, Record<string, Record<string, Record<string, string>>>> = {};
+export class BibleSelectorComponent implements OnInit {
   @Output() navigate = new EventEmitter<BibleNavigation>();
 
-  selectedTestament = 'NT';
-  selectedBook = 'Matei';
-  selectedChapter = '5';
-  selectedLanguage = 'sinodala-ro';
+  selectedTranslationId = '';
+  selectedBookId = '';
+  selectedChapter = 1;
 
-  readonly testamentOptions: SelectOption[] = [
-    { label: 'Noul Testament', value: 'NT' },
-    { label: 'Vechiul Testament', value: 'VT' },
-  ];
-
-  readonly languageOptions: SelectOption[] = [
-    { label: '🇷🇴 Sinodală', value: 'sinodala-ro' },
-    { label: '🇬🇷 Greacă NT', value: 'greaca-nt' },
-  ];
-
+  translationOptions: SelectOption[] = [];
   bookOptions: SelectOption[] = [];
-  chapterOptions: SelectOption[] = [];
+  chapterOptions: SelectOption<number>[] = [];
 
-  ngOnChanges(): void {
-    this.updateBooks();
-    this.updateChapters();
+  private books: Book[] = [];
+  private translations: Translation[] = [];
+
+  constructor(private readonly bibleApi: BibleApiService) {}
+
+  ngOnInit(): void {
+    this.bibleApi.getTranslations().subscribe((translations) => {
+      this.translations = translations;
+      this.translationOptions = translations.map((t) => ({
+        label: t.name || t.englishName,
+        value: t.id,
+      }));
+
+      // Default to first translation
+      if (this.translationOptions.length > 0) {
+        this.selectedTranslationId = this.translationOptions[0].value;
+        this.loadBooks();
+      }
+    });
   }
 
-  onTestamentChange(): void {
-    this.updateBooks();
-    if (this.bookOptions.length > 0) {
-      this.selectedBook = this.bookOptions[0].value;
-    }
-    this.updateChapters();
-    if (this.chapterOptions.length > 0) {
-      this.selectedChapter = this.chapterOptions[0].value;
-    }
-    this.onNavigate();
+  onTranslationChange(): void {
+    this.selectedBookId = '';
+    this.selectedChapter = 1;
+    this.bookOptions = [];
+    this.chapterOptions = [];
+    this.loadBooks();
   }
 
   onBookChange(): void {
-    this.updateChapters();
-    if (this.chapterOptions.length > 0) {
-      this.selectedChapter = this.chapterOptions[0].value;
-    }
+    this.selectedChapter = 1;
+    this.buildChapterOptions();
     this.onNavigate();
   }
 
   onNavigate(): void {
+    if (!this.selectedTranslationId || !this.selectedBookId) return;
+
+    const book = this.books.find((b) => b.id === this.selectedBookId);
+    const translation = this.translations.find(
+      (t) => t.id === this.selectedTranslationId,
+    );
+
     this.navigate.emit({
-      testament: this.selectedTestament,
-      book: this.selectedBook,
+      translationId: this.selectedTranslationId,
+      translationName: translation?.name ?? translation?.englishName ?? this.selectedTranslationId,
+      bookId: this.selectedBookId,
+      bookName: book?.name ?? this.selectedBookId,
       chapter: this.selectedChapter,
-      language: this.selectedLanguage,
+      numChapters: book?.numChapters ?? 1,
     });
   }
 
-  private updateBooks(): void {
-    const testament = this.bibleData[this.selectedTestament];
-    this.bookOptions = testament
-      ? Object.keys(testament).map((b) => ({ label: b, value: b }))
-      : [];
+  private loadBooks(): void {
+    if (!this.selectedTranslationId) return;
+
+    this.bibleApi.getBooks(this.selectedTranslationId).subscribe((books) => {
+      this.books = books;
+      this.bookOptions = books.map((b) => ({
+        label: b.name,
+        value: b.id,
+      }));
+
+      if (books.length > 0) {
+        this.selectedBookId = books[0].id;
+        this.buildChapterOptions();
+        this.onNavigate();
+      }
+    });
   }
 
-  private updateChapters(): void {
-    const book = this.bibleData[this.selectedTestament]?.[this.selectedBook];
-    this.chapterOptions = book
-      ? Object.keys(book).map((c) => ({ label: `Capitol ${c}`, value: c }))
-      : [];
+  private buildChapterOptions(): void {
+    const book = this.books.find((b) => b.id === this.selectedBookId);
+    if (!book) {
+      this.chapterOptions = [];
+      return;
+    }
+    this.chapterOptions = Array.from({ length: book.numChapters }, (_, i) => ({
+      label: `Capitol ${i + 1}`,
+      value: i + 1,
+    }));
+    // Clamp selected chapter within valid range
+    if (this.selectedChapter < 1 || this.selectedChapter > book.numChapters) {
+      this.selectedChapter = 1;
+    }
   }
 }

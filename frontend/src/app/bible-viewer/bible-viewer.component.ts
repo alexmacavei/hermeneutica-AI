@@ -1,18 +1,16 @@
-import { Component, OnInit } from '@angular/core';
+import { Component } from '@angular/core';
 import { CommonModule } from '@angular/common';
-import { HttpClient } from '@angular/common/http';
 import { ButtonModule } from 'primeng/button';
 import { ToastModule } from 'primeng/toast';
 import { MessageService } from 'primeng/api';
-import { catchError, finalize, of } from 'rxjs';
+import { catchError, finalize, of, switchMap } from 'rxjs';
 
 import { BibleSelectorComponent, BibleNavigation } from './bible-selector.component';
 import { BibleTextComponent } from './bible-text.component';
 import { ResultsViewerComponent } from '../analysis/results-viewer.component';
 import { AnalysisService, AnalysisResult } from '../services/analysis.service';
+import { BibleApiService, BibleVerse } from '../services/bible-api.service';
 import { VerseSelection } from './verse-highlighter.directive';
-
-type BibleData = Record<string, Record<string, Record<string, Record<string, string>>>>;
 
 @Component({
   selector: 'app-bible-viewer',
@@ -33,11 +31,10 @@ type BibleData = Record<string, Record<string, Record<string, Record<string, str
       <!-- Navbar -->
       <header class="top-bar">
         <div class="brand">
-          <span class="brand-cross">✝</span>
+          <span class="brand-cross">&#10013;</span>
           <span class="brand-title">AI Hermeneutica Orthodoxa</span>
         </div>
         <app-bible-selector
-          [bibleData]="bibleData"
           (navigate)="onNavigate($event)"
         ></app-bible-selector>
       </header>
@@ -46,9 +43,14 @@ type BibleData = Record<string, Record<string, Record<string, Record<string, str
       <main class="main-layout">
         <!-- Bible Text Panel -->
         <section class="bible-panel">
+          <div class="loading-chapter" *ngIf="loadingChapter">
+            <i class="pi pi-spin pi-spinner"></i> Se încarcă...
+          </div>
+
           <app-bible-text
-            [bookName]="currentBook"
-            [chapterNumber]="currentChapter"
+            *ngIf="!loadingChapter"
+            [bookName]="currentNav?.bookName ?? ''"
+            [chapterNumber]="currentNav?.chapter?.toString() ?? ''"
             [verses]="currentVerses"
             [selectedVerses]="selectedVerseNumbers"
             (verseSelected)="onVerseSelected($event)"
@@ -64,10 +66,10 @@ type BibleData = Record<string, Record<string, Record<string, Record<string, str
               [disabled]="!hasPrevChapter()"
             ></button>
             <span class="footer-ref" *ngIf="selectedSelection">
-              📌 {{ selectedSelection.range }}
+              &#128204; {{ selectedSelection.range }}
             </span>
             <span class="footer-ref no-selection" *ngIf="!selectedSelection">
-              Selectează un verset pentru analiză
+              Selecteaz&#259; un verset pentru analiz&#259;
             </span>
             <button
               pButton
@@ -92,7 +94,7 @@ type BibleData = Record<string, Record<string, Record<string, Record<string, str
       <div class="analyze-bar">
         <button
           pButton
-          label="🎓 Analizează Selecția"
+          label="&#127892; Analizeaz&#259; Selec&#539;ia"
           icon="pi pi-search"
           iconPos="left"
           class="analyze-btn"
@@ -154,6 +156,15 @@ type BibleData = Record<string, Record<string, Record<string, Record<string, str
       max-height: calc(100vh - 160px);
       background: rgba(10, 10, 30, 0.5);
     }
+    .loading-chapter {
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      gap: 10px;
+      padding: 60px;
+      color: var(--text-muted);
+      font-size: 1rem;
+    }
     .verse-footer {
       padding: 10px 24px;
       background: #0a0a1f;
@@ -209,79 +220,45 @@ type BibleData = Record<string, Record<string, Record<string, Record<string, str
     }
   `],
 })
-export class BibleViewerComponent implements OnInit {
-  bibleData: BibleData = {};
-  currentTestament = 'NT';
-  currentBook = 'Matei';
-  currentChapter = '5';
-  currentLanguage = 'sinodala-ro';
-
-  currentVerses: { number: string; text: string }[] = [];
+export class BibleViewerComponent {
+  currentNav: BibleNavigation | null = null;
+  currentVerses: BibleVerse[] = [];
   selectedVerseNumbers: string[] = [];
   selectedSelection: VerseSelection | null = null;
 
   analysisResult: AnalysisResult | null = null;
   analyzing = false;
+  loadingChapter = false;
 
   constructor(
-    private readonly http: HttpClient,
+    private readonly bibleApi: BibleApiService,
     private readonly analysisService: AnalysisService,
     private readonly messageService: MessageService,
   ) {}
 
-  ngOnInit(): void {
-    this.loadBibleData('sinodala-ro');
-  }
+  onNavigate(nav: BibleNavigation): void {
+    this.currentNav = nav;
+    this.selectedSelection = null;
+    this.selectedVerseNumbers = [];
+    this.loadingChapter = true;
 
-  private loadBibleData(language: string): void {
-    this.http
-      .get<BibleData>(`assets/bibles/${language}.json`)
+    this.bibleApi
+      .getChapter(nav.translationId, nav.bookId, nav.chapter)
       .pipe(
         catchError(() => {
           this.messageService.add({
             severity: 'error',
             summary: 'Eroare',
-            detail: 'Eroare la încărcarea Bibliei.',
+            detail: 'Eroare la încărcarea capitolului.',
             life: 4000,
           });
-          return of({} as BibleData);
+          return of([] as BibleVerse[]);
         }),
+        finalize(() => (this.loadingChapter = false)),
       )
-      .subscribe((data) => {
-        this.bibleData = data;
-        this.loadChapter();
+      .subscribe((verses) => {
+        this.currentVerses = verses;
       });
-  }
-
-  onNavigate(nav: BibleNavigation): void {
-    const languageChanged = nav.language !== this.currentLanguage;
-    this.currentTestament = nav.testament;
-    this.currentBook = nav.book;
-    this.currentChapter = nav.chapter;
-    this.currentLanguage = nav.language;
-
-    if (languageChanged) {
-      this.loadBibleData(nav.language);
-    } else {
-      this.loadChapter();
-    }
-  }
-
-  private loadChapter(): void {
-    const testament = this.bibleData[this.currentTestament];
-    const book = testament?.[this.currentBook];
-    const chapter = book?.[this.currentChapter];
-
-    if (chapter) {
-      this.currentVerses = Object.entries(chapter).map(([num, text]) => ({
-        number: num,
-        text,
-      }));
-    } else {
-      this.currentVerses = [];
-    }
-    this.selectedVerseNumbers = [];
-    this.selectedSelection = null;
   }
 
   onVerseSelected(selection: VerseSelection): void {
@@ -299,18 +276,16 @@ export class BibleViewerComponent implements OnInit {
   }
 
   analyze(): void {
-    if (!this.selectedSelection || this.analyzing) return;
+    if (!this.selectedSelection || this.analyzing || !this.currentNav) return;
 
     this.analyzing = true;
     this.analysisResult = null;
-
-    const languageLabel = this.getLanguageLabel(this.currentLanguage);
 
     this.analysisService
       .analyze({
         text: this.selectedSelection.text,
         range: this.selectedSelection.range,
-        language: languageLabel,
+        language: this.currentNav.translationName,
       })
       .pipe(
         catchError((err) => {
@@ -318,61 +293,36 @@ export class BibleViewerComponent implements OnInit {
           this.messageService.add({
             severity: 'error',
             summary: 'Eroare analiză',
-            detail: 'Verificați conexiunea și configurarea API.',
+            detail: 'Verificaţi conexiunea şi configurarea API.',
             life: 5000,
           });
           return of(null);
         }),
-        finalize(() => {
-          this.analyzing = false;
-        }),
+        finalize(() => (this.analyzing = false)),
       )
       .subscribe((result) => {
-        if (result) {
-          this.analysisResult = result;
-        }
+        if (result) this.analysisResult = result;
       });
   }
 
   prevChapter(): void {
-    const chapters = this.getChapterList();
-    const idx = chapters.indexOf(this.currentChapter);
-    if (idx > 0) {
-      this.currentChapter = chapters[idx - 1];
-      this.loadChapter();
-    }
+    if (!this.currentNav || !this.hasPrevChapter()) return;
+    this.currentNav = { ...this.currentNav, chapter: this.currentNav.chapter - 1 };
+    this.onNavigate(this.currentNav);
   }
 
   nextChapter(): void {
-    const chapters = this.getChapterList();
-    const idx = chapters.indexOf(this.currentChapter);
-    if (idx < chapters.length - 1) {
-      this.currentChapter = chapters[idx + 1];
-      this.loadChapter();
-    }
+    if (!this.currentNav || !this.hasNextChapter()) return;
+    this.currentNav = { ...this.currentNav, chapter: this.currentNav.chapter + 1 };
+    this.onNavigate(this.currentNav);
   }
 
   hasPrevChapter(): boolean {
-    const chapters = this.getChapterList();
-    return chapters.indexOf(this.currentChapter) > 0;
+    return (this.currentNav?.chapter ?? 1) > 1;
   }
 
   hasNextChapter(): boolean {
-    const chapters = this.getChapterList();
-    const idx = chapters.indexOf(this.currentChapter);
-    return idx >= 0 && idx < chapters.length - 1;
-  }
-
-  private getChapterList(): string[] {
-    const book = this.bibleData[this.currentTestament]?.[this.currentBook];
-    return book ? Object.keys(book) : [];
-  }
-
-  private getLanguageLabel(lang: string): string {
-    const labels: Record<string, string> = {
-      'sinodala-ro': 'Sinodală Română',
-      'greaca-nt': 'Greacă (NT)',
-    };
-    return labels[lang] ?? lang;
+    if (!this.currentNav) return false;
+    return this.currentNav.chapter < this.currentNav.numChapters;
   }
 }

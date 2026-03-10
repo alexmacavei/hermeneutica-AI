@@ -1,52 +1,31 @@
-import { Controller, Get, Param, Query } from '@nestjs/common';
-import { BibleService } from './bible.service';
+import { Controller, Get, Param, ParseIntPipe } from '@nestjs/common';
+import { BibleService, Translation, Book, BibleVerse } from './bible.service';
 
 @Controller('bible')
 export class BibleController {
   constructor(private readonly bibleService: BibleService) {}
 
-  @Get('books')
+  /** List all available Bible translations. */
+  @Get('translations')
+  getTranslations(): Promise<Translation[]> {
+    return this.bibleService.getTranslations();
+  }
+
+  /** List books available in a given translation. */
+  @Get(':translationId/books')
   getBooks(
-    @Query('language') language: string = 'sinodala-ro',
-    @Query('testament') testament: string = 'NT',
-  ): string[] {
-    return this.bibleService.getBooks(language, testament);
+    @Param('translationId') translationId: string,
+  ): Promise<Book[]> {
+    return this.bibleService.getBooks(translationId);
   }
 
-  @Get('chapters')
-  getChapters(
-    @Query('language') language: string = 'sinodala-ro',
-    @Query('testament') testament: string = 'NT',
-    @Query('book') book: string,
-  ): string[] {
-    return this.bibleService.getChapters(language, testament, book);
-  }
-
-  @Get(':testament/:book/:chapter')
+  /** Get verses for a specific chapter. */
+  @Get(':translationId/:bookId/:chapter')
   getChapter(
-    @Param('testament') testament: string,
-    @Param('book') book: string,
-    @Param('chapter') chapter: string,
-    @Query('language') language: string = 'sinodala-ro',
-  ): Record<string, string> {
-    return this.bibleService.getChapter(language, testament, book, chapter);
-  }
-
-  @Get(':testament/:book/:chapter/:verse')
-  getVerse(
-    @Param('testament') testament: string,
-    @Param('book') book: string,
-    @Param('chapter') chapter: string,
-    @Param('verse') verse: string,
-    @Query('language') language: string = 'sinodala-ro',
-  ): { text: string } {
-    const text = this.bibleService.getVerse(
-      language,
-      testament,
-      book,
-      chapter,
-      verse,
-    );
-    return { text };
+    @Param('translationId') translationId: string,
+    @Param('bookId') bookId: string,
+    @Param('chapter', ParseIntPipe) chapter: number,
+  ): Promise<BibleVerse[]> {
+    return this.bibleService.getChapter(translationId, bookId, chapter);
   }
 }
