@@ -1,0 +1,54 @@
+/* Global Styles – AI Hermeneutica Orthodoxa */
+@import '@angular/material/theming';
+
+:root {
+  --primary: #1a237e;       /* deep indigo – theologic */
+  --accent: #b71c1c;        /* deep red – sacred */
+  --bg-dark: #0d0d1a;
+  --bg-card: #1e1e2e;
+  --text-light: #e8eaf6;
+  --text-muted: #9fa8da;
+  --gold: #ffd700;
+  --cross-red: #c62828;
+}
+
+html, body {
+  height: 100%;
+  margin: 0;
+  font-family: 'Roboto', 'Palatino Linotype', serif;
+  background: var(--bg-dark);
+  color: var(--text-light);
+}
+
+/* Scrollbar */
+::-webkit-scrollbar { width: 6px; }
+::-webkit-scrollbar-track { background: var(--bg-dark); }
+::-webkit-scrollbar-thumb { background: var(--primary); border-radius: 3px; }
+
+/* Typography */
+h1, h2, h3 { font-family: 'Palatino Linotype', 'Georgia', serif; }
+
+/* Cards */
+.card-hermeneutics { border-left: 4px solid #7986cb; }
+.card-philosophy   { border-left: 4px solid #4dd0e1; }
+.card-patristics   { border-left: 4px solid var(--gold); }
+.card-philology    { border-left: 4px solid #a5d6a7; }
+
+/* Highlight */
+.verse-highlight {
+  background: rgba(183, 28, 28, 0.25);
+  border-radius: 2px;
+  cursor: pointer;
+  transition: background 0.2s;
+}
+.verse-highlight:hover, .verse-highlight.selected {
+  background: rgba(183, 28, 28, 0.45);
+}
+
+/* Analyze button pulse */
+@keyframes pulse {
+  0% { box-shadow: 0 0 0 0 rgba(198, 40, 40, 0.6); }
+  70% { box-shadow: 0 0 0 10px rgba(198, 40, 40, 0); }
+  100% { box-shadow: 0 0 0 0 rgba(198, 40, 40, 0); }
+}
+.analyze-btn-pulse { animation: pulse 2s infinite; }
