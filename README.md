@@ -116,7 +116,10 @@ cp .env.example .env
 # Editează .env și adaugă OPENAI_API_KEY=sk-...
 
 # 3. Pornește toate serviciile
-docker-compose up --build
+docker compose up --build --force-recreate --remove-orphans
+
+# 4. Oprește toate serviciile
+docker compose down
 
 # Frontend: http://localhost:4200
 # API:      http://localhost:3001/api
