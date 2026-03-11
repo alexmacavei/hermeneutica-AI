@@ -6,7 +6,7 @@
  *     real siteId values and names from <a title="..." href="/carte.php?id=N">.
  *  2) Scrape each discovered book chapter-by-chapter.
  *  3) Build a helloao-compatible JSON structure and write to
- *     data/bibles/ro_sinodala.json.
+ *     data/bibles/BSR.json.
  *
  * Run:  npm run biblia-pipeline
  */
@@ -19,7 +19,7 @@ import * as path from 'path';
 // ─── Constants ───────────────────────────────────────────────────────────────
 
 const BASE_URL = 'https://www.bibliaortodoxa.ro';
-const TRANSLATION_ID = 'ro_sinodala';
+const TRANSLATION_ID = 'BSR';
 const BIBLES_DIR = path.resolve(__dirname, '../data/bibles');
 const FINAL_OUTPUT = path.join(BIBLES_DIR, `${TRANSLATION_ID}.json`);
 
