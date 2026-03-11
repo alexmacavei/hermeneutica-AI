@@ -22,7 +22,7 @@
 
 ## 📖 Descriere / Description
 
-**RO:** AI Hermeneutica Orthodoxa este o aplicație web full-stack care permite navigarea textului biblic (Biblia Sinodală Română, Greacă NT) și oferă analiză hermeneutică ortodoxă în 4 dimensiuni prin AI (GPT-4o):
+**RO:** AI Hermeneutica Orthodoxa este o aplicație web full-stack care permite navigarea textului biblic (via helloao.org API) și oferă analiză hermeneutică ortodoxă în 4 dimensiuni prin AI (GPT-4o):
 
 | Card | Conținut |
 |------|----------|
@@ -31,7 +31,7 @@
 | ⛪ **Comentarii Patristice** | Citații din Sf. Ioan Gură de Aur, Chiril Alexandrianul, Vasile cel Mare etc. |
 | 🔤 **Analiză Filologică** | Greacă/Ebraică biblică, Strong's, LXX, morfologie |
 
-**EN:** AI Hermeneutica Orthodoxa is a full-stack web application for navigating Biblical text (Romanian Synodal Bible, Greek NT) and receiving AI-powered orthodox hermeneutic analysis across 4 dimensions via GPT-4o.
+**EN:** AI Hermeneutica Orthodoxa is a full-stack web application for navigating Biblical text (via helloao.org API) and receiving AI-powered orthodox hermeneutic analysis across 4 dimensions via GPT-4o.
 
 ---
 
@@ -78,18 +78,18 @@ AI-Hermeneutica-Orthodoxa/
 │   │   ├── ai/
 │   │   │   ├── ai.service.ts   # OpenAI GPT-4o integration
 │   │   │   └── prompts/hermeneutica.yaml  # System prompts
-│   │   ├── bible/              # Bible data service
+│   │   ├── bible/              # Bible API Proxy service
 │   │   └── config/             # Configuration
 │   └── Dockerfile
-├── frontend/                   # Angular 18+ SPA
+├── frontend/                   # Angular 19+ SPA
 │   ├── src/app/
 │   │   ├── bible-viewer/       # Text navigabil + selector
 │   │   ├── analysis/           # 4 Carduri rezultate
-│   │   └── services/           # HTTP analysis service
+│   │   └── services/           # HTTP services
 │   └── Dockerfile
 ├── data/
-│   ├── bibles/                 # JSON: Sinodală RO + Greacă NT
 │   └── patristic-snippets.json # Citații patristice
+├── .env.example                # Template variabile de mediu
 ├── docker-compose.yml
 └── .github/workflows/ci.yml
 ```
@@ -182,13 +182,21 @@ Analizează un fragment biblic și returnează 4 carduri hermeneutice.
 }
 ```
 
-### `GET /api/bible/:testament/:book/:chapter`
+### `GET /api/bible/:translationId/:bookId/:chapter`
 
 Returnează versetele unui capitol biblic.
 
 ```bash
-GET /api/bible/NT/Matei/5?language=sinodala-ro
+GET /api/bible/sinodala-ro/Matei/5
 ```
+
+### `GET /api/bible/translations`
+
+Listează traducerile biblice disponibile.
+
+### `GET /api/bible/:translationId/books`
+
+Listează cărțile disponibile pentru o anumită traducere.
 
 ---
 
@@ -196,11 +204,11 @@ GET /api/bible/NT/Matei/5?language=sinodala-ro
 
 | Layer | Tehnologie |
 |-------|-----------|
-| **Backend** | NestJS 10, TypeScript strict |
+| **Backend** | NestJS 10, TypeScript 5.7 |
 | **AI** | OpenAI GPT-4o, Prompt YAML |
-| **Frontend** | Angular 19.2, PrimeNG 19 |
-| **Styling** | SCSS, Dark theme teologic |
-| **Database** | PostgreSQL + pgvector (extensibil) |
+| **Frontend** | Angular 19.2, PrimeNG 19.1 |
+| **Styling** | SCSS, PrimeIcons |
+| **Data Source** | bible.helloao.org (External API) |
 | **DevOps** | Podman, Podman Compose |
 | **CI/CD** | GitHub Actions |
 | **PWA** | Service Worker, Web Manifest |
@@ -221,22 +229,12 @@ cd frontend && npm test
 
 ## 📚 Date Biblice / Biblical Data
 
-Aplicația include:
-- **Biblia Sinodală Română** – Matei 1, 5, 6; Ioan 1, 3; Psalmi 22, 50, 90; Geneza 1; Isaia 61
-- **Greacă NT** – Matei 5 (Fericirile), Ioan 1, 3:16; Psalmi LXX
+Aplicația utilizează API-ul extern furnizat de [bible.helloao.org](https://bible.helloao.org/api) pentru a accesa textul biblic în timp real. Această abordare permite navigarea integrală a Sfintei Scripturi fără a stoca volume mari de date local.
 
-Textele sunt stocate în format JSON ierarhic:
-```json
-{
-  "NT": {
-    "Matei": {
-      "5": {
-        "3": "Fericiţi cei săraci cu duhul..."
-      }
-    }
-  }
-}
-```
+Caracteristici:
+- **Acces dinamic:** Navigare prin toate cărțile și capitolele disponibile în traducerile suportate.
+- **Traduceri:** Suportă Biblia Sinodală Română (`sinodala-ro`), Biblia Cornilescu, precum și versiuni în limbile greacă (LXX, GNT) și ebraică.
+- **Interfață simplificată:** Backend-ul NestJS acționează ca un proxy către API-ul `helloao.org`, asigurând stabilitate și maparea corectă a versetelor pentru procesarea AI.
 
 ---
 
@@ -262,6 +260,7 @@ MIT License – vezi [LICENSE](LICENSE)
 ## ✝ Mulțumiri / Acknowledgments
 
 - Sfânta Scriptură – Biblia Sinodală (1914, rev. 2008)
+- **[Bible API (helloao.org)](https://bible.helloao.org)** – Sursă de date scripturistice deschise
 - Părinții Bisericii – Patrologia Graeca (PG), Migne
 - OpenAI pentru GPT-4o
 - NestJS & Angular teams
