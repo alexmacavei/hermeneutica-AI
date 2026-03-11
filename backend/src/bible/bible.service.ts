@@ -6,21 +6,22 @@ import {
   InternalServerErrorException,
 } from '@nestjs/common';
 import { join } from 'path';
-import { readFile } from 'fs/promises';
+import { access, readFile } from 'fs/promises';
 
 const BIBLE_API_BASE = 'https://bible.helloao.org/api';
 
 /**
  * Ordered list of translation IDs available in the application.
  * Corresponds to: Hebrew Masoretic Text, Greek Septuagint,
- * Greek New Testament, and King James Version with Apocrypha.
+ * Greek New Testament, King James Version with Apocrypha,
+ * and Romanian Synodal Bible (local file; included only when available).
  */
 const ALLOWED_TRANSLATION_IDS = [
   'WLC',
   'LXX',
   'UGNT',
   'KJVA',
-  'ro_sinodala',
+  'BSR',
 ] as const;
 
 // ─── Upstream API types ────────────────────────────────────────────────────
@@ -48,12 +49,13 @@ interface ApiVerseContent {
 }
 
 interface ApiChapterResponse {
-  // Format A (newer): chapter.content array
+  // Format A (newer): chapter.content array (upstream API)
   chapter?: {
     number: number;
-    content: ApiVerseContent[];
+    // Optional: local BSR chapters use the `verses` array instead
+    content?: ApiVerseContent[];
   };
-  // Format B (simplified): flat verses array
+  // Format B (simplified): flat verses array (local data and some upstream)
   verses?: { verse: number; text: string }[];
 }
 
@@ -78,6 +80,29 @@ export interface BibleVerse {
   text: string;
 }
 
+// ─── Local Bible types ─────────────────────────────────────────────────────
+
+interface LocalBibleVerse {
+  verse: number;
+  text: string;
+}
+
+interface LocalBibleChapter {
+  chapter: { number: number };
+  verses?: LocalBibleVerse[];
+}
+
+interface LocalBibleBook {
+  id: string;
+  name: string;
+  numberOfChapters: number;
+  chapters: LocalBibleChapter[];
+}
+
+interface LocalBibleData {
+  books: LocalBibleBook[];
+}
+
 // ─── Service ───────────────────────────────────────────────────────────────
 
 @Injectable()
@@ -88,7 +113,7 @@ export class BibleService {
   private cachedTranslations: Translation[] | null = null;
   private readonly booksCache = new Map<string, Book[]>();
   private readonly chapterCache = new Map<string, BibleVerse[]>();
-  private localBibleCache: any | null = null;
+  private localBibleCache: LocalBibleData | null = null;
 
   // ── Public methods ─────────────────────────────────────────────────────
 
@@ -99,19 +124,27 @@ export class BibleService {
       `${BIBLE_API_BASE}/available_translations.json`,
     );
 
-    const translationMap = new Map<string, Partial<ApiTranslation>>(
+    const translationMap = new Map<string, ApiTranslation>(
       data.translations.map((t) => [t.id, t]),
     );
 
-    // Add local translation to the map if not present
-    if (!translationMap.has('ro_sinodala')) {
-      translationMap.set('ro_sinodala', {
-        id: 'ro_sinodala',
-        name: 'Biblia Sinodală',
-        englishName: 'Romanian Synodal Bible',
-        language: 'ro',
-        textDirection: 'ltr',
-      });
+    // Add local Romanian translation only when the data file is present
+    if (!translationMap.has('BSR')) {
+      const bsrPath = this.getLocalBiblePath();
+      try {
+        await access(bsrPath);
+        translationMap.set('BSR', {
+          id: 'BSR',
+          name: 'Biblia Sinodală',
+          englishName: 'Romanian Synodal Bible',
+          language: 'ro',
+          textDirection: 'ltr',
+        });
+      } catch {
+        this.logger.warn(
+          `Local Bible file not found at ${bsrPath}; BSR translation will not be available.`,
+        );
+      }
     }
 
     this.cachedTranslations = ALLOWED_TRANSLATION_IDS.flatMap((id) => {
@@ -119,11 +152,11 @@ export class BibleService {
       if (!t) return [];
       return [
         {
-          id: t.id!,
-          name: t.name!,
-          englishName: t.englishName!,
-          language: t.language!,
-          textDirection: t.textDirection!,
+          id: t.id,
+          name: t.name,
+          englishName: t.englishName,
+          language: t.language,
+          textDirection: t.textDirection,
         },
       ];
     });
@@ -139,9 +172,9 @@ export class BibleService {
     }
 
     let books: Book[];
-    if (translationId === 'ro_sinodala') {
+    if (translationId === 'BSR') {
       const localData = await this.loadLocalBible();
-      books = localData.books.map((b: any) => ({
+      books = localData.books.map((b) => ({
         id: b.id,
         name: b.name,
         numChapters: b.numberOfChapters,
@@ -184,18 +217,18 @@ export class BibleService {
 
     let verses: BibleVerse[];
 
-    if (translationId === 'ro_sinodala') {
+    if (translationId === 'BSR') {
       const localData = await this.loadLocalBible();
-      const book = localData.books.find((b: any) => b.id === bookId);
+      const book = localData.books.find((b) => b.id === bookId);
       if (!book) {
-        throw new NotFoundException(`Book ${bookId} not found in ro_sinodala`);
+        throw new NotFoundException(`Book ${bookId} not found in BSR`);
       }
       const chapterData = book.chapters.find(
-        (c: any) => c.chapter.number === chapter,
+        (c) => c.chapter.number === chapter,
       );
       if (!chapterData) {
         throw new NotFoundException(
-          `Chapter ${chapter} not found in book ${bookId} of ro_sinodala`,
+          `Chapter ${chapter} not found in book ${bookId} of BSR`,
         );
       }
       verses = this.parseVerses(chapterData);
@@ -256,14 +289,19 @@ export class BibleService {
     }
   }
 
-  private async loadLocalBible(): Promise<any> {
+  private getLocalBiblePath(): string {
+    const dataDir = process.env['DATA_DIR'] ?? join(process.cwd(), 'data');
+    return join(dataDir, 'bibles', 'BSR.json');
+  }
+
+  private async loadLocalBible(): Promise<LocalBibleData> {
     if (this.localBibleCache) return this.localBibleCache;
 
-    const filePath = join(process.cwd(), 'data', 'bibles', 'ro_sinodala.json');
+    const filePath = this.getLocalBiblePath();
     try {
       this.logger.log(`Loading local Bible from disk: ${filePath}`);
       const content = await readFile(filePath, 'utf-8');
-      this.localBibleCache = JSON.parse(content);
+      this.localBibleCache = JSON.parse(content) as LocalBibleData;
       return this.localBibleCache;
     } catch (error) {
       this.logger.error(`Error loading local Bible file at ${filePath}`, error);
