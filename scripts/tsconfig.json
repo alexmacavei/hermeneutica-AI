@@ -6,6 +6,8 @@
     "moduleResolution": "node",
     "strict": true,
     "esModuleInterop": true,
+    "allowJs": true,
+    "checkJs": false,
     "allowSyntheticDefaultImports": true,
     "resolveJsonModule": true,
     "outDir": "./dist",

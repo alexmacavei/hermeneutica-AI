@@ -78,7 +78,7 @@ const booksConfig: BookConfig[] = [
   { order: 1,  usfmCode: 'GEN', nameLong: 'Facerea',                       nameAbbrev: 'Fac'    },
   { order: 2,  usfmCode: 'EXO', nameLong: 'Ieșirea',                       nameAbbrev: 'Ieș'    },
   { order: 3,  usfmCode: 'LEV', nameLong: 'Leviticul',                     nameAbbrev: 'Lev'    },
-  { order: 4,  usfmCode: 'NUM', nameLong: 'Numerele',                      nameAbbrev: 'Num'    },
+  { order: 4,  usfmCode: 'NUM', nameLong: 'Numerii',                       nameAbbrev: 'Num'    },
   { order: 5,  usfmCode: 'DEU', nameLong: 'Deuteronomul',                  nameAbbrev: 'Deut'   },
 
   // ── Historical books ─────────────────────────────────────────────────────
@@ -89,54 +89,53 @@ const booksConfig: BookConfig[] = [
   { order: 10, usfmCode: '2SA', nameLong: 'II Regi',                       nameAbbrev: '2Reg'   },
   { order: 11, usfmCode: '1KI', nameLong: 'III Regi',                      nameAbbrev: '3Reg'   },
   { order: 12, usfmCode: '2KI', nameLong: 'IV Regi',                       nameAbbrev: '4Reg'   },
-  { order: 13, usfmCode: '1CH', nameLong: 'I Paralipomene',                nameAbbrev: '1Par'   },
-  { order: 14, usfmCode: '2CH', nameLong: 'II Paralipomene',               nameAbbrev: '2Par'   },
+  { order: 13, usfmCode: '1CH', nameLong: 'I Paralipomena',                nameAbbrev: '1Par'   },
+  { order: 14, usfmCode: '2CH', nameLong: 'II Paralipomena',               nameAbbrev: '2Par'   },
   { order: 81, usfmCode: '1ES', nameLong: 'I Ezdra',                       nameAbbrev: '1Ezd'   },
-  { order: 15, usfmCode: 'EZR', nameLong: 'II Ezdra',                      nameAbbrev: '2Ezd'   },
+  { order: 15, usfmCode: 'EZR', nameLong: 'III Ezdra',                      nameAbbrev: '2Ezd'   },
   { order: 16, usfmCode: 'NEH', nameLong: 'Neemia',                        nameAbbrev: 'Neem'   },
   { order: 67, usfmCode: 'TOB', nameLong: 'Tobit',                         nameAbbrev: 'Tob'    },
   { order: 68, usfmCode: 'JDT', nameLong: 'Iudita',                        nameAbbrev: 'Iudt'   },
-  { order: 17, usfmCode: 'EST', nameLong: 'Estera',                        nameAbbrev: 'Est'    },
+  { order: 17, usfmCode: 'EST', nameLong: 'Esterei',                       nameAbbrev: 'Est'    },
   { order: 77, usfmCode: '1MA', nameLong: 'I Macabei',                     nameAbbrev: '1Mac'   },
   { order: 78, usfmCode: '2MA', nameLong: 'II Macabei',                    nameAbbrev: '2Mac'   },
   { order: 79, usfmCode: '3MA', nameLong: 'III Macabei',                   nameAbbrev: '3Mac'   },
 
   // ── Poetic / Wisdom books ────────────────────────────────────────────────
   { order: 18, usfmCode: 'JOB', nameLong: 'Iov',                           nameAbbrev: 'Iov'    },
-  { order: 19, usfmCode: 'PSA', nameLong: 'Psalmii',                       nameAbbrev: 'Ps'     },
-  { order: 83, usfmCode: 'MAN', nameLong: 'Rugăciunea lui Manase',         nameAbbrev: 'RgMan'  },
-  { order: 20, usfmCode: 'PRO', nameLong: 'Pildele lui Solomon',           nameAbbrev: 'Pild'   },
-  { order: 21, usfmCode: 'ECC', nameLong: 'Eclesiastul',                   nameAbbrev: 'Eccl'   },
-  { order: 22, usfmCode: 'SNG', nameLong: 'Cântarea Cântărilor',           nameAbbrev: 'Cânt'   },
-  { order: 70, usfmCode: 'WIS', nameLong: 'Înțelepciunea lui Solomon',     nameAbbrev: 'ÎnțSol' },
+  { order: 19, usfmCode: 'PSA', nameLong: 'Psalmi',                        nameAbbrev: 'Ps'     },
+  { order: 83, usfmCode: 'MAN', nameLong: 'Manase',                        nameAbbrev: 'RgMan'  },
+  { order: 20, usfmCode: 'PRO', nameLong: 'Pilde',                         nameAbbrev: 'Pild'   },
+  { order: 21, usfmCode: 'ECC', nameLong: 'Ecclesiastul',                  nameAbbrev: 'Eccl'   },
+  { order: 22, usfmCode: 'SNG', nameLong: 'Cântări',                       nameAbbrev: 'Cânt'   },
+  { order: 70, usfmCode: 'WIS', nameLong: 'Solomon',                       nameAbbrev: 'ÎnțSol' },
   { order: 71, usfmCode: 'SIR', nameLong: 'Ecclesiasticul',                nameAbbrev: 'Sir'    },
 
   // ── Major prophets ───────────────────────────────────────────────────────
   { order: 23, usfmCode: 'ISA', nameLong: 'Isaia',                         nameAbbrev: 'Is'     },
   { order: 24, usfmCode: 'JER', nameLong: 'Ieremia',                       nameAbbrev: 'Ier'    },
-  { order: 25, usfmCode: 'LAM', nameLong: 'Plângerile lui Ieremia',        nameAbbrev: 'Plâng'  },
+  { order: 25, usfmCode: 'LAM', nameLong: 'Plangeri',                      nameAbbrev: 'Plâng'  },
   { order: 72, usfmCode: 'BAR', nameLong: 'Baruh',                         nameAbbrev: 'Bar'    },
+  { order: 73, usfmCode: 'LJE', nameLong: 'Epistola lui Ieremia',          nameAbbrev: 'EpIer'  },
   { order: 26, usfmCode: 'EZK', nameLong: 'Iezechiel',                     nameAbbrev: 'Iez'    },
   { order: 27, usfmCode: 'DAN', nameLong: 'Daniel',                        nameAbbrev: 'Dan'    },
-  { order: 74, usfmCode: 'S3Y', nameLong: 'Cântarea celor trei tineri',    nameAbbrev: 'S3Y'    },
-  { order: 75, usfmCode: 'SUS', nameLong: 'Istoria Suzanei',               nameAbbrev: 'Sus'    },
-  { order: 76, usfmCode: 'BEL', nameLong: 'Bel și Balaurul',               nameAbbrev: 'Bel'    },
+  { order: 74, usfmCode: 'S3Y', nameLong: '3 tineri',                      nameAbbrev: 'S3Y'    },
+  { order: 75, usfmCode: 'SUS', nameLong: 'Susanei',                       nameAbbrev: 'Sus'    },
+  { order: 76, usfmCode: 'BEL', nameLong: 'Balaurul şi Bel',               nameAbbrev: 'Bel'    },
 
   // ── Minor prophets ───────────────────────────────────────────────────────
   { order: 28, usfmCode: 'HOS', nameLong: 'Osea',                          nameAbbrev: 'Os'     },
   { order: 29, usfmCode: 'JOL', nameLong: 'Ioil',                          nameAbbrev: 'Ioel'   },
   { order: 30, usfmCode: 'AMO', nameLong: 'Amos',                          nameAbbrev: 'Amos'   },
-  { order: 31, usfmCode: 'OBA', nameLong: 'Obadia',                        nameAbbrev: 'Obad'   },
+  { order: 31, usfmCode: 'OBA', nameLong: 'Avdie',                         nameAbbrev: 'Obad'   },
   { order: 32, usfmCode: 'JON', nameLong: 'Iona',                          nameAbbrev: 'Ion'    },
-  { order: 33, usfmCode: 'MIC', nameLong: 'Mica',                          nameAbbrev: 'Mica'   },
+  { order: 33, usfmCode: 'MIC', nameLong: 'Miheia',                        nameAbbrev: 'Mica'   },
   { order: 34, usfmCode: 'NAM', nameLong: 'Naum',                          nameAbbrev: 'Naum'   },
-  { order: 35, usfmCode: 'HAB', nameLong: 'Habacuc',                       nameAbbrev: 'Hab'    },
+  { order: 35, usfmCode: 'HAB', nameLong: 'Avacum',                        nameAbbrev: 'Hab'    },
   { order: 36, usfmCode: 'ZEP', nameLong: 'Sofonie',                       nameAbbrev: 'Sof'    },
   { order: 37, usfmCode: 'HAG', nameLong: 'Agheu',                         nameAbbrev: 'Ag'     },
   { order: 38, usfmCode: 'ZEC', nameLong: 'Zaharia',                       nameAbbrev: 'Zah'    },
   { order: 39, usfmCode: 'MAL', nameLong: 'Maleahi',                       nameAbbrev: 'Mal'    },
-  { order: 84, usfmCode: 'PS2', nameLong: 'Psalmul 151',                   nameAbbrev: 'Ps151'  },
-  { order: 80, usfmCode: '4MA', nameLong: 'IV Macabei',                    nameAbbrev: '4Mac'   },
 
   // ── New Testament ────────────────────────────────────────────────────────
   { order: 40, usfmCode: 'MAT', nameLong: 'Matei',                         nameAbbrev: 'Mat'    },
@@ -179,6 +178,7 @@ const ENGLISH_BOOK_NAMES: Record<string, string> = {
   JOB: 'Job',           PSA: 'Psalms',           MAN: 'Prayer of Manasseh', PRO: 'Proverbs',
   ECC: 'Ecclesiastes',  SNG: 'Song of Songs',    WIS: 'Wisdom of Solomon', SIR: 'Sirach',
   ISA: 'Isaiah',        JER: 'Jeremiah',         LAM: 'Lamentations',    BAR: 'Baruch',
+  LJE: 'Letter of Jeremiah',
   EZK: 'Ezekiel',       DAN: 'Daniel',           S3Y: 'Song of the Three Young Men',
   SUS: 'Susanna',       BEL: 'Bel and the Dragon',
   HOS: 'Hosea',         JOL: 'Joel',             AMO: 'Amos',            OBA: 'Obadiah',
@@ -195,7 +195,7 @@ const ENGLISH_BOOK_NAMES: Record<string, string> = {
 
 // Books that are deuterocanonical / apocryphal in the helloao sense
 const APOCRYPHAL_CODES = new Set([
-  'TOB', 'JDT', '1MA', '2MA', '3MA', '4MA', 'WIS', 'SIR', 'BAR',
+  'TOB', 'JDT', '1MA', '2MA', '3MA', '4MA', 'WIS', 'SIR', 'BAR', 'LJE',
   '1ES', 'MAN', 'PS2', 'S3Y', 'SUS', 'BEL',
 ]);
 
