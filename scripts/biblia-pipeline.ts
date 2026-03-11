@@ -2,9 +2,11 @@
  * biblia-pipeline.ts
  *
  * Pipeline:
- *  1) Scrape https://www.bibliaortodoxa.ro book-by-book, chapter-by-chapter.
- *  2) Build a helloao-compatible JSON structure directly from the scraped data.
- *  3) Write to data/bibles/ro_sinodala.json.
+ *  1) Fetch https://www.bibliaortodoxa.ro/ and discover all books with their
+ *     real siteId values and names from <a title="..." href="/carte.php?id=N">.
+ *  2) Scrape each discovered book chapter-by-chapter.
+ *  3) Build a helloao-compatible JSON structure and write to
+ *     data/bibles/ro_sinodala.json.
  *
  * Run:  npm run biblia-pipeline
  */
@@ -23,28 +25,35 @@ const FINAL_OUTPUT = path.join(BIBLES_DIR, `${TRANSLATION_ID}.json`);
 
 // ─── Types ───────────────────────────────────────────────────────────────────
 
+/** Static per-book metadata used for helloao JSON fields. siteId is resolved
+ *  dynamically at startup by matching nameLong against the site's book list. */
 type BookConfig = {
-  /** Canonical order used by helloao (1-based) */
+  /** Canonical helloao order (1-based). */
   order: number;
-  /** USFM book code, e.g. "GEN", "MAT" */
+  /** USFM book code, e.g. "GEN", "MAT". */
   usfmCode: string;
-  /** Numeric book ID used by bibliaortodoxa.ro (?id=N) */
-  siteId: number;
-  /** Full Romanian name */
+  /** Full Romanian name – used to match against the site's <a title="...">. */
   nameLong: string;
-  /** Short Romanian name */
+  /** Short Romanian name (for display). */
   nameShort: string;
-  /** Romanian abbreviation */
+  /** Romanian abbreviation. */
   nameAbbrev: string;
+};
+
+/** A book entry discovered from the site's homepage. */
+type SiteBook = {
+  /** Romanian name as shown in the <a title="..."> attribute. */
+  name: string;
+  /** Numeric id in ?id=N. */
+  siteId: number;
 };
 
 type Verse = { number: number; text: string };
 
-// ─── Books configuration ─────────────────────────────────────────────────────
+// ─── Static books configuration ──────────────────────────────────────────────
 //
-// siteId values for OT books are best-guess estimates based on the canonical
-// Orthodox ordering and the known anchor point: Matthew = siteId 55.
-// They will need verification against the live site before the first run.
+// nameLong values are used to match against the site's <a title="..."> text.
+// If the site uses a different spelling, update nameLong to match.
 //
 // order values follow the helloao bookOrderMap:
 //   canonical Protestant canon:  GEN=1 … REV=66
@@ -54,97 +63,97 @@ type Verse = { number: number; text: string };
 
 const booksConfig: BookConfig[] = [
   // ── Pentateuch ──────────────────────────────────────────────────────────
-  { order: 1,  usfmCode: 'GEN', siteId: 1,  nameLong: 'Facerea',           nameShort: 'Facerea',     nameAbbrev: 'Fac'    },
-  { order: 2,  usfmCode: 'EXO', siteId: 2,  nameLong: 'Ieșirea',           nameShort: 'Ieșirea',     nameAbbrev: 'Ieș'    },
-  { order: 3,  usfmCode: 'LEV', siteId: 3,  nameLong: 'Leviticul',         nameShort: 'Leviticul',   nameAbbrev: 'Lev'    },
-  { order: 4,  usfmCode: 'NUM', siteId: 4,  nameLong: 'Numerele',          nameShort: 'Numerele',    nameAbbrev: 'Num'    },
-  { order: 5,  usfmCode: 'DEU', siteId: 5,  nameLong: 'Deuteronomul',      nameShort: 'Deut.',       nameAbbrev: 'Deut'   },
+  { order: 1,  usfmCode: 'GEN', nameLong: 'Facerea',                          nameShort: 'Facerea',        nameAbbrev: 'Fac'    },
+  { order: 2,  usfmCode: 'EXO', nameLong: 'Ieșirea',                          nameShort: 'Ieșirea',        nameAbbrev: 'Ieș'    },
+  { order: 3,  usfmCode: 'LEV', nameLong: 'Leviticul',                        nameShort: 'Leviticul',      nameAbbrev: 'Lev'    },
+  { order: 4,  usfmCode: 'NUM', nameLong: 'Numerele',                         nameShort: 'Numerele',       nameAbbrev: 'Num'    },
+  { order: 5,  usfmCode: 'DEU', nameLong: 'Deuteronomul',                     nameShort: 'Deut.',          nameAbbrev: 'Deut'   },
 
   // ── Historical books ─────────────────────────────────────────────────────
-  { order: 6,  usfmCode: 'JOS', siteId: 6,  nameLong: 'Iosua Navi',        nameShort: 'Iosua',       nameAbbrev: 'Ios'    },
-  { order: 7,  usfmCode: 'JDG', siteId: 7,  nameLong: 'Judecători',        nameShort: 'Judecători',  nameAbbrev: 'Jud'    },
-  { order: 8,  usfmCode: 'RUT', siteId: 8,  nameLong: 'Rut',               nameShort: 'Rut',         nameAbbrev: 'Rut'    },
-  { order: 9,  usfmCode: '1SA', siteId: 9,  nameLong: 'I Regi',            nameShort: 'I Regi',      nameAbbrev: '1Reg'   },
-  { order: 10, usfmCode: '2SA', siteId: 10, nameLong: 'II Regi',           nameShort: 'II Regi',     nameAbbrev: '2Reg'   },
-  { order: 11, usfmCode: '1KI', siteId: 11, nameLong: 'III Regi',          nameShort: 'III Regi',    nameAbbrev: '3Reg'   },
-  { order: 12, usfmCode: '2KI', siteId: 12, nameLong: 'IV Regi',           nameShort: 'IV Regi',     nameAbbrev: '4Reg'   },
-  { order: 13, usfmCode: '1CH', siteId: 13, nameLong: 'I Paralipomene',    nameShort: 'I Paral.',    nameAbbrev: '1Par'   },
-  { order: 14, usfmCode: '2CH', siteId: 14, nameLong: 'II Paralipomene',   nameShort: 'II Paral.',   nameAbbrev: '2Par'   },
-  { order: 81, usfmCode: '1ES', siteId: 15, nameLong: 'I Ezdra',           nameShort: 'I Ezdra',     nameAbbrev: '1Ezd'   },
-  { order: 15, usfmCode: 'EZR', siteId: 16, nameLong: 'II Ezdra',          nameShort: 'II Ezdra',    nameAbbrev: '2Ezd'   },
-  { order: 16, usfmCode: 'NEH', siteId: 17, nameLong: 'Neemia',            nameShort: 'Neemia',      nameAbbrev: 'Neem'   },
-  { order: 67, usfmCode: 'TOB', siteId: 18, nameLong: 'Tobit',             nameShort: 'Tobit',       nameAbbrev: 'Tob'    },
-  { order: 68, usfmCode: 'JDT', siteId: 19, nameLong: 'Iudita',            nameShort: 'Iudita',      nameAbbrev: 'Iudt'   },
-  { order: 17, usfmCode: 'EST', siteId: 20, nameLong: 'Estera',            nameShort: 'Estera',      nameAbbrev: 'Est'    },
-  { order: 77, usfmCode: '1MA', siteId: 21, nameLong: 'I Macabei',         nameShort: 'I Macabei',   nameAbbrev: '1Mac'   },
-  { order: 78, usfmCode: '2MA', siteId: 22, nameLong: 'II Macabei',        nameShort: 'II Macabei',  nameAbbrev: '2Mac'   },
-  { order: 79, usfmCode: '3MA', siteId: 23, nameLong: 'III Macabei',       nameShort: 'III Macabei', nameAbbrev: '3Mac'   },
+  { order: 6,  usfmCode: 'JOS', nameLong: 'Iosua Navi',                       nameShort: 'Iosua',          nameAbbrev: 'Ios'    },
+  { order: 7,  usfmCode: 'JDG', nameLong: 'Judecători',                       nameShort: 'Judecători',     nameAbbrev: 'Jud'    },
+  { order: 8,  usfmCode: 'RUT', nameLong: 'Rut',                              nameShort: 'Rut',            nameAbbrev: 'Rut'    },
+  { order: 9,  usfmCode: '1SA', nameLong: 'I Regi',                           nameShort: 'I Regi',         nameAbbrev: '1Reg'   },
+  { order: 10, usfmCode: '2SA', nameLong: 'II Regi',                          nameShort: 'II Regi',        nameAbbrev: '2Reg'   },
+  { order: 11, usfmCode: '1KI', nameLong: 'III Regi',                         nameShort: 'III Regi',       nameAbbrev: '3Reg'   },
+  { order: 12, usfmCode: '2KI', nameLong: 'IV Regi',                          nameShort: 'IV Regi',        nameAbbrev: '4Reg'   },
+  { order: 13, usfmCode: '1CH', nameLong: 'I Paralipomene',                   nameShort: 'I Paral.',       nameAbbrev: '1Par'   },
+  { order: 14, usfmCode: '2CH', nameLong: 'II Paralipomene',                  nameShort: 'II Paral.',      nameAbbrev: '2Par'   },
+  { order: 81, usfmCode: '1ES', nameLong: 'I Ezdra',                          nameShort: 'I Ezdra',        nameAbbrev: '1Ezd'   },
+  { order: 15, usfmCode: 'EZR', nameLong: 'II Ezdra',                         nameShort: 'II Ezdra',       nameAbbrev: '2Ezd'   },
+  { order: 16, usfmCode: 'NEH', nameLong: 'Neemia',                           nameShort: 'Neemia',         nameAbbrev: 'Neem'   },
+  { order: 67, usfmCode: 'TOB', nameLong: 'Tobit',                            nameShort: 'Tobit',          nameAbbrev: 'Tob'    },
+  { order: 68, usfmCode: 'JDT', nameLong: 'Iudita',                           nameShort: 'Iudita',         nameAbbrev: 'Iudt'   },
+  { order: 17, usfmCode: 'EST', nameLong: 'Estera',                           nameShort: 'Estera',         nameAbbrev: 'Est'    },
+  { order: 77, usfmCode: '1MA', nameLong: 'I Macabei',                        nameShort: 'I Macabei',      nameAbbrev: '1Mac'   },
+  { order: 78, usfmCode: '2MA', nameLong: 'II Macabei',                       nameShort: 'II Macabei',     nameAbbrev: '2Mac'   },
+  { order: 79, usfmCode: '3MA', nameLong: 'III Macabei',                      nameShort: 'III Macabei',    nameAbbrev: '3Mac'   },
 
   // ── Poetic / Wisdom books ────────────────────────────────────────────────
-  { order: 18, usfmCode: 'JOB', siteId: 24, nameLong: 'Iov',               nameShort: 'Iov',         nameAbbrev: 'Iov'    },
-  { order: 19, usfmCode: 'PSA', siteId: 25, nameLong: 'Psalmii',           nameShort: 'Psalmii',     nameAbbrev: 'Ps'     },
-  { order: 83, usfmCode: 'MAN', siteId: 26, nameLong: 'Rugăciunea lui Manase', nameShort: 'Rug. Manase', nameAbbrev: 'RgMan' },
-  { order: 20, usfmCode: 'PRO', siteId: 27, nameLong: 'Pildele lui Solomon', nameShort: 'Pildele',   nameAbbrev: 'Pild'   },
-  { order: 21, usfmCode: 'ECC', siteId: 28, nameLong: 'Eclesiastul',       nameShort: 'Eclesiastul', nameAbbrev: 'Eccl'   },
-  { order: 22, usfmCode: 'SNG', siteId: 29, nameLong: 'Cântarea Cântărilor', nameShort: 'Cânt. Cânt.', nameAbbrev: 'Cânt' },
-  { order: 70, usfmCode: 'WIS', siteId: 30, nameLong: 'Înțelepciunea lui Solomon', nameShort: 'Înț. Solomon', nameAbbrev: 'ÎnțSol' },
-  { order: 71, usfmCode: 'SIR', siteId: 31, nameLong: 'Înțelepciunea lui Isus Sirah', nameShort: 'Sirah', nameAbbrev: 'Sir' },
+  { order: 18, usfmCode: 'JOB', nameLong: 'Iov',                              nameShort: 'Iov',            nameAbbrev: 'Iov'    },
+  { order: 19, usfmCode: 'PSA', nameLong: 'Psalmii',                          nameShort: 'Psalmii',        nameAbbrev: 'Ps'     },
+  { order: 83, usfmCode: 'MAN', nameLong: 'Rugăciunea lui Manase',            nameShort: 'Rug. Manase',    nameAbbrev: 'RgMan'  },
+  { order: 20, usfmCode: 'PRO', nameLong: 'Pildele lui Solomon',              nameShort: 'Pildele',        nameAbbrev: 'Pild'   },
+  { order: 21, usfmCode: 'ECC', nameLong: 'Eclesiastul',                      nameShort: 'Eclesiastul',    nameAbbrev: 'Eccl'   },
+  { order: 22, usfmCode: 'SNG', nameLong: 'Cântarea Cântărilor',              nameShort: 'Cânt. Cânt.',    nameAbbrev: 'Cânt'   },
+  { order: 70, usfmCode: 'WIS', nameLong: 'Înțelepciunea lui Solomon',        nameShort: 'Înț. Solomon',   nameAbbrev: 'ÎnțSol' },
+  { order: 71, usfmCode: 'SIR', nameLong: 'Înțelepciunea lui Isus Sirah',    nameShort: 'Sirah',          nameAbbrev: 'Sir'    },
 
   // ── Major prophets ───────────────────────────────────────────────────────
-  { order: 23, usfmCode: 'ISA', siteId: 32, nameLong: 'Isaia',             nameShort: 'Isaia',       nameAbbrev: 'Is'     },
-  { order: 24, usfmCode: 'JER', siteId: 33, nameLong: 'Ieremia',           nameShort: 'Ieremia',     nameAbbrev: 'Ier'    },
-  { order: 25, usfmCode: 'LAM', siteId: 34, nameLong: 'Plângerile lui Ieremia', nameShort: 'Plângerile', nameAbbrev: 'Plâng' },
-  { order: 72, usfmCode: 'BAR', siteId: 35, nameLong: 'Baruh',             nameShort: 'Baruh',       nameAbbrev: 'Bar'    },
-  { order: 26, usfmCode: 'EZK', siteId: 36, nameLong: 'Iezechiel',         nameShort: 'Iezechiel',   nameAbbrev: 'Iez'    },
-  { order: 27, usfmCode: 'DAN', siteId: 37, nameLong: 'Daniel',            nameShort: 'Daniel',      nameAbbrev: 'Dan'    },
-  { order: 74, usfmCode: 'S3Y', siteId: 38, nameLong: 'Cântarea celor trei tineri', nameShort: 'Cânt. 3 tineri', nameAbbrev: 'S3Y' },
-  { order: 75, usfmCode: 'SUS', siteId: 39, nameLong: 'Istoria Suzanei',   nameShort: 'Suzana',      nameAbbrev: 'Sus'    },
-  { order: 76, usfmCode: 'BEL', siteId: 40, nameLong: 'Bel și Balaurul',   nameShort: 'Bel și Balaurul', nameAbbrev: 'Bel' },
+  { order: 23, usfmCode: 'ISA', nameLong: 'Isaia',                            nameShort: 'Isaia',          nameAbbrev: 'Is'     },
+  { order: 24, usfmCode: 'JER', nameLong: 'Ieremia',                          nameShort: 'Ieremia',        nameAbbrev: 'Ier'    },
+  { order: 25, usfmCode: 'LAM', nameLong: 'Plângerile lui Ieremia',           nameShort: 'Plângerile',     nameAbbrev: 'Plâng'  },
+  { order: 72, usfmCode: 'BAR', nameLong: 'Baruh',                            nameShort: 'Baruh',          nameAbbrev: 'Bar'    },
+  { order: 26, usfmCode: 'EZK', nameLong: 'Iezechiel',                        nameShort: 'Iezechiel',      nameAbbrev: 'Iez'    },
+  { order: 27, usfmCode: 'DAN', nameLong: 'Daniel',                           nameShort: 'Daniel',         nameAbbrev: 'Dan'    },
+  { order: 74, usfmCode: 'S3Y', nameLong: 'Cântarea celor trei tineri',       nameShort: 'Cânt. 3 tineri', nameAbbrev: 'S3Y'    },
+  { order: 75, usfmCode: 'SUS', nameLong: 'Istoria Suzanei',                  nameShort: 'Suzana',         nameAbbrev: 'Sus'    },
+  { order: 76, usfmCode: 'BEL', nameLong: 'Bel și Balaurul',                  nameShort: 'Bel și Balaurul', nameAbbrev: 'Bel'   },
 
   // ── Minor prophets ───────────────────────────────────────────────────────
-  { order: 28, usfmCode: 'HOS', siteId: 41, nameLong: 'Osea',              nameShort: 'Osea',        nameAbbrev: 'Os'     },
-  { order: 29, usfmCode: 'JOL', siteId: 42, nameLong: 'Ioil',              nameShort: 'Ioil',        nameAbbrev: 'Ioel'   },
-  { order: 30, usfmCode: 'AMO', siteId: 43, nameLong: 'Amos',              nameShort: 'Amos',        nameAbbrev: 'Amos'   },
-  { order: 31, usfmCode: 'OBA', siteId: 44, nameLong: 'Obadia',            nameShort: 'Obadia',      nameAbbrev: 'Obad'   },
-  { order: 32, usfmCode: 'JON', siteId: 45, nameLong: 'Iona',              nameShort: 'Iona',        nameAbbrev: 'Ion'    },
-  { order: 33, usfmCode: 'MIC', siteId: 46, nameLong: 'Mica',              nameShort: 'Mica',        nameAbbrev: 'Mica'   },
-  { order: 34, usfmCode: 'NAM', siteId: 47, nameLong: 'Naum',              nameShort: 'Naum',        nameAbbrev: 'Naum'   },
-  { order: 35, usfmCode: 'HAB', siteId: 48, nameLong: 'Habacuc',           nameShort: 'Habacuc',     nameAbbrev: 'Hab'    },
-  { order: 36, usfmCode: 'ZEP', siteId: 49, nameLong: 'Sofonie',           nameShort: 'Sofonie',     nameAbbrev: 'Sof'    },
-  { order: 37, usfmCode: 'HAG', siteId: 50, nameLong: 'Agheu',             nameShort: 'Agheu',       nameAbbrev: 'Ag'     },
-  { order: 38, usfmCode: 'ZEC', siteId: 51, nameLong: 'Zaharia',           nameShort: 'Zaharia',     nameAbbrev: 'Zah'    },
-  { order: 39, usfmCode: 'MAL', siteId: 52, nameLong: 'Maleahi',           nameShort: 'Maleahi',     nameAbbrev: 'Mal'    },
-  { order: 84, usfmCode: 'PS2', siteId: 53, nameLong: 'Psalmul 151',       nameShort: 'Ps. 151',     nameAbbrev: 'Ps151'  },
-  { order: 80, usfmCode: '4MA', siteId: 54, nameLong: 'IV Macabei',        nameShort: 'IV Macabei',  nameAbbrev: '4Mac'   },
+  { order: 28, usfmCode: 'HOS', nameLong: 'Osea',                             nameShort: 'Osea',           nameAbbrev: 'Os'     },
+  { order: 29, usfmCode: 'JOL', nameLong: 'Ioil',                             nameShort: 'Ioil',           nameAbbrev: 'Ioel'   },
+  { order: 30, usfmCode: 'AMO', nameLong: 'Amos',                             nameShort: 'Amos',           nameAbbrev: 'Amos'   },
+  { order: 31, usfmCode: 'OBA', nameLong: 'Obadia',                           nameShort: 'Obadia',         nameAbbrev: 'Obad'   },
+  { order: 32, usfmCode: 'JON', nameLong: 'Iona',                             nameShort: 'Iona',           nameAbbrev: 'Ion'    },
+  { order: 33, usfmCode: 'MIC', nameLong: 'Mica',                             nameShort: 'Mica',           nameAbbrev: 'Mica'   },
+  { order: 34, usfmCode: 'NAM', nameLong: 'Naum',                             nameShort: 'Naum',           nameAbbrev: 'Naum'   },
+  { order: 35, usfmCode: 'HAB', nameLong: 'Habacuc',                          nameShort: 'Habacuc',        nameAbbrev: 'Hab'    },
+  { order: 36, usfmCode: 'ZEP', nameLong: 'Sofonie',                          nameShort: 'Sofonie',        nameAbbrev: 'Sof'    },
+  { order: 37, usfmCode: 'HAG', nameLong: 'Agheu',                            nameShort: 'Agheu',          nameAbbrev: 'Ag'     },
+  { order: 38, usfmCode: 'ZEC', nameLong: 'Zaharia',                          nameShort: 'Zaharia',        nameAbbrev: 'Zah'    },
+  { order: 39, usfmCode: 'MAL', nameLong: 'Maleahi',                          nameShort: 'Maleahi',        nameAbbrev: 'Mal'    },
+  { order: 84, usfmCode: 'PS2', nameLong: 'Psalmul 151',                      nameShort: 'Ps. 151',        nameAbbrev: 'Ps151'  },
+  { order: 80, usfmCode: '4MA', nameLong: 'IV Macabei',                       nameShort: 'IV Macabei',     nameAbbrev: '4Mac'   },
 
   // ── New Testament ────────────────────────────────────────────────────────
-  { order: 40, usfmCode: 'MAT', siteId: 55, nameLong: 'Matei',             nameShort: 'Matei',       nameAbbrev: 'Mat'    },
-  { order: 41, usfmCode: 'MRK', siteId: 56, nameLong: 'Marcu',             nameShort: 'Marcu',       nameAbbrev: 'Mc'     },
-  { order: 42, usfmCode: 'LUK', siteId: 57, nameLong: 'Luca',              nameShort: 'Luca',        nameAbbrev: 'Lc'     },
-  { order: 43, usfmCode: 'JHN', siteId: 58, nameLong: 'Ioan',              nameShort: 'Ioan',        nameAbbrev: 'In'     },
-  { order: 44, usfmCode: 'ACT', siteId: 59, nameLong: 'Faptele Apostolilor', nameShort: 'Faptele', nameAbbrev: 'FA'     },
-  { order: 45, usfmCode: 'ROM', siteId: 60, nameLong: 'Romani',            nameShort: 'Romani',      nameAbbrev: 'Rom'    },
-  { order: 46, usfmCode: '1CO', siteId: 61, nameLong: 'I Corinteni',       nameShort: 'I Cor.',      nameAbbrev: '1Cor'   },
-  { order: 47, usfmCode: '2CO', siteId: 62, nameLong: 'II Corinteni',      nameShort: 'II Cor.',     nameAbbrev: '2Cor'   },
-  { order: 48, usfmCode: 'GAL', siteId: 63, nameLong: 'Galateni',          nameShort: 'Galateni',    nameAbbrev: 'Gal'    },
-  { order: 49, usfmCode: 'EPH', siteId: 64, nameLong: 'Efeseni',           nameShort: 'Efeseni',     nameAbbrev: 'Ef'     },
-  { order: 50, usfmCode: 'PHP', siteId: 65, nameLong: 'Filipeni',          nameShort: 'Filipeni',    nameAbbrev: 'Flp'    },
-  { order: 51, usfmCode: 'COL', siteId: 66, nameLong: 'Coloseni',          nameShort: 'Coloseni',    nameAbbrev: 'Col'    },
-  { order: 52, usfmCode: '1TH', siteId: 67, nameLong: 'I Tesaloniceni',    nameShort: 'I Tes.',      nameAbbrev: '1Tes'   },
-  { order: 53, usfmCode: '2TH', siteId: 68, nameLong: 'II Tesaloniceni',   nameShort: 'II Tes.',     nameAbbrev: '2Tes'   },
-  { order: 54, usfmCode: '1TI', siteId: 69, nameLong: 'I Timotei',         nameShort: 'I Tim.',      nameAbbrev: '1Tim'   },
-  { order: 55, usfmCode: '2TI', siteId: 70, nameLong: 'II Timotei',        nameShort: 'II Tim.',     nameAbbrev: '2Tim'   },
-  { order: 56, usfmCode: 'TIT', siteId: 71, nameLong: 'Tit',               nameShort: 'Tit',         nameAbbrev: 'Tit'    },
-  { order: 57, usfmCode: 'PHM', siteId: 72, nameLong: 'Filimon',           nameShort: 'Filimon',     nameAbbrev: 'Flm'    },
-  { order: 58, usfmCode: 'HEB', siteId: 73, nameLong: 'Evrei',             nameShort: 'Evrei',       nameAbbrev: 'Evr'    },
-  { order: 59, usfmCode: 'JAS', siteId: 74, nameLong: 'Iacov',             nameShort: 'Iacov',       nameAbbrev: 'Iac'    },
-  { order: 60, usfmCode: '1PE', siteId: 75, nameLong: 'I Petru',           nameShort: 'I Pet.',      nameAbbrev: '1Pet'   },
-  { order: 61, usfmCode: '2PE', siteId: 76, nameLong: 'II Petru',          nameShort: 'II Pet.',     nameAbbrev: '2Pet'   },
-  { order: 62, usfmCode: '1JN', siteId: 77, nameLong: 'I Ioan',            nameShort: 'I In.',       nameAbbrev: '1In'    },
-  { order: 63, usfmCode: '2JN', siteId: 78, nameLong: 'II Ioan',           nameShort: 'II In.',      nameAbbrev: '2In'    },
-  { order: 64, usfmCode: '3JN', siteId: 79, nameLong: 'III Ioan',          nameShort: 'III In.',     nameAbbrev: '3In'    },
-  { order: 65, usfmCode: 'JUD', siteId: 80, nameLong: 'Iuda',              nameShort: 'Iuda',        nameAbbrev: 'Iud'    },
-  { order: 66, usfmCode: 'REV', siteId: 81, nameLong: 'Apocalipsa',        nameShort: 'Apocalipsa',  nameAbbrev: 'Apoc'   },
+  { order: 40, usfmCode: 'MAT', nameLong: 'Matei',                            nameShort: 'Matei',          nameAbbrev: 'Mat'    },
+  { order: 41, usfmCode: 'MRK', nameLong: 'Marcu',                            nameShort: 'Marcu',          nameAbbrev: 'Mc'     },
+  { order: 42, usfmCode: 'LUK', nameLong: 'Luca',                             nameShort: 'Luca',           nameAbbrev: 'Lc'     },
+  { order: 43, usfmCode: 'JHN', nameLong: 'Ioan',                             nameShort: 'Ioan',           nameAbbrev: 'In'     },
+  { order: 44, usfmCode: 'ACT', nameLong: 'Faptele Apostolilor',              nameShort: 'Faptele',        nameAbbrev: 'FA'     },
+  { order: 45, usfmCode: 'ROM', nameLong: 'Romani',                           nameShort: 'Romani',         nameAbbrev: 'Rom'    },
+  { order: 46, usfmCode: '1CO', nameLong: 'I Corinteni',                      nameShort: 'I Cor.',         nameAbbrev: '1Cor'   },
+  { order: 47, usfmCode: '2CO', nameLong: 'II Corinteni',                     nameShort: 'II Cor.',        nameAbbrev: '2Cor'   },
+  { order: 48, usfmCode: 'GAL', nameLong: 'Galateni',                         nameShort: 'Galateni',       nameAbbrev: 'Gal'    },
+  { order: 49, usfmCode: 'EPH', nameLong: 'Efeseni',                          nameShort: 'Efeseni',        nameAbbrev: 'Ef'     },
+  { order: 50, usfmCode: 'PHP', nameLong: 'Filipeni',                         nameShort: 'Filipeni',       nameAbbrev: 'Flp'    },
+  { order: 51, usfmCode: 'COL', nameLong: 'Coloseni',                         nameShort: 'Coloseni',       nameAbbrev: 'Col'    },
+  { order: 52, usfmCode: '1TH', nameLong: 'I Tesaloniceni',                   nameShort: 'I Tes.',         nameAbbrev: '1Tes'   },
+  { order: 53, usfmCode: '2TH', nameLong: 'II Tesaloniceni',                  nameShort: 'II Tes.',        nameAbbrev: '2Tes'   },
+  { order: 54, usfmCode: '1TI', nameLong: 'I Timotei',                        nameShort: 'I Tim.',         nameAbbrev: '1Tim'   },
+  { order: 55, usfmCode: '2TI', nameLong: 'II Timotei',                       nameShort: 'II Tim.',        nameAbbrev: '2Tim'   },
+  { order: 56, usfmCode: 'TIT', nameLong: 'Tit',                              nameShort: 'Tit',            nameAbbrev: 'Tit'    },
+  { order: 57, usfmCode: 'PHM', nameLong: 'Filimon',                          nameShort: 'Filimon',        nameAbbrev: 'Flm'    },
+  { order: 58, usfmCode: 'HEB', nameLong: 'Evrei',                            nameShort: 'Evrei',          nameAbbrev: 'Evr'    },
+  { order: 59, usfmCode: 'JAS', nameLong: 'Iacov',                            nameShort: 'Iacov',          nameAbbrev: 'Iac'    },
+  { order: 60, usfmCode: '1PE', nameLong: 'I Petru',                          nameShort: 'I Pet.',         nameAbbrev: '1Pet'   },
+  { order: 61, usfmCode: '2PE', nameLong: 'II Petru',                         nameShort: 'II Pet.',        nameAbbrev: '2Pet'   },
+  { order: 62, usfmCode: '1JN', nameLong: 'I Ioan',                           nameShort: 'I In.',          nameAbbrev: '1In'    },
+  { order: 63, usfmCode: '2JN', nameLong: 'II Ioan',                          nameShort: 'II In.',         nameAbbrev: '2In'    },
+  { order: 64, usfmCode: '3JN', nameLong: 'III Ioan',                         nameShort: 'III In.',        nameAbbrev: '3In'    },
+  { order: 65, usfmCode: 'JUD', nameLong: 'Iuda',                             nameShort: 'Iuda',           nameAbbrev: 'Iud'    },
+  { order: 66, usfmCode: 'REV', nameLong: 'Apocalipsa',                       nameShort: 'Apocalipsa',     nameAbbrev: 'Apoc'   },
 ];
 
 // English common names (for the commonName field in helloao JSON)
@@ -178,12 +187,107 @@ const APOCRYPHAL_CODES = new Set([
   '1ES', 'MAN', 'PS2', 'S3Y', 'SUS', 'BEL',
 ]);
 
-// Startup validation: every usfmCode in booksConfig must have an English name entry
+// Startup validation: every usfmCode must have an English name entry
 const missingEnglishNames = booksConfig
   .map((b) => b.usfmCode)
   .filter((code) => !(code in ENGLISH_BOOK_NAMES));
 if (missingEnglishNames.length > 0) {
   throw new Error(`Missing ENGLISH_BOOK_NAMES entries for: ${missingEnglishNames.join(', ')}`);
+}
+
+// ─── Name normalization ───────────────────────────────────────────────────────
+
+/**
+ * Normalizes a Romanian book name for fuzzy matching:
+ * lowercases, strips diacritics, collapses whitespace.
+ */
+function normalizeName(s: string): string {
+  return s
+    .toLowerCase()
+    .normalize('NFD')
+    .replace(/[\u0300-\u036f]/g, '') // strip combining diacritical marks
+    .replace(/\s+/g, ' ')
+    .trim();
+}
+
+// ─── Site discovery ───────────────────────────────────────────────────────────
+
+/**
+ * Fetches the site homepage and parses every
+ *   <a title="BOOK_NAME" href="/carte.php?id=N">
+ * link into a SiteBook array.  Duplicate siteIds are deduplicated (first seen wins).
+ */
+async function discoverBooksFromSite(): Promise<SiteBook[]> {
+  let html: string;
+  try {
+    const response = await axios.get<string>(BASE_URL, {
+      timeout: 15_000,
+      headers: { 'User-Agent': 'BibliaScraper/1.0 (personal-use)' },
+      responseType: 'text',
+    });
+    html = response.data;
+  } catch (err) {
+    throw new Error(
+      `Failed to fetch site homepage for book discovery: ${(err as Error).message}`,
+    );
+  }
+
+  const $ = cheerio.load(html);
+  const books: SiteBook[] = [];
+  const seenIds = new Set<number>();
+
+  $('a[href]').each((_i, el) => {
+    const href = $(el).attr('href') ?? '';
+    const idMatch = href.match(/[?&]id=(\d+)/);
+    if (!idMatch) return;
+
+    const siteId = parseInt(idMatch[1], 10);
+    if (seenIds.has(siteId)) return;
+
+    const titleAttr = $(el).attr('title')?.trim() ?? '';
+    const linkText = $(el).text().trim();
+    const name = titleAttr || linkText;
+
+    if (!name) return;
+
+    if (!titleAttr && linkText) {
+      console.warn(`  [WARN] No title attr for id=${siteId}, using link text "${linkText}"`);
+    }
+
+    seenIds.add(siteId);
+    books.push({ name, siteId });
+  });
+
+  return books;
+}
+
+/**
+ * Builds a lookup map: normalizedName → SiteBook.
+ * Logs any site books that don't match a booksConfig entry (informational).
+ */
+function buildSiteLookup(
+  siteBooks: SiteBook[],
+  configNames: Set<string>,
+): Map<string, SiteBook> {
+  const lookup = new Map<string, SiteBook>();
+  const unmatched: string[] = [];
+
+  for (const sb of siteBooks) {
+    const key = normalizeName(sb.name);
+    lookup.set(key, sb);
+    if (!configNames.has(key)) {
+      unmatched.push(`"${sb.name}" (id=${sb.siteId})`);
+    }
+  }
+
+  if (unmatched.length > 0) {
+    console.log(
+      `  [INFO] ${unmatched.length} site book(s) not in booksConfig:\n` +
+      unmatched.map((s) => `    ${s}`).join('\n'),
+    );
+  }
+
+  return lookup;
 }
 
 // ─── Scraping helpers ─────────────────────────────────────────────────────────
@@ -260,18 +364,38 @@ async function main(): Promise<void> {
   await fs.mkdir(BIBLES_DIR, { recursive: true });
   console.log('=== Biblia Sinodală Pipeline ===\n');
 
+  // ── Step 1: discover siteIds and names from the live homepage ──────────────
+  console.log('Discovering books from site homepage…');
+  const siteBooks = await discoverBooksFromSite();
+  console.log(`Found ${siteBooks.length} book link(s) on the homepage.\n`);
+
+  const configNormalizedNames = new Set(booksConfig.map((b) => normalizeName(b.nameLong)));
+  const siteLookup = buildSiteLookup(siteBooks, configNormalizedNames);
+
+  // ── Step 2: resolve siteId for each BookConfig entry ──────────────────────
   const sorted = [...booksConfig].sort((a, b) => a.order - b.order);
   let totalChapters = 0;
   let totalVerses = 0;
-
   const books = [];
+  const unmatchedConfigs: string[] = [];
 
   for (const book of sorted) {
-    console.log(`[${book.usfmCode}] siteId=${book.siteId} — ${book.nameLong}`);
+    const key = normalizeName(book.nameLong);
+    const siteBook = siteLookup.get(key);
 
-    const maxChapters = await detectMaxChapters(book.siteId);
+    if (!siteBook) {
+      unmatchedConfigs.push(`"${book.nameLong}" (${book.usfmCode})`);
+      console.warn(`  [SKIP] Cannot find "${book.nameLong}" in site book list (${book.usfmCode})`);
+      continue;
+    }
+
+    const { siteId, name: siteName } = siteBook;
+    console.log(`[${book.usfmCode}] id=${siteId} — ${siteName}`);
+
+    // ── Step 3: scrape chapters for this book ────────────────────────────────
+    const maxChapters = await detectMaxChapters(siteId);
     if (maxChapters === 0) {
-      console.warn(`  [SKIP] No chapters found for ${book.usfmCode} (siteId=${book.siteId})`);
+      console.warn(`  [SKIP] No chapters found for ${book.usfmCode} (siteId=${siteId})`);
       continue;
     }
 
@@ -279,7 +403,7 @@ async function main(): Promise<void> {
     let bookVerses = 0;
 
     for (let cap = 1; cap <= maxChapters; cap++) {
-      const html = await fetchChapterHtml(book.siteId, cap);
+      const html = await fetchChapterHtml(siteId, cap);
       if (!html) break;
 
       const verses = parseChapterVerses(html);
@@ -288,7 +412,7 @@ async function main(): Promise<void> {
       chapters.push({
         chapter: {
           number: cap,
-          bookName: book.nameLong,
+          bookName: siteName,
           content: verses.map((v) => ({
             type: 'verse' as const,
             number: v.number,
@@ -304,15 +428,13 @@ async function main(): Promise<void> {
     totalChapters += chapters.length;
     totalVerses += bookVerses;
 
+    const commonName = ENGLISH_BOOK_NAMES[book.usfmCode];
+
     books.push({
       id: book.usfmCode,
-      name: book.nameLong,
-      commonName: (() => {
-        const en = ENGLISH_BOOK_NAMES[book.usfmCode];
-        if (!en) console.warn(`  [WARN] No English name for ${book.usfmCode}, using Romanian`);
-        return en ?? book.nameLong;
-      })(),
-      title: book.nameLong,
+      name: siteName,
+      commonName,
+      title: siteName,
       order: book.order,
       numberOfChapters: chapters.length,
       totalNumberOfVerses: bookVerses,
@@ -323,6 +445,15 @@ async function main(): Promise<void> {
     console.log(`  ✓ ${chapters.length} chapters, ${bookVerses} verses`);
   }
 
+  if (unmatchedConfigs.length > 0) {
+    console.warn(
+      `\n[WARN] ${unmatchedConfigs.length} book(s) in booksConfig had no match on the site:\n` +
+      unmatchedConfigs.map((s) => `  ${s}`).join('\n') +
+      '\nUpdate the nameLong values in booksConfig to match the site <a title="..."> text.',
+    );
+  }
+
+  // ── Step 4: write output ───────────────────────────────────────────────────
   const output = {
     translation: {
       id: TRANSLATION_ID,
