@@ -6,7 +6,7 @@
 [![Angular](https://img.shields.io/badge/Angular-19.2-DD0031?style=for-the-badge&logo=angular)](https://angular.io)
 [![TypeScript](https://img.shields.io/badge/TypeScript-5.7+-3178C6?style=for-the-badge&logo=typescript)](https://www.typescriptlang.org)
 [![PrimeNG](https://img.shields.io/badge/PrimeNG-19-4CAF50?style=for-the-badge)](https://primeng.org)
-[![Docker](https://img.shields.io/badge/Docker-compose-2496ED?style=for-the-badge&logo=docker)](https://docker.com)
+[![Podman](https://img.shields.io/badge/Podman-compose-892CA0?style=for-the-badge&logo=podman)](https://podman.io)
 [![License: MIT](https://img.shields.io/badge/License-MIT-yellow.svg?style=for-the-badge)](LICENSE)
 [![CI](https://github.com/alexmacavei/hermeneutica-AI/actions/workflows/ci.yml/badge.svg)](https://github.com/alexmacavei/hermeneutica-AI/actions)
 
@@ -101,10 +101,10 @@ AI-Hermeneutica-Orthodoxa/
 ### Cerințe / Requirements
 
 - Node.js 20+
-- Docker & Docker Compose
+- Podman & Podman Compose
 - Cheie API OpenAI (pentru analiza AI)
 
-### Quick Start cu Docker
+### Quick Start cu Podman
 
 ```bash
 # 1. Clonează repository-ul
@@ -116,10 +116,10 @@ cp .env.example .env
 # Editează .env și adaugă OPENAI_API_KEY=sk-...
 
 # 3. Pornește toate serviciile
-docker compose up --build --force-recreate --remove-orphans
+podman compose up --build --force-recreate --remove-orphans
 
 # 4. Oprește toate serviciile
-docker compose down
+podman compose down
 
 # Frontend: http://localhost:4200
 # API:      http://localhost:3001/api
@@ -201,7 +201,7 @@ GET /api/bible/NT/Matei/5?language=sinodala-ro
 | **Frontend** | Angular 19.2, PrimeNG 19 |
 | **Styling** | SCSS, Dark theme teologic |
 | **Database** | PostgreSQL + pgvector (extensibil) |
-| **DevOps** | Docker, Docker Compose |
+| **DevOps** | Podman, Podman Compose |
 | **CI/CD** | GitHub Actions |
 | **PWA** | Service Worker, Web Manifest |
 
