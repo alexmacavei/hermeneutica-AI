@@ -7,7 +7,6 @@
     "biblia-pipeline": "ts-node --project tsconfig.json biblia-pipeline.ts"
   },
   "dependencies": {
-    "@helloao/tools": "^0.1.0",
     "axios": "^1.6.7",
     "cheerio": "^1.0.0"
   },

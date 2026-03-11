@@ -1,43 +1,40 @@
 /**
  * biblia-pipeline.ts
  *
- * Complete pipeline:
- *  1) Scrape https://www.bibliaortodoxa.ro  → USFM files (one per book)
- *  2) Use @helloao/tools to parse USFM and generate API JSON → ./api-output/
- *  3) Aggregate generated JSON → data/bibles/ro_sinodala.json
+ * Pipeline:
+ *  1) Scrape https://www.bibliaortodoxa.ro book-by-book, chapter-by-chapter.
+ *  2) Build a helloao-compatible JSON structure directly from the scraped data.
+ *  3) Write to data/bibles/ro_sinodala.json.
+ *
+ * Run:  npm run biblia-pipeline
  */
 
 import axios from 'axios';
 import * as cheerio from 'cheerio';
 import * as fs from 'fs/promises';
 import * as path from 'path';
-import { generation } from '@helloao/tools';
-
-const { dataset: datasetGen, api: apiGen } = generation;
 
 // ─── Constants ───────────────────────────────────────────────────────────────
 
 const BASE_URL = 'https://www.bibliaortodoxa.ro';
 const TRANSLATION_ID = 'ro_sinodala';
-const USFM_OUTPUT_DIR = path.resolve(__dirname, '../usfm-output');
-const API_OUTPUT_DIR = path.resolve(__dirname, '../api-output');
 const BIBLES_DIR = path.resolve(__dirname, '../data/bibles');
 const FINAL_OUTPUT = path.join(BIBLES_DIR, `${TRANSLATION_ID}.json`);
 
 // ─── Types ───────────────────────────────────────────────────────────────────
 
 type BookConfig = {
-  /** Canonical order used by @helloao/tools (bookOrderMap values) */
+  /** Canonical order used by helloao (1-based) */
   order: number;
   /** USFM book code, e.g. "GEN", "MAT" */
   usfmCode: string;
   /** Numeric book ID used by bibliaortodoxa.ro (?id=N) */
   siteId: number;
-  /** Full Romanian name, used in \h / \toc1 */
+  /** Full Romanian name */
   nameLong: string;
-  /** Short Romanian name, used in \toc2 */
+  /** Short Romanian name */
   nameShort: string;
-  /** Abbreviation, used in \toc3 */
+  /** Romanian abbreviation */
   nameAbbrev: string;
 };
 
@@ -49,11 +46,11 @@ type Verse = { number: number; text: string };
 // Orthodox ordering and the known anchor point: Matthew = siteId 55.
 // They will need verification against the live site before the first run.
 //
-// order values follow @helloao/tools bookOrderMap:
+// order values follow the helloao bookOrderMap:
 //   canonical Protestant canon:  GEN=1 … REV=66
 //   apocryphal/deuterocanonical: TOB=67, JDT=68, ESG=69, WIS=70, SIR=71,
 //     BAR=72, LJE=73, S3Y=74, SUS=75, BEL=76, 1MA=77, 2MA=78, 3MA=79,
-//     4MA=80, 1ES=81, 2ES=82, MAN=83, PS2=84, ODA=85 …
+//     4MA=80, 1ES=81, 2ES=82, MAN=83, PS2=84 …
 
 const booksConfig: BookConfig[] = [
   // ── Pentateuch ──────────────────────────────────────────────────────────
@@ -150,7 +147,46 @@ const booksConfig: BookConfig[] = [
   { order: 66, usfmCode: 'REV', siteId: 81, nameLong: 'Apocalipsa',        nameShort: 'Apocalipsa',  nameAbbrev: 'Apoc'   },
 ];
 
-// ─── 1) Scraping helpers ──────────────────────────────────────────────────────
+// English common names (for the commonName field in helloao JSON)
+const ENGLISH_BOOK_NAMES: Record<string, string> = {
+  GEN: 'Genesis',       EXO: 'Exodus',          LEV: 'Leviticus',       NUM: 'Numbers',
+  DEU: 'Deuteronomy',   JOS: 'Joshua',          JDG: 'Judges',          RUT: 'Ruth',
+  '1SA': '1 Samuel',   '2SA': '2 Samuel',       '1KI': '1 Kings',       '2KI': '2 Kings',
+  '1CH': '1 Chronicles', '2CH': '2 Chronicles', '1ES': '1 Esdras',      EZR: 'Ezra',
+  NEH: 'Nehemiah',      TOB: 'Tobit',            JDT: 'Judith',          EST: 'Esther',
+  '1MA': '1 Maccabees', '2MA': '2 Maccabees',   '3MA': '3 Maccabees',  '4MA': '4 Maccabees',
+  JOB: 'Job',           PSA: 'Psalms',           MAN: 'Prayer of Manasseh', PRO: 'Proverbs',
+  ECC: 'Ecclesiastes',  SNG: 'Song of Songs',    WIS: 'Wisdom of Solomon', SIR: 'Sirach',
+  ISA: 'Isaiah',        JER: 'Jeremiah',         LAM: 'Lamentations',    BAR: 'Baruch',
+  EZK: 'Ezekiel',       DAN: 'Daniel',           S3Y: 'Song of the Three Young Men',
+  SUS: 'Susanna',       BEL: 'Bel and the Dragon',
+  HOS: 'Hosea',         JOL: 'Joel',             AMO: 'Amos',            OBA: 'Obadiah',
+  JON: 'Jonah',         MIC: 'Micah',            NAM: 'Nahum',           HAB: 'Habakkuk',
+  ZEP: 'Zephaniah',     HAG: 'Haggai',           ZEC: 'Zechariah',       MAL: 'Malachi',
+  PS2: 'Psalm 151',     MAT: 'Matthew',          MRK: 'Mark',            LUK: 'Luke',
+  JHN: 'John',          ACT: 'Acts',             ROM: 'Romans',          '1CO': '1 Corinthians',
+  '2CO': '2 Corinthians', GAL: 'Galatians',      EPH: 'Ephesians',       PHP: 'Philippians',
+  COL: 'Colossians',   '1TH': '1 Thessalonians', '2TH': '2 Thessalonians', '1TI': '1 Timothy',
+  '2TI': '2 Timothy',  TIT: 'Titus',             PHM: 'Philemon',         HEB: 'Hebrews',
+  JAS: 'James',        '1PE': '1 Peter',          '2PE': '2 Peter',        '1JN': '1 John',
+  '2JN': '2 John',     '3JN': '3 John',           JUD: 'Jude',             REV: 'Revelation',
+};
+
+// Books that are deuterocanonical / apocryphal in the helloao sense
+const APOCRYPHAL_CODES = new Set([
+  'TOB', 'JDT', '1MA', '2MA', '3MA', '4MA', 'WIS', 'SIR', 'BAR',
+  '1ES', 'MAN', 'PS2', 'S3Y', 'SUS', 'BEL',
+]);
+
+// Startup validation: every usfmCode in booksConfig must have an English name entry
+const missingEnglishNames = booksConfig
+  .map((b) => b.usfmCode)
+  .filter((code) => !(code in ENGLISH_BOOK_NAMES));
+if (missingEnglishNames.length > 0) {
+  throw new Error(`Missing ENGLISH_BOOK_NAMES entries for: ${missingEnglishNames.join(', ')}`);
+}
+
+// ─── Scraping helpers ─────────────────────────────────────────────────────────
 
 /** Fetches the HTML of a chapter page; returns null on any error. */
 async function fetchChapterHtml(bookSiteId: number, chapter: number): Promise<string | null> {
@@ -198,7 +234,7 @@ function parseChapterVerses(html: string): Verse[] {
   return verses;
 }
 
-/** Probes chapters 1..maxTry until no verses are returned; returns the last valid chapter number. */
+/** Probes chapters 1..maxTry until no verses are found; returns last valid chapter number. */
 async function detectMaxChapters(bookSiteId: number, maxTry = 200): Promise<number> {
   let lastValid = 0;
   for (let cap = 1; cap <= maxTry; cap++) {
@@ -218,188 +254,98 @@ function sleep(ms: number): Promise<void> {
   return new Promise((resolve) => setTimeout(resolve, ms));
 }
 
-/** Generates a USFM file for a single book and writes it to outputDir. */
-async function generateUsfmForBook(book: BookConfig, outputDir: string): Promise<void> {
-  const filePath = path.join(outputDir, `${book.usfmCode}.usfm`);
-
-  const header = [
-    `\\id ${book.usfmCode}`,
-    `\\usfm 3.0`,
-    `\\h ${book.nameLong}`,
-    `\\toc1 ${book.nameLong}`,
-    `\\toc2 ${book.nameShort}`,
-    `\\toc3 ${book.nameAbbrev}`,
-    `\\mt1 ${book.nameLong}`,
-    '',
-  ].join('\n');
-
-  const maxChapters = await detectMaxChapters(book.siteId);
-  if (maxChapters === 0) {
-    console.warn(`  [SKIP] No chapters found for ${book.usfmCode} (siteId=${book.siteId})`);
-    return;
-  }
-
-  const chapterBlocks: string[] = [];
-  for (let cap = 1; cap <= maxChapters; cap++) {
-    const html = await fetchChapterHtml(book.siteId, cap);
-    if (!html) break;
-
-    const verses = parseChapterVerses(html);
-    if (verses.length === 0) break;
-
-    const lines: string[] = [`\\c ${cap}`, '\\p'];
-    for (const v of verses) {
-      lines.push(`\\v ${v.number} ${v.text}`);
-    }
-    chapterBlocks.push(lines.join('\n'));
-    await sleep(300);
-  }
-
-  await fs.writeFile(filePath, header + chapterBlocks.join('\n\n'), 'utf-8');
-  console.log(`  ✓ ${book.usfmCode} (${chapterBlocks.length} chapters)`);
-}
-
-/** Phase 1: scrape the site and write USFM files. */
-async function runScrapingPhase(): Promise<void> {
-  await fs.mkdir(USFM_OUTPUT_DIR, { recursive: true });
-  console.log('\n=== Phase 1: Scraping → USFM ===');
-
-  const sorted = [...booksConfig].sort((a, b) => a.siteId - b.siteId);
-  for (const book of sorted) {
-    console.log(`\n[${book.usfmCode}] siteId=${book.siteId} — ${book.nameLong}`);
-    await generateUsfmForBook(book, USFM_OUTPUT_DIR);
-  }
-}
-
-// ─── 2) USFM → JSON  (via @helloao/tools) ───────────────────────────────────
-//
-// NOTE: This replaces a call to `npx helloao generate-translation-files`.
-// If you prefer the CLI approach, install @helloao/tools globally and run:
-//   npx ts-node -e "require('child_process').execSync(
-//     'npx helloao generate-translation-files ./usfm-output ./api-output',
-//     { stdio: 'inherit' }
-//   )"
-
-/** Minimal DOMParser stub – only needed for non-USFM formats; unused here. */
-class StubDOMParser {
-  parseFromString(_content: string, _mimeType: string): Document {
-    throw new Error('DOMParser is not implemented in this pipeline. Only USFM format is supported. Ensure all input files are in USFM format.');
-  }
-}
-
-/** Phase 2: convert USFM files to helloao API JSON in ./api-output/. */
-async function runHelloAoCli(): Promise<void> {
-  console.log('\n=== Phase 2: USFM → JSON (via @helloao/tools) ===');
-  await fs.mkdir(API_OUTPUT_DIR, { recursive: true });
-
-  // Read USFM files generated in phase 1
-  const usfmFiles = (await fs.readdir(USFM_OUTPUT_DIR)).filter((f) => f.endsWith('.usfm'));
-  if (usfmFiles.length === 0) {
-    throw new Error(`No .usfm files found in ${USFM_OUTPUT_DIR}. Ensure the scraping phase completed successfully and generated files.`);
-  }
-
-  const translationMetadata = {
-    id: TRANSLATION_ID,
-    name: 'Biblia Sinodală',
-    englishName: 'Romanian Synodal Bible',
-    shortName: 'Sinodală',
-    website: 'https://www.bibliaortodoxa.ro',
-    licenseUrl: 'https://www.bibliaortodoxa.ro',
-    language: 'ro',
-    direction: 'ltr' as const,
-  };
-
-  const inputFiles = await Promise.all(
-    usfmFiles.map(async (filename) => ({
-      fileType: 'usfm' as const,
-      name: filename,
-      content: await fs.readFile(path.join(USFM_OUTPUT_DIR, filename), 'utf-8'),
-      metadata: translationMetadata,
-    })),
-  );
-
-  const dataset = datasetGen.generateDataset(inputFiles, new StubDOMParser() as unknown as DOMParser);
-  const apiOutput = apiGen.generateApiForDataset(dataset, {
-    generateCompleteTranslationFiles: true,
-  });
-  const outputFiles = apiGen.generateFilesForApi(apiOutput);
-
-  for (const file of outputFiles) {
-    const dest = path.join(API_OUTPUT_DIR, file.path);
-    await fs.mkdir(path.dirname(dest), { recursive: true });
-
-    const rawContent =
-      typeof file.content === 'function' ? await file.content() : file.content;
-    await fs.writeFile(dest, JSON.stringify(rawContent, null, 2), 'utf-8');
-  }
-
-  console.log(`  ✓ ${outputFiles.length} files written to ${API_OUTPUT_DIR}`);
-}
-
-// ─── 3) Aggregate into data/bibles/ro_sinodala.json ──────────────────────────
-
-/** Phase 3: read API output files and pack them into a single JSON file. */
-async function packBibleJson(): Promise<void> {
-  console.log('\n=== Phase 3: Aggregating → ro_sinodala.json ===');
-
-  // Auto-detect translationId (first sub-directory of api-output)
-  const entries = await fs.readdir(API_OUTPUT_DIR, { withFileTypes: true });
-  const translationId =
-    entries.find((e) => e.isDirectory())?.name ?? TRANSLATION_ID;
-
-  const translationDir = path.join(API_OUTPUT_DIR, translationId);
-
-  // Read translation metadata from available_translations.json
-  const translationsFile = path.join(API_OUTPUT_DIR, 'available_translations.json');
-  const translationsJson = JSON.parse(await fs.readFile(translationsFile, 'utf-8')) as {
-    translations: Array<Record<string, unknown>>;
-  };
-  const metadata =
-    translationsJson.translations.find((t) => t['id'] === translationId) ??
-    translationsJson.translations[0];
-
-  // Read books list
-  const booksFile = path.join(translationDir, 'books.json');
-  const booksJson = JSON.parse(await fs.readFile(booksFile, 'utf-8')) as {
-    books: Array<{ id: string; name: string; numChapters?: number; numberOfChapters?: number }>;
-  };
-
-  // For each book, read all chapter files
-  const books = await Promise.all(
-    booksJson.books.map(async (book) => {
-      const numChapters = book.numChapters ?? book.numberOfChapters ?? 0;
-      const chapters = [];
-
-      for (let chNum = 1; chNum <= numChapters; chNum++) {
-        const chapterFile = path.join(translationDir, book.id, `${chNum}.json`);
-        try {
-          const chapterJson = JSON.parse(await fs.readFile(chapterFile, 'utf-8'));
-          chapters.push(chapterJson);
-        } catch {
-          // Missing chapter file – skip silently
-        }
-      }
-
-      return { ...book, chapters };
-    }),
-  );
-
-  const finalOutput = { metadata, books };
-
-  await fs.mkdir(BIBLES_DIR, { recursive: true });
-  await fs.writeFile(FINAL_OUTPUT, JSON.stringify(finalOutput, null, 2), 'utf-8');
-
-  console.log(`  ✓ Written: ${FINAL_OUTPUT}`);
-  console.log(`    ${books.length} books, ${books.reduce((s, b) => s + b.chapters.length, 0)} chapters`);
-}
-
-// ─── main ─────────────────────────────────────────────────────────────────────
+// ─── Main pipeline ─────────────────────────────────────────────────────────────
 
 async function main(): Promise<void> {
-  await runScrapingPhase();
-  await runHelloAoCli();
-  await packBibleJson();
+  await fs.mkdir(BIBLES_DIR, { recursive: true });
+  console.log('=== Biblia Sinodală Pipeline ===\n');
+
+  const sorted = [...booksConfig].sort((a, b) => a.order - b.order);
+  let totalChapters = 0;
+  let totalVerses = 0;
+
+  const books = [];
+
+  for (const book of sorted) {
+    console.log(`[${book.usfmCode}] siteId=${book.siteId} — ${book.nameLong}`);
+
+    const maxChapters = await detectMaxChapters(book.siteId);
+    if (maxChapters === 0) {
+      console.warn(`  [SKIP] No chapters found for ${book.usfmCode} (siteId=${book.siteId})`);
+      continue;
+    }
+
+    const chapters = [];
+    let bookVerses = 0;
+
+    for (let cap = 1; cap <= maxChapters; cap++) {
+      const html = await fetchChapterHtml(book.siteId, cap);
+      if (!html) break;
+
+      const verses = parseChapterVerses(html);
+      if (verses.length === 0) break;
+
+      chapters.push({
+        chapter: {
+          number: cap,
+          bookName: book.nameLong,
+          content: verses.map((v) => ({
+            type: 'verse' as const,
+            number: v.number,
+            content: [v.text],
+          })),
+        },
+      });
+
+      bookVerses += verses.length;
+      await sleep(300);
+    }
+
+    totalChapters += chapters.length;
+    totalVerses += bookVerses;
+
+    books.push({
+      id: book.usfmCode,
+      name: book.nameLong,
+      commonName: (() => {
+        const en = ENGLISH_BOOK_NAMES[book.usfmCode];
+        if (!en) console.warn(`  [WARN] No English name for ${book.usfmCode}, using Romanian`);
+        return en ?? book.nameLong;
+      })(),
+      title: book.nameLong,
+      order: book.order,
+      numberOfChapters: chapters.length,
+      totalNumberOfVerses: bookVerses,
+      isApocryphal: APOCRYPHAL_CODES.has(book.usfmCode),
+      chapters,
+    });
+
+    console.log(`  ✓ ${chapters.length} chapters, ${bookVerses} verses`);
+  }
+
+  const output = {
+    translation: {
+      id: TRANSLATION_ID,
+      name: 'Biblia Sinodală',
+      englishName: 'Romanian Synodal Bible',
+      shortName: 'Sinodală',
+      textDirection: 'ltr',
+      language: 'ro',
+      website: 'https://www.bibliaortodoxa.ro',
+      licenseUrl: 'https://www.bibliaortodoxa.ro',
+      numberOfBooks: books.length,
+      totalNumberOfChapters: totalChapters,
+      totalNumberOfVerses: totalVerses,
+      availableFormats: ['json'],
+    },
+    books,
+  };
+
+  await fs.writeFile(FINAL_OUTPUT, JSON.stringify(output, null, 2), 'utf-8');
+
   console.log('\n✅ Pipeline complete.');
+  console.log(`   Written: ${FINAL_OUTPUT}`);
+  console.log(`   ${books.length} books, ${totalChapters} chapters, ${totalVerses} verses`);
 }
 
 main().catch((err) => {
