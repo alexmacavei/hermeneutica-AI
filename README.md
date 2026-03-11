@@ -204,7 +204,7 @@ Listează cărțile disponibile pentru o anumită traducere.
 
 | Layer | Tehnologie |
 |-------|-----------|
-| **Backend** | NestJS 10, TypeScript 5.1 |
+| **Backend** | NestJS 10, TypeScript 5.7 |
 | **AI** | OpenAI GPT-4o, Prompt YAML |
 | **Frontend** | Angular 19.2, PrimeNG 19.1 |
 | **Styling** | SCSS, PrimeIcons |
