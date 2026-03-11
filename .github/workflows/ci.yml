@@ -56,8 +56,8 @@ jobs:
       - name: Build production
         run: npm run build:prod
 
-  docker-build:
-    name: Docker Build Check
+  container-build:
+    name: Container Build Check
     runs-on: ubuntu-latest
     permissions:
       contents: read
@@ -65,7 +65,7 @@ jobs:
     steps:
       - uses: actions/checkout@v4
       - name: Build backend image
-        run: docker build -t hermeneutica-backend ./backend
+        run: podman build -t hermeneutica-backend ./backend
 
       - name: Build frontend image
-        run: docker build -t hermeneutica-frontend ./frontend
+        run: podman build -t hermeneutica-frontend ./frontend
