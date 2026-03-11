@@ -8,6 +8,13 @@ import {
 
 const BIBLE_API_BASE = 'https://bible.helloao.org/api';
 
+/**
+ * Ordered list of translation IDs available in the application.
+ * Corresponds to: Hebrew Masoretic Text, Greek Septuagint,
+ * Greek New Testament, and King James Version with Apocrypha.
+ */
+const ALLOWED_TRANSLATION_IDS = ['WLC', 'LXX', 'UGNT', 'KJVA'] as const;
+
 // ─── Upstream API types ────────────────────────────────────────────────────
 
 interface ApiTranslation {
@@ -83,13 +90,20 @@ export class BibleService {
       `${BIBLE_API_BASE}/available_translations.json`,
     );
 
-    this.cachedTranslations = data.translations.map((t) => ({
-      id: t.id,
-      name: t.name,
-      englishName: t.englishName,
-      language: t.language,
-      textDirection: t.textDirection,
-    }));
+    const translationMap = new Map(
+      data.translations.map((t) => [t.id, t]),
+    );
+    this.cachedTranslations = ALLOWED_TRANSLATION_IDS.flatMap((id) => {
+      const t = translationMap.get(id);
+      if (!t) return [];
+      return [{
+        id: t.id,
+        name: t.name,
+        englishName: t.englishName,
+        language: t.language,
+        textDirection: t.textDirection,
+      }];
+    });
 
     return this.cachedTranslations;
   }

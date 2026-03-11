@@ -82,7 +82,7 @@ interface SelectOption<T = string> {
       min-width: 150px;
 
       .p-dropdown {
-        background: rgba(30, 30, 60, 0.9);
+        background: #1e1e3c;
         border: 1px solid rgba(121, 134, 203, 0.4);
         border-radius: 6px;
       }
@@ -93,8 +93,11 @@ interface SelectOption<T = string> {
       }
       .p-dropdown-trigger { color: #9fa8da; }
       .p-dropdown-panel {
-        background: #1e1e2e;
+        background: #1e1e3c;
         border: 1px solid rgba(121, 134, 203, 0.3);
+      }
+      .p-dropdown-items-wrapper {
+        background: #1e1e3c;
       }
       .p-dropdown-item {
         color: #e8eaf6;
@@ -103,7 +106,7 @@ interface SelectOption<T = string> {
         &.p-highlight { background: rgba(26, 35, 126, 0.6); }
       }
       .p-dropdown-filter {
-        background: rgba(26, 26, 50, 0.95);
+        background: #16162e;
         color: #e8eaf6;
         border: 1px solid rgba(121, 134, 203, 0.4);
       }
