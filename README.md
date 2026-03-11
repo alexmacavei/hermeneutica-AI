@@ -6,7 +6,9 @@
 [![Angular](https://img.shields.io/badge/Angular-19.2-DD0031?style=for-the-badge&logo=angular)](https://angular.io)
 [![TypeScript](https://img.shields.io/badge/TypeScript-5.7+-3178C6?style=for-the-badge&logo=typescript)](https://www.typescriptlang.org)
 [![PrimeNG](https://img.shields.io/badge/PrimeNG-19-4CAF50?style=for-the-badge)](https://primeng.org)
+[![Docker](https://img.shields.io/badge/Docker-compose-2496ED?style=for-the-badge&logo=docker)](https://www.docker.com)
 [![Podman](https://img.shields.io/badge/Podman-compose-892CA0?style=for-the-badge&logo=podman)](https://podman.io)
+[![PostgreSQL](https://img.shields.io/badge/PostgreSQL-pgvector-336791?style=for-the-badge&logo=postgresql)](https://github.com/pgvector/pgvector)
 [![License: MIT](https://img.shields.io/badge/License-MIT-yellow.svg?style=for-the-badge)](LICENSE)
 [![CI](https://github.com/alexmacavei/hermeneutica-AI/actions/workflows/ci.yml/badge.svg)](https://github.com/alexmacavei/hermeneutica-AI/actions)
 
@@ -73,24 +75,45 @@ AI-Hermeneutica-Orthodoxa/
 │   ├── src/
 │   │   ├── analyze/            # POST /api/analyze → 4 carduri
 │   │   │   ├── dto/            # AnalyzeDto (validare)
+│   │   │   ├── analyze.controller.ts
+│   │   │   ├── analyze.module.ts
 │   │   │   ├── analyze.service.ts
-│   │   │   └── analyze.controller.ts
+│   │   │   └── analyze.service.spec.ts
 │   │   ├── ai/
+│   │   │   ├── ai.module.ts
 │   │   │   ├── ai.service.ts   # OpenAI GPT-4o integration
-│   │   │   └── prompts/hermeneutica.yaml  # System prompts
-│   │   ├── bible/              # Bible API Proxy service
-│   │   └── config/             # Configuration
+│   │   │   └── prompts/hermeneutica.yaml  # System prompts (YAML)
+│   │   ├── bible/              # Bible API proxy + local BSR loader
+│   │   │   ├── bible.controller.ts
+│   │   │   ├── bible.module.ts
+│   │   │   ├── bible.service.ts
+│   │   │   └── bible.service.spec.ts
+│   │   ├── config/             # Configuration
+│   │   │   └── configuration.ts
+│   │   ├── app.module.ts
+│   │   └── main.ts
 │   └── Dockerfile
 ├── frontend/                   # Angular 19+ SPA
 │   ├── src/app/
-│   │   ├── bible-viewer/       # Text navigabil + selector
+│   │   ├── bible-viewer/       # Text navigabil + selector versete
+│   │   │   ├── bible-selector.component.ts
+│   │   │   ├── bible-text.component.ts
+│   │   │   ├── bible-viewer.component.ts
+│   │   │   └── verse-highlighter.directive.ts
 │   │   ├── analysis/           # 4 Carduri rezultate
+│   │   │   └── results-viewer.component.ts
 │   │   └── services/           # HTTP services
+│   │       ├── analysis.service.ts
+│   │       └── bible-api.service.ts
 │   └── Dockerfile
+├── scripts/                    # Utilitare de date / Data utilities
+│   └── biblia-pipeline.ts      # Script descărcare/procesare BSR locală
 ├── data/
+│   ├── bibles/                 # Traduceri locale (ex. BSR.json)
+│   │   └── .gitkeep
 │   └── patristic-snippets.json # Citații patristice
 ├── .env.example                # Template variabile de mediu
-├── docker-compose.yml
+├── docker-compose.yml          # PostgreSQL + backend + frontend
 └── .github/workflows/ci.yml
 ```
 
@@ -101,10 +124,10 @@ AI-Hermeneutica-Orthodoxa/
 ### Cerințe / Requirements
 
 - Node.js 20+
-- Podman & Podman Compose
+- Podman & Podman Compose **or** Docker & Docker Compose
 - Cheie API OpenAI (pentru analiza AI)
 
-### Quick Start cu Podman
+### Quick Start cu Podman / Docker
 
 ```bash
 # 1. Clonează repository-ul
@@ -115,14 +138,22 @@ cd hermeneutica-AI
 cp .env.example .env
 # Editează .env și adaugă OPENAI_API_KEY=sk-...
 
-# 3. Pornește toate serviciile
-podman compose up --build --force-recreate --remove-orphans
+# 3. (Opțional) Populează Biblia Sinodală locală (BSR)
+cd scripts && npm install && npm run biblia-pipeline
+cd ..
 
-# 4. Oprește toate serviciile
+# 4. Pornește toate serviciile (Podman sau Docker)
+podman compose up --build --force-recreate --remove-orphans
+# sau:
+# docker compose up --build --force-recreate --remove-orphans
+
+# 5. Oprește toate serviciile
 podman compose down
+# sau: docker compose down
 
 # Frontend: http://localhost:4200
 # API:      http://localhost:3001/api
+# DB:       localhost:5432 (PostgreSQL cu pgvector)
 ```
 
 ### Instalare Manuală / Manual Installation
@@ -142,11 +173,15 @@ npm start            # UI pe :4200
 ### Variabile de Mediu / Environment Variables
 
 ```env
-# backend/.env
+# backend/.env  (or root .env mounted by docker-compose)
 OPENAI_API_KEY=sk-your-openai-key
 OPENAI_MODEL=gpt-4o
 PORT=3001
 FRONTEND_URL=http://localhost:4200
+# Path to the data directory containing bibles/ subfolder.
+# Defaults to <cwd>/data (correct for Docker where cwd=/app).
+# For manual dev (cd backend && npm run start:dev), set to ../data.
+DATA_DIR=./data
 ```
 
 ---
@@ -182,21 +217,38 @@ Analizează un fragment biblic și returnează 4 carduri hermeneutice.
 }
 ```
 
+### `GET /api/bible/translations`
+
+Listează traducerile biblice disponibile.
+
+Traducerile suportate / Supported translations:
+
+| ID | Nume / Name | Limbă / Language |
+|----|-------------|------------------|
+| `WLC` | Westminster Leningrad Codex | Ebraică / Hebrew |
+| `LXX` | Septuaginta | Greacă / Greek |
+| `UGNT` | Unlocked Greek New Testament | Greacă NT / Greek NT |
+| `KJVA` | King James Version with Apocrypha | Engleză / English |
+| `BSR` | Biblia Sinodală Română | Română / Romanian |
+
+> **Notă:** Traducerea `BSR` este disponibilă doar dacă fișierul local `data/bibles/BSR.json` a fost populat cu scriptul `scripts/biblia-pipeline.ts`. Vezi secțiunea [Script Date](#script-date--data-pipeline-script) de mai jos.
+
+### `GET /api/bible/:translationId/books`
+
+Listează cărțile disponibile pentru o anumită traducere.
+
+```bash
+GET /api/bible/BSR/books
+```
+
 ### `GET /api/bible/:translationId/:bookId/:chapter`
 
 Returnează versetele unui capitol biblic.
 
 ```bash
-GET /api/bible/sinodala-ro/Matei/5
+GET /api/bible/BSR/MAT/5
+GET /api/bible/LXX/MAT/5
 ```
-
-### `GET /api/bible/translations`
-
-Listează traducerile biblice disponibile.
-
-### `GET /api/bible/:translationId/books`
-
-Listează cărțile disponibile pentru o anumită traducere.
 
 ---
 
@@ -208,8 +260,9 @@ Listează cărțile disponibile pentru o anumită traducere.
 | **AI** | OpenAI GPT-4o, Prompt YAML |
 | **Frontend** | Angular 19.2, PrimeNG 19.1 |
 | **Styling** | SCSS, PrimeIcons |
-| **Data Source** | bible.helloao.org (External API) |
-| **DevOps** | Podman, Podman Compose |
+| **Database** | PostgreSQL 16 + pgvector (semantic search – viitor) |
+| **Data Source** | bible.helloao.org (External API) + local BSR JSON |
+| **DevOps** | Podman / Docker, Compose |
 | **CI/CD** | GitHub Actions |
 | **PWA** | Service Worker, Web Manifest |
 
@@ -229,12 +282,23 @@ cd frontend && npm test
 
 ## 📚 Date Biblice / Biblical Data
 
-Aplicația utilizează API-ul extern furnizat de [bible.helloao.org](https://bible.helloao.org/api) pentru a accesa textul biblic în timp real. Această abordare permite navigarea integrală a Sfintei Scripturi fără a stoca volume mari de date local.
+Aplicația utilizează atât API-ul extern furnizat de [bible.helloao.org](https://bible.helloao.org/api), cât și un fișier local JSON pentru Biblia Sinodală Română (BSR). Aceasta permite navigarea integrală a Sfintei Scripturi.
 
 Caracteristici:
 - **Acces dinamic:** Navigare prin toate cărțile și capitolele disponibile în traducerile suportate.
-- **Traduceri:** Suportă Biblia Sinodală Română (`sinodala-ro`), Biblia Cornilescu, precum și versiuni în limbile greacă (LXX, GNT) și ebraică.
-- **Interfață simplificată:** Backend-ul NestJS acționează ca un proxy către API-ul `helloao.org`, asigurând stabilitate și maparea corectă a versetelor pentru procesarea AI.
+- **Traduceri remote:** `WLC` (Ebraică Masoretică), `LXX` (Septuaginta), `UGNT` (Greacă NT), `KJVA` (KJV cu Apocrife) – servite live via bible.helloao.org.
+- **Traducere locală:** `BSR` (Biblia Sinodală Română) – populată cu scriptul `scripts/biblia-pipeline.ts` și stocată în `data/bibles/BSR.json`.
+- **Interfață simplificată:** Backend-ul NestJS acționează ca un proxy/adaptor, asigurând stabilitate și maparea corectă a versetelor pentru procesarea AI.
+
+### Script Date / Data Pipeline Script
+
+```bash
+# Descarcă și procesează Biblia Sinodală Română locală
+cd scripts
+npm install
+npm run biblia-pipeline
+# Generează: data/bibles/BSR.json
+```
 
 ---
 
