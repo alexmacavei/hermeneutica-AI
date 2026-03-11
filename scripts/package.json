@@ -1,0 +1,18 @@
+{
+  "name": "hermeneutica-scripts",
+  "version": "1.0.0",
+  "description": "Data pipeline scripts for hermeneutica-AI",
+  "private": true,
+  "scripts": {
+    "biblia-pipeline": "ts-node --project tsconfig.json biblia-pipeline.ts"
+  },
+  "dependencies": {
+    "axios": "^1.6.7",
+    "cheerio": "^1.0.0"
+  },
+  "devDependencies": {
+    "@types/node": "^20.0.0",
+    "ts-node": "^10.9.2",
+    "typescript": "^5.1.6"
+  }
+}
