@@ -38,5 +38,11 @@ out-tsc/
 api-output/
 data/bibles/ro_sinodala.json
 
+# Patristic data directories – users place their own legally-obtained texts here.
+# These files must never be committed (copyright + size).
+data/patristic/
+patristic-data/
+**/patristic-data/
+
 # Script package lock (local install, not shared)
 scripts/package-lock.json

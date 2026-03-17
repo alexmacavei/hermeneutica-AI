@@ -6,4 +6,5 @@ export default () => ({
   },
   frontendUrl: process.env['FRONTEND_URL'] ?? 'http://localhost:4200',
   databaseUrl: process.env['DATABASE_URL'] ?? '',
+  patristicDataDir: process.env['PATRISTIC_DATA_DIR'] ?? '',
 });
