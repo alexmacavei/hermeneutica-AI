@@ -28,6 +28,10 @@ interface HermeneuticaPromptConfig {
     philosophy: CardPrompt;
     philology: CardPrompt;
   };
+  patristic_rag: {
+    system: string;
+    user_template: string;
+  };
 }
 
 @Injectable()
@@ -151,6 +155,33 @@ export class AiService {
       this.logger.error('OpenAI chat error', error);
       return '';
     }
+  }
+
+  /**
+   * Specifically for the Patristic RAG flow: builds the prompt and calls the LLM.
+   */
+  async generatePatristicSummary(
+    reference: string,
+    verseText: string,
+    contextBlocks: string,
+    fallbackMessage: string,
+  ): Promise<string> {
+    const systemPrompt = this.prompts.patristic_rag.system.replace(
+      '{fallback_message}',
+      fallbackMessage,
+    );
+    const userMessage = this.prompts.patristic_rag.user_template
+      .replace('{reference}', reference)
+      .replace('{verse_text}', verseText)
+      .replace('{context_blocks}', contextBlocks);
+
+    return this.chat(
+      [
+        { role: 'system', content: systemPrompt },
+        { role: 'user', content: userMessage },
+      ],
+      { temperature: 0.3, max_tokens: 600 },
+    );
   }
 
   private getFallbackCards(

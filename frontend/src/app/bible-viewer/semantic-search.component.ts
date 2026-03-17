@@ -38,13 +38,14 @@ export interface SearchNavigateEvent {
           [disabled]="!translationId"
           (keydown.enter)="search()"
         />
-        <button
-          pButton
+        <p-button
           icon="pi pi-times"
-          class="p-button-text p-button-rounded clear-btn"
+          variant="text"
+          class="clear-btn"
           *ngIf="query"
           (click)="clearSearch()"
-        ></button>
+          [rounded]="true"
+        ></p-button>
       </div>
 
       <!-- Results panel -->
@@ -111,7 +112,7 @@ export interface SearchNavigateEvent {
     }
     .search-input::placeholder { color: var(--text-muted); }
     .search-input:disabled { opacity: 0.4; cursor: not-allowed; }
-    :host ::ng-deep .clear-btn.p-button {
+    :host ::ng-deep .clear-btn .p-button {
       width: 24px !important;
       height: 24px !important;
       padding: 0 !important;

@@ -1,9 +1,9 @@
 import {
-  Injectable,
-  Logger,
-  NotFoundException,
   BadRequestException,
+  Injectable,
   InternalServerErrorException,
+  Logger,
+  NotFoundException
 } from '@nestjs/common';
 import { join } from 'path';
 import { access, readFile } from 'fs/promises';
@@ -23,11 +23,11 @@ const MAX_VERSE = 500;
  * and Romanian Synodal Bible (local file; included only when available).
  */
 const ALLOWED_TRANSLATION_IDS = [
-  'WLC',
-  'LXX',
-  'UGNT',
-  'KJVA',
-  'BSR',
+  'hbo_wlc',
+  'grc_bre',
+  'grc_byz',
+  'eng_kja',
+  'sinodala_ro',
 ] as const;
 
 // ─── Upstream API types ────────────────────────────────────────────────────
@@ -135,47 +135,67 @@ export class BibleService {
   async getTranslations(): Promise<Translation[]> {
     if (this.cachedTranslations) return this.cachedTranslations;
 
-    const data = await this.fetchJson<{ translations: ApiTranslation[] }>(
-      `${BIBLE_API_BASE}/available_translations.json`,
+    // Process each allowed translation
+    const results = await Promise.all(
+      ALLOWED_TRANSLATION_IDS.map(async (id) => {
+        if (id === 'sinodala_ro') {
+          // Local translation
+          const localBiblePath = this.getLocalBiblePath();
+          try {
+            await access(localBiblePath);
+            return {
+              id: 'sinodala_ro',
+              name: 'Biblia Sinodală',
+              englishName: 'Romanian Synodal Bible',
+              language: 'ro',
+              textDirection: 'ltr',
+            };
+          } catch {
+            this.logger.warn(
+              `Local Bible file not found at ${localBiblePath}; sinodala_ro translation will not be available.`,
+            );
+            return null;
+          }
+        } else {
+          // Upstream translation from helloao API
+          try {
+            const data = await this.fetchJson<{
+              translation: ApiTranslation;
+              books: ApiBook[];
+            }>(`${BIBLE_API_BASE}/${id}/books.json`);
+
+            // Also warm up books cache since we have the data
+            if (!this.booksCache.has(id)) {
+              this.booksCache.set(
+                id,
+                data.books.map((b) => ({
+                  id: b.id,
+                  name: b.name,
+                  numChapters: b.numChapters,
+                })),
+              );
+            }
+
+            return {
+              id: data.translation.id,
+              name: data.translation.name,
+              englishName: data.translation.englishName,
+              language: data.translation.language,
+              textDirection: data.translation.textDirection,
+            };
+          } catch (error) {
+            this.logger.warn(
+              `Failed to fetch metadata for translation ${id}: ${error.message}`,
+            );
+            return null;
+          }
+        }
+      }),
     );
 
-    const translationMap = new Map<string, ApiTranslation>(
-      data.translations.map((t) => [t.id, t]),
+    this.cachedTranslations = results.filter(
+      (t): t is Translation => t !== null,
     );
-
-    // Add local Romanian translation only when the data file is present
-    if (!translationMap.has('BSR')) {
-      const bsrPath = this.getLocalBiblePath();
-      try {
-        await access(bsrPath);
-        translationMap.set('BSR', {
-          id: 'BSR',
-          name: 'Biblia Sinodală',
-          englishName: 'Romanian Synodal Bible',
-          language: 'ro',
-          textDirection: 'ltr',
-        });
-      } catch {
-        this.logger.warn(
-          `Local Bible file not found at ${bsrPath}; BSR translation will not be available.`,
-        );
-      }
-    }
-
-    this.cachedTranslations = ALLOWED_TRANSLATION_IDS.flatMap((id) => {
-      const t = translationMap.get(id);
-      if (!t) return [];
-      return [
-        {
-          id: t.id,
-          name: t.name,
-          englishName: t.englishName,
-          language: t.language,
-          textDirection: t.textDirection,
-        },
-      ];
-    });
-
     return this.cachedTranslations;
   }
 
@@ -187,7 +207,7 @@ export class BibleService {
     }
 
     let books: Book[];
-    if (translationId === 'BSR') {
+    if (translationId === 'sinodala_ro') {
       const localData = await this.loadLocalBible();
       books = localData.books.map((b) => ({
         id: b.id,
@@ -232,18 +252,18 @@ export class BibleService {
 
     let verses: BibleVerse[];
 
-    if (translationId === 'BSR') {
+    if (translationId === 'sinodala_ro') {
       const localData = await this.loadLocalBible();
       const book = localData.books.find((b) => b.id === bookId);
       if (!book) {
-        throw new NotFoundException(`Book ${bookId} not found in BSR`);
+        throw new NotFoundException(`Book ${bookId} not found in sinodala_ro`);
       }
       const chapterData = book.chapters.find(
         (c) => c.chapter.number === chapter,
       );
       if (!chapterData) {
         throw new NotFoundException(
-          `Chapter ${chapter} not found in book ${bookId} of BSR`,
+          `Chapter ${chapter} not found in book ${bookId} of sinodala_ro`,
         );
       }
       verses = this.parseVerses(chapterData);
@@ -265,16 +285,16 @@ export class BibleService {
     verseEnd: number,
     excludeTranslationId?: string,
   ): Promise<ParallelTranslation[]> {
-    this.validateSegment(bookId, 'bookId');
+    this.validateSegment(bookId, "bookId");
     if (excludeTranslationId) {
-      this.validateSegment(excludeTranslationId, 'excludeTranslationId');
+      this.validateSegment(excludeTranslationId, "excludeTranslationId");
     }
 
     if (chapter < 1 || chapter > MAX_CHAPTER) {
-      throw new BadRequestException('chapter must be between 1 and 200');
+      throw new BadRequestException("chapter must be between 1 and 200");
     }
     if (verseStart < 1 || verseEnd < verseStart || verseEnd > MAX_VERSE) {
-      throw new BadRequestException('Invalid verse range');
+      throw new BadRequestException("Invalid verse range");
     }
 
     const translations = await this.getTranslations();
@@ -282,7 +302,7 @@ export class BibleService {
       ? translations.filter((t) => t.id !== excludeTranslationId)
       : translations;
 
-    const results = await Promise.all(
+    return await Promise.all(
       filtered.map(async (translation): Promise<ParallelTranslation> => {
         try {
           const allVerses = await this.getChapter(
@@ -314,8 +334,6 @@ export class BibleService {
         }
       }),
     );
-
-    return results;
   }
 
   // ── Private helpers ────────────────────────────────────────────────────
@@ -366,7 +384,7 @@ export class BibleService {
 
   private getLocalBiblePath(): string {
     const dataDir = process.env['DATA_DIR'] ?? join(process.cwd(), 'data');
-    return join(dataDir, 'bibles', 'BSR.json');
+    return join(dataDir, 'bibles', 'sinodala_ro.json');
   }
 
   private async loadLocalBible(): Promise<LocalBibleData> {

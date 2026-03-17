@@ -3,10 +3,6 @@ import { AiService } from '../ai/ai.service';
 import { DatabaseService } from '../database/database.service';
 import { SEARCH_PATRISTIC_BY_EMBEDDING } from './patristic-queries';
 import { PATRISTIC_SIMILARITY_THRESHOLD } from './pipeline.config';
-import {
-  PATRISTIC_RAG_SYSTEM_PROMPT,
-  buildPatristicUserMessage,
-} from './patristic-rag.prompts';
 
 /** A single patristic chunk returned by the similarity search. */
 export interface PatristicChunkResult {
@@ -121,12 +117,11 @@ export class PatristicRagService {
       )
       .join('\n\n');
 
-    const result = await this.aiService.chat(
-      [
-        { role: 'system', content: PATRISTIC_RAG_SYSTEM_PROMPT },
-        { role: 'user', content: buildPatristicUserMessage(reference, verseText, contextBlocks) },
-      ],
-      { temperature: 0.3, max_tokens: 600 },
+    const result = await this.aiService.generatePatristicSummary(
+      reference,
+      verseText,
+      contextBlocks,
+      PATRISTIC_FALLBACK,
     );
 
     return result || PATRISTIC_FALLBACK;

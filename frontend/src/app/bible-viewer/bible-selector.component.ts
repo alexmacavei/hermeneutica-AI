@@ -6,7 +6,7 @@ import {
 } from '@angular/core';
 import { CommonModule } from '@angular/common';
 import { FormsModule } from '@angular/forms';
-import { DropdownModule } from 'primeng/dropdown';
+import { SelectModule } from 'primeng/select';
 import { BibleApiService, Translation, Book } from '../services/bible-api.service';
 
 export interface BibleNavigation {
@@ -26,11 +26,11 @@ interface SelectOption<T = string> {
 @Component({
   selector: 'app-bible-selector',
   standalone: true,
-  imports: [CommonModule, FormsModule, DropdownModule],
+  imports: [CommonModule, FormsModule, SelectModule],
   template: `
     <div class="selector-bar">
       <!-- Translation -->
-      <p-dropdown
+      <p-select
         [options]="translationOptions"
         [(ngModel)]="selectedTranslationId"
         (ngModelChange)="onTranslationChange()"
@@ -40,10 +40,10 @@ interface SelectOption<T = string> {
         [filter]="true"
         filterBy="label"
         styleClass="selector-dropdown"
-      ></p-dropdown>
+      ></p-select>
 
       <!-- Book -->
-      <p-dropdown
+      <p-select
         [options]="bookOptions"
         [(ngModel)]="selectedBookId"
         (ngModelChange)="onBookChange()"
@@ -54,10 +54,10 @@ interface SelectOption<T = string> {
         filterBy="label"
         styleClass="selector-dropdown"
         [disabled]="bookOptions.length === 0"
-      ></p-dropdown>
+      ></p-select>
 
       <!-- Chapter -->
-      <p-dropdown
+      <p-select
         [options]="chapterOptions"
         [(ngModel)]="selectedChapter"
         (ngModelChange)="onNavigate()"
@@ -66,7 +66,7 @@ interface SelectOption<T = string> {
         placeholder="Capitol..."
         styleClass="selector-dropdown"
         [disabled]="chapterOptions.length === 0"
-      ></p-dropdown>
+      ></p-select>
     </div>
   `,
   styles: [`
@@ -81,31 +81,31 @@ interface SelectOption<T = string> {
     :host ::ng-deep .selector-dropdown {
       min-width: 150px;
 
-      .p-dropdown {
+      .p-select {
         background: #1e1e3c;
         border: 1px solid rgba(121, 134, 203, 0.4);
         border-radius: 6px;
       }
-      .p-dropdown-label {
+      .p-select-label {
         color: #e8eaf6;
         font-size: 0.9rem;
         padding: 6px 10px;
       }
-      .p-dropdown-trigger { color: #9fa8da; }
-      .p-dropdown-panel {
+      .p-select-dropdown { color: #9fa8da; }
+      .p-select-overlay {
         background: #1e1e3c;
         border: 1px solid rgba(121, 134, 203, 0.3);
       }
-      .p-dropdown-items-wrapper {
+      .p-select-list-container {
         background: #1e1e3c;
       }
-      .p-dropdown-item {
+      .p-select-option {
         color: #e8eaf6;
         font-size: 0.9rem;
         &:hover { background: rgba(121, 134, 203, 0.2); }
-        &.p-highlight { background: rgba(26, 35, 126, 0.6); }
+        &.p-select-option-selected { background: rgba(26, 35, 126, 0.6); }
       }
-      .p-dropdown-filter {
+      .p-select-filter {
         background: #16162e;
         color: #e8eaf6;
         border: 1px solid rgba(121, 134, 203, 0.4);

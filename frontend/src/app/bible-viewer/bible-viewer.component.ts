@@ -4,13 +4,22 @@ import { ButtonModule } from 'primeng/button';
 import { ToastModule } from 'primeng/toast';
 import { MessageService } from 'primeng/api';
 import { catchError, finalize, of } from 'rxjs';
-
-import { BibleSelectorComponent, BibleNavigation } from './bible-selector.component';
+import {
+  BibleSelectorComponent,
+  BibleNavigation,
+} from './bible-selector.component';
 import { BibleTextComponent } from './bible-text.component';
 import { ResultsViewerComponent } from '../analysis/results-viewer.component';
-import { SemanticSearchComponent, SearchNavigateEvent } from './semantic-search.component';
+import {
+  SemanticSearchComponent,
+  SearchNavigateEvent,
+} from './semantic-search.component';
 import { AnalysisService, AnalysisResult } from '../services/analysis.service';
-import { BibleApiService, BibleVerse, ParallelTranslation } from '../services/bible-api.service';
+import {
+  BibleApiService,
+  BibleVerse,
+  ParallelTranslation,
+} from '../services/bible-api.service';
 import { SearchService } from '../services/search.service';
 import { ParallelViewerComponent } from './parallel-viewer.component';
 import { VerseSelection } from './verse-highlighter.directive';
@@ -67,26 +76,28 @@ import { VerseSelection } from './verse-highlighter.directive';
 
           <!-- Footer navigation -->
           <footer class="verse-footer">
-            <button
-              pButton
+            <p-button
               icon="pi pi-chevron-left"
-              class="p-button-text p-button-rounded nav-btn"
+              variant="text"
+              class="nav-btn"
               (click)="prevChapter()"
               [disabled]="!hasPrevChapter()"
-            ></button>
+              [rounded]="true"
+            ></p-button>
             <span class="footer-ref" *ngIf="selectedSelection">
               &#128204; {{ selectedSelection.range }}
             </span>
             <span class="footer-ref no-selection" *ngIf="!selectedSelection">
-              Selecteaz&#259; un verset pentru analiz&#259;
+              Selectează un verset pentru analiză
             </span>
-            <button
-              pButton
+            <p-button
               icon="pi pi-chevron-right"
-              class="p-button-text p-button-rounded nav-btn"
+              variant="text"
+              class="nav-btn"
               (click)="nextChapter()"
               [disabled]="!hasNextChapter()"
-            ></button>
+              [rounded]="true"
+            ></p-button>
           </footer>
         </section>
 
@@ -111,20 +122,18 @@ import { VerseSelection } from './verse-highlighter.directive';
 
       <!-- Big Analyze Button -->
       <div class="analyze-bar">
-        <button
-          pButton
-          label="&#127892; Analizeaz&#259; Selec&#539;ia"
-          icon="pi pi-search"
-          iconPos="left"
+        <p-button
           class="analyze-btn"
           [class.analyze-btn-pulse]="!!selectedSelection && !analyzing"
           [disabled]="!selectedSelection || analyzing"
           [loading]="analyzing"
           (click)="analyze()"
-        ></button>
+          icon="pi pi-search"
+          label="Analizează selecția"
+        >
+        </p-button>
 
-        <button
-          pButton
+        <p-button
           label="Studiu Paralel"
           icon="pi pi-book"
           iconPos="left"
@@ -133,161 +142,181 @@ import { VerseSelection } from './verse-highlighter.directive';
           [disabled]="!selectedSelection"
           [loading]="loadingParallel"
           (click)="toggleParallelView()"
-        ></button>
+        ></p-button>
 
         <span class="selection-preview" *ngIf="selectedSelection">
-          "{{ selectedSelection.text | slice:0:60 }}{{ selectedSelection.text.length > 60 ? '…' : '' }}"
-          — <em>{{ selectedSelection.range }}</em>
+          "{{ selectedSelection.text | slice: 0 : 60
+          }}{{ selectedSelection.text.length > 60 ? '…' : '' }}" —
+          <em>{{ selectedSelection.range }}</em>
         </span>
       </div>
     </div>
   `,
-  styles: [`
-    .viewer-shell {
-      min-height: 100vh;
-      display: flex;
-      flex-direction: column;
-      background: var(--bg-dark);
-    }
-    .top-bar {
-      background: #0a0a1f;
-      border-bottom: 2px solid rgba(26, 35, 126, 0.6);
-      display: flex;
-      align-items: center;
-      flex-wrap: wrap;
-      gap: 12px;
-    }
-    .brand {
-      padding: 12px 24px;
-      display: flex;
-      align-items: center;
-      gap: 10px;
-      white-space: nowrap;
-    }
-    .brand-cross { color: var(--gold); font-size: 1.8rem; }
-    .brand-title {
-      color: var(--text-light);
-      font-size: 1.1rem;
-      font-weight: 500;
-      font-family: 'Palatino Linotype', serif;
-    }
-    .main-layout { flex: 1; display: flex; overflow: hidden; }
-    .bible-panel {
-      flex: 1;
-      display: flex;
-      flex-direction: column;
-      overflow-y: auto;
-      max-height: calc(100vh - 160px);
-    }
-    .analysis-panel {
-      width: 40%;
-      min-width: 320px;
-      border-left: 1px solid rgba(121, 134, 203, 0.2);
-      overflow-y: auto;
-      max-height: calc(100vh - 160px);
-      background: rgba(10, 10, 30, 0.5);
-    }
-    .parallel-panel {
-      width: 40%;
-      min-width: 320px;
-      border-left: 1px solid rgba(121, 134, 203, 0.2);
-      overflow-y: auto;
-      max-height: calc(100vh - 160px);
-      background: rgba(10, 10, 30, 0.5);
-    }
-    .loading-chapter {
-      display: flex;
-      align-items: center;
-      justify-content: center;
-      gap: 10px;
-      padding: 60px;
-      color: var(--text-muted);
-      font-size: 1rem;
-    }
-    .verse-footer {
-      padding: 10px 24px;
-      background: #0a0a1f;
-      border-top: 1px solid rgba(26, 35, 126, 0.4);
-      display: flex;
-      align-items: center;
-      justify-content: space-between;
-    }
-    .footer-ref { color: var(--text-muted); font-size: 0.85rem; }
-    .no-selection { font-style: italic; opacity: 0.6; }
-    .nav-btn { color: var(--text-muted) !important; }
-    .analyze-bar {
-      padding: 14px 24px;
-      background: #0a0a1f;
-      border-top: 2px solid rgba(198, 40, 40, 0.4);
-      display: flex;
-      align-items: center;
-      gap: 20px;
-      flex-wrap: wrap;
-    }
-    :host ::ng-deep .analyze-btn.p-button {
-      background: var(--cross-red);
-      border-color: var(--cross-red);
-      color: white;
-      font-size: 1rem;
-      font-weight: 600;
-      padding: 10px 28px;
-      border-radius: 24px;
-      height: 46px;
-    }
-    :host ::ng-deep .analyze-btn.p-button:not(:disabled):hover {
-      background: #b71c1c;
-      border-color: #b71c1c;
-    }
-    :host ::ng-deep .analyze-btn.p-button:disabled {
-      background: rgba(198, 40, 40, 0.3);
-      border-color: rgba(198, 40, 40, 0.3);
-      color: rgba(255, 255, 255, 0.4);
-    }
-    :host ::ng-deep .parallel-btn.p-button {
-      background: rgba(26, 35, 126, 0.5);
-      border-color: rgba(121, 134, 203, 0.5);
-      color: #9fa8da;
-      font-size: 1rem;
-      font-weight: 600;
-      padding: 10px 22px;
-      border-radius: 24px;
-      height: 46px;
-    }
-    :host ::ng-deep .parallel-btn.p-button:not(:disabled):hover {
-      background: rgba(26, 35, 126, 0.7);
-      border-color: rgba(121, 134, 203, 0.8);
-      color: #c5cae9;
-    }
-    :host ::ng-deep .parallel-btn.parallel-btn-active.p-button {
-      background: rgba(26, 35, 126, 0.8);
-      border-color: #7986cb;
-      color: #e8eaf6;
-    }
-    :host ::ng-deep .parallel-btn.p-button:disabled {
-      background: rgba(26, 35, 126, 0.2);
-      border-color: rgba(121, 134, 203, 0.2);
-      color: rgba(159, 168, 218, 0.4);
-    }
-    .selection-preview {
-      color: var(--text-muted);
-      font-style: italic;
-      font-size: 0.9rem;
-      flex: 1;
-    }
-    @media (max-width: 768px) {
-      .main-layout { flex-direction: column; }
+  styles: [
+    `
+      .viewer-shell {
+        min-height: 100vh;
+        display: flex;
+        flex-direction: column;
+        background: var(--bg-dark);
+      }
+      .top-bar {
+        background: #0a0a1f;
+        border-bottom: 2px solid rgba(26, 35, 126, 0.6);
+        display: flex;
+        align-items: center;
+        flex-wrap: wrap;
+        gap: 12px;
+      }
+      .brand {
+        padding: 12px 24px;
+        display: flex;
+        align-items: center;
+        gap: 10px;
+        white-space: nowrap;
+      }
+      .brand-cross {
+        color: var(--gold);
+        font-size: 1.8rem;
+      }
+      .brand-title {
+        color: var(--text-light);
+        font-size: 1.1rem;
+        font-weight: 500;
+        font-family: 'Palatino Linotype', serif;
+      }
+      .main-layout {
+        flex: 1;
+        display: flex;
+        overflow: hidden;
+      }
+      .bible-panel {
+        flex: 1;
+        display: flex;
+        flex-direction: column;
+        overflow-y: auto;
+        max-height: calc(100vh - 160px);
+      }
       .analysis-panel {
-        width: 100%;
-        border-left: none;
-        border-top: 1px solid rgba(121, 134, 203, 0.2);
+        width: 40%;
+        min-width: 320px;
+        border-left: 1px solid rgba(121, 134, 203, 0.2);
+        overflow-y: auto;
+        max-height: calc(100vh - 160px);
+        background: rgba(10, 10, 30, 0.5);
       }
       .parallel-panel {
-        width: 100%;
-        border-left: none;
-        border-top: 1px solid rgba(121, 134, 203, 0.2);
+        width: 40%;
+        min-width: 320px;
+        border-left: 1px solid rgba(121, 134, 203, 0.2);
+        overflow-y: auto;
+        max-height: calc(100vh - 160px);
+        background: rgba(10, 10, 30, 0.5);
       }
-    }
-  `],
+      .loading-chapter {
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        gap: 10px;
+        padding: 60px;
+        color: var(--text-muted);
+        font-size: 1rem;
+      }
+      .verse-footer {
+        padding: 10px 24px;
+        background: #0a0a1f;
+        border-top: 1px solid rgba(26, 35, 126, 0.4);
+        display: flex;
+        align-items: center;
+        justify-content: space-between;
+      }
+      .footer-ref {
+        color: var(--text-muted);
+        font-size: 0.85rem;
+      }
+      .no-selection {
+        font-style: italic;
+        opacity: 0.6;
+      }
+      :host ::ng-deep .nav-btn .p-button {
+        color: var(--text-muted) !important;
+      }
+      .analyze-bar {
+        padding: 14px 24px;
+        background: #0a0a1f;
+        border-top: 2px solid rgba(198, 40, 40, 0.4);
+        display: flex;
+        align-items: center;
+        gap: 20px;
+        flex-wrap: wrap;
+      }
+      :host ::ng-deep .analyze-btn .p-button {
+        background: var(--cross-red);
+        border-color: var(--cross-red);
+        color: white;
+        font-size: 1rem;
+        font-weight: 600;
+        padding: 10px 28px;
+        border-radius: 24px;
+        height: 46px;
+      }
+      :host ::ng-deep .analyze-btn .p-button:not(:disabled):hover {
+        background: #b71c1c;
+        border-color: #b71c1c;
+      }
+      :host ::ng-deep .analyze-btn .p-button:disabled {
+        background: rgba(198, 40, 40, 0.3);
+        border-color: rgba(198, 40, 40, 0.3);
+        color: rgba(255, 255, 255, 0.4);
+      }
+      :host ::ng-deep .parallel-btn.p-button {
+        background: rgba(26, 35, 126, 0.5);
+        border-color: rgba(121, 134, 203, 0.5);
+        color: #9fa8da;
+        font-size: 1rem;
+        font-weight: 600;
+        padding: 10px 22px;
+        border-radius: 24px;
+        height: 46px;
+      }
+      :host ::ng-deep .parallel-btn.p-button:not(:disabled):hover {
+        background: rgba(26, 35, 126, 0.7);
+        border-color: rgba(121, 134, 203, 0.8);
+        color: #c5cae9;
+      }
+      :host ::ng-deep .parallel-btn.parallel-btn-active.p-button {
+        background: rgba(26, 35, 126, 0.8);
+        border-color: #7986cb;
+        color: #e8eaf6;
+      }
+      :host ::ng-deep .parallel-btn.p-button:disabled {
+        background: rgba(26, 35, 126, 0.2);
+        border-color: rgba(121, 134, 203, 0.2);
+        color: rgba(159, 168, 218, 0.4);
+      }
+      .selection-preview {
+        color: var(--text-muted);
+        font-style: italic;
+        font-size: 0.9rem;
+        flex: 1;
+      }
+      @media (max-width: 768px) {
+        .main-layout {
+          flex-direction: column;
+        }
+        .analysis-panel {
+          width: 100%;
+          border-left: none;
+          border-top: 1px solid rgba(121, 134, 203, 0.2);
+        }
+        .parallel-panel {
+          width: 100%;
+          border-left: none;
+          border-top: 1px solid rgba(121, 134, 203, 0.2);
+        }
+      }
+    `,
+  ],
 })
 export class BibleViewerComponent {
   currentNav: BibleNavigation | null = null;
@@ -353,7 +382,8 @@ export class BibleViewerComponent {
     if (!this.currentNav) return;
     const { translationId, translationName } = this.currentNav;
 
-    this.bibleApi.getBooks(translationId)
+    this.bibleApi
+      .getBooks(translationId)
       .pipe(catchError(() => of([])))
       .subscribe((books) => {
         const book = books.find((b) => b.id === event.bookId);
@@ -474,13 +504,19 @@ export class BibleViewerComponent {
 
   prevChapter(): void {
     if (!this.currentNav || !this.hasPrevChapter()) return;
-    this.currentNav = { ...this.currentNav, chapter: this.currentNav.chapter - 1 };
+    this.currentNav = {
+      ...this.currentNav,
+      chapter: this.currentNav.chapter - 1,
+    };
     this.onNavigate(this.currentNav);
   }
 
   nextChapter(): void {
     if (!this.currentNav || !this.hasNextChapter()) return;
-    this.currentNav = { ...this.currentNav, chapter: this.currentNav.chapter + 1 };
+    this.currentNav = {
+      ...this.currentNav,
+      chapter: this.currentNav.chapter + 1,
+    };
     this.onNavigate(this.currentNav);
   }
 

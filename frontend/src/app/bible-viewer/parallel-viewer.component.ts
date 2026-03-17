@@ -19,13 +19,14 @@ import { ParallelTranslation } from '../services/bible-api.service';
             <span class="reference-badge" *ngIf="reference">{{ reference }}</span>
           </div>
         </div>
-        <button
-          pButton
+        <p-button
           icon="pi pi-times"
-          class="p-button-text p-button-rounded close-btn"
+          variant="text"
+          class="close-btn"
           (click)="close.emit()"
           title="Închide panoul"
-        ></button>
+          [rounded]="true"
+        ></p-button>
       </div>
 
       <!-- Loading state -->
@@ -127,7 +128,7 @@ import { ParallelTranslation } from '../services/bible-api.service';
       white-space: nowrap;
     }
 
-    :host ::ng-deep .close-btn.p-button {
+    :host ::ng-deep .close-btn .p-button {
       color: var(--text-muted) !important;
       width: 32px;
       height: 32px;
@@ -135,7 +136,7 @@ import { ParallelTranslation } from '../services/bible-api.service';
       flex-shrink: 0;
     }
 
-    :host ::ng-deep .close-btn.p-button:hover {
+    :host ::ng-deep .close-btn .p-button:hover {
       color: var(--text-light) !important;
       background: rgba(121, 134, 203, 0.15) !important;
     }
