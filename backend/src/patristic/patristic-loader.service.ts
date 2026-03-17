@@ -8,6 +8,17 @@ import {
   PATRISTIC_SUPPORTED_EXTENSIONS,
 } from './pipeline.config';
 
+/**
+ * Entry derived from a NewAdvent-style `index.html` that maps a filename to
+ * its author and work title.
+ */
+export interface IndexEntry {
+  /** Church Father name as listed in the index. */
+  author: string;
+  /** Full title of the work as listed in the index. */
+  work: string;
+}
+
 /** Metadata derived from a patristic source file. */
 export interface PatristicMetadata {
   /** Church Father or author name, inferred from the directory name. */
@@ -66,10 +77,15 @@ export class PatristicLoaderService {
     const files = this.collectFiles(dataDir);
     this.logger.log(`Found ${files.length} patristic source file(s).`);
 
+    const indexMaps = this.buildDirectoryIndexMaps(dataDir);
+
     const allChunks: PatristicChunk[] = [];
     for (const filePath of files) {
       try {
-        const chunks = await this.processFile(filePath, dataDir);
+        const dir = path.dirname(filePath);
+        const fileName = path.basename(filePath).toLowerCase();
+        const indexEntry = indexMaps.get(dir)?.get(fileName);
+        const chunks = await this.processFile(filePath, dataDir, indexEntry);
         allChunks.push(...chunks);
       } catch (error) {
         this.logger.error(`Failed to process file "${filePath}"`, error);
@@ -83,10 +99,14 @@ export class PatristicLoaderService {
   /**
    * Processes a single file: reads, cleans HTML/text, extracts metadata, and
    * splits the content into fixed-size chunks with overlap.
+   *
+   * When `indexEntry` is provided (from a parsed NewAdvent-style `index.html`)
+   * its author/work values override the directory-based inference.
    */
   async processFile(
     filePath: string,
     baseDir: string,
+    indexEntry?: IndexEntry,
   ): Promise<PatristicChunk[]> {
     const raw = fs.readFileSync(filePath, 'utf-8');
     const ext = path.extname(filePath).toLowerCase();
@@ -99,7 +119,7 @@ export class PatristicLoaderService {
       ? this.cleanHtml(raw)
       : raw;
 
-    const metadata = this.extractMetadata(filePath, baseDir, sourceUrl);
+    const metadata = this.extractMetadata(filePath, baseDir, sourceUrl, indexEntry);
     const chunks = this.splitIntoChunks(plainText, metadata);
     return chunks;
   }
@@ -177,11 +197,16 @@ export class PatristicLoaderService {
    *   <baseDir>/<author>/<work>/<chapter>.html   → 3-level
    *   <baseDir>/<author>/<chapter>.html           → 2-level (work = author)
    *   <baseDir>/<chapter>.html                    → 1-level (author = work = 'unknown')
+   *
+   * When `indexEntry` is provided its `author` and `work` values take
+   * precedence over the directory-based inference (used for NewAdvent files
+   * where the `index.html` carries authoritative author/title information).
    */
   extractMetadata(
     filePath: string,
     baseDir: string,
     sourceUrl?: string,
+    indexEntry?: IndexEntry,
   ): PatristicMetadata {
     const relative = path.relative(baseDir, filePath);
     const parts = relative.split(path.sep);
@@ -197,6 +222,11 @@ export class PatristicLoaderService {
     } else if (parts.length === 2) {
       author = parts[0] ?? 'unknown';
       work = author;
+    }
+
+    if (indexEntry) {
+      author = indexEntry.author;
+      work = indexEntry.work;
     }
 
     return { author, work, chapter, sourceFile: filePath, sourceUrl };
@@ -256,6 +286,10 @@ export class PatristicLoaderService {
   /**
    * Recursively collects all files under `dir` whose extension is in
    * `PATRISTIC_SUPPORTED_EXTENSIONS`.
+   *
+   * Files named `index.html` or `index.htm` are intentionally excluded: they
+   * are site-navigation pages (as in the NewAdvent mirror), not primary
+   * content files.
    */
   collectFiles(dir: string): string[] {
     const results: string[] = [];
@@ -266,6 +300,10 @@ export class PatristicLoaderService {
       if (entry.isDirectory()) {
         results.push(...this.collectFiles(fullPath));
       } else if (entry.isFile()) {
+        const nameLower = entry.name.toLowerCase();
+        if (nameLower === 'index.html' || nameLower === 'index.htm') {
+          continue; // skip navigation pages
+        }
         const ext = path.extname(entry.name).toLowerCase();
         if (PATRISTIC_SUPPORTED_EXTENSIONS.includes(ext)) {
           results.push(fullPath);
@@ -274,5 +312,140 @@ export class PatristicLoaderService {
     }
 
     return results;
+  }
+
+  // ─── NewAdvent Index Parsing ─────────────────────────────────────────────────
+
+  /**
+   * Parses a NewAdvent-style `index.html` that lists patristic works per
+   * author, e.g.:
+   *
+   * ```html
+   * <a><strong>Athanasius</strong></a>
+   * <a href="../fathers/2801.htm">Against the Heathen</a>
+   * <a href="../fathers/2802.htm">On the Incarnation of the Word</a>
+   * ```
+   *
+   * Walks the HTML sequentially so that each work link is associated with the
+   * most recently seen author heading.
+   *
+   * Returns a map from **lowercase filename** (e.g. `"2801.htm"`) to its
+   * `{ author, work }` entry.  Non-numeric filenames are ignored so that
+   * unrelated navigation links are not collected.
+   */
+  parseNewAdventIndex(html: string): Map<string, IndexEntry> {
+    const map = new Map<string, IndexEntry>();
+    let currentAuthor = 'unknown';
+
+    /**
+     * A single combined regex is used deliberately so the two patterns are
+     * matched in document order, which lets us associate each work link with
+     * the most recently seen author heading.
+     *
+     * The regex alternates between two forms:
+     *
+     *   Form (1) – author heading  <a [no-href]><strong>Name</strong></a>
+     *     m[1] captures the content inside <strong> (may contain inner tags).
+     *     m[2] and m[3] are undefined.
+     *
+     *   Form (2) – work link  <a href="...path/NNNN.htm[l]">Title</a>
+     *     m[1] is undefined.
+     *     m[2] captures the raw href value.
+     *     m[3] captures the visible link text (work title).
+     */
+    const re =
+      /<a(?:\s[^>]*)?>[\s\r\n]*<strong[^>]*>([\s\S]*?)<\/strong>[\s\r\n]*<\/a>|<a\s[^>]*href=["']([^"']+)["'][^>]*>([^<]+)<\/a>/gi;
+
+    let m: RegExpExecArray | null;
+    while ((m = re.exec(html)) !== null) {
+      if (m[1] !== undefined) {
+        // Author heading: reuse cleanHtml() to correctly strip any inner tags
+        // (e.g. <em>) before normalising whitespace.
+        currentAuthor = this.normalizeWhitespace(this.cleanHtml(m[1]));
+      } else if (m[2] !== undefined && m[3] !== undefined) {
+        // Work link – keep only numbered .htm / .html filenames.
+        const fileName = this.extractFilename(m[2]);
+        if (fileName && /^\d+\.html?$/.test(fileName)) {
+          map.set(fileName, {
+            author: currentAuthor,
+            work: this.normalizeWhitespace(m[3]),
+          });
+        }
+      }
+    }
+
+    return map;
+  }
+
+  // ─── Private helpers ─────────────────────────────────────────────────────────
+
+  /**
+   * Extracts the lowercase filename from an href, stripping any query string
+   * and fragment (e.g. `"../fathers/2801.htm?v=2#top"` → `"2801.htm"`).
+   */
+  private extractFilename(href: string): string {
+    return path.basename(href).split('?')[0].split('#')[0].toLowerCase();
+  }
+
+  /**
+   * Collapses runs of whitespace into a single space and trims the result.
+   * Used to normalise author names and work titles extracted from HTML.
+   */
+  private normalizeWhitespace(text: string): string {
+    return text.replace(/\s+/g, ' ').trim();
+  }
+
+  /**
+   * Walks `baseDir` recursively, finds every `index.html` / `index.htm`, and
+   * attempts to parse it as a NewAdvent-style work listing.
+   *
+   * Returns a map keyed by **absolute directory path** to per-filename index
+   * map (as returned by `parseNewAdventIndex`).  Only directories that
+   * produced at least one entry are included.
+   */
+  buildDirectoryIndexMaps(
+    baseDir: string,
+  ): Map<string, Map<string, IndexEntry>> {
+    const result = new Map<string, Map<string, IndexEntry>>();
+
+    const scan = (dir: string): void => {
+      let entries: fs.Dirent[];
+      try {
+        entries = fs.readdirSync(dir, { withFileTypes: true });
+      } catch {
+        return;
+      }
+
+      for (const entry of entries) {
+        if (entry.isDirectory()) {
+          scan(path.join(dir, entry.name));
+        } else if (
+          entry.isFile() &&
+          (entry.name.toLowerCase() === 'index.html' ||
+            entry.name.toLowerCase() === 'index.htm')
+        ) {
+          try {
+            const html = fs.readFileSync(
+              path.join(dir, entry.name),
+              'utf-8',
+            );
+            const indexMap = this.parseNewAdventIndex(html);
+            if (indexMap.size > 0) {
+              result.set(dir, indexMap);
+              this.logger.log(
+                `Parsed index "${entry.name}" in "${dir}": ${indexMap.size} entry(ies).`,
+              );
+            }
+          } catch (error) {
+            this.logger.warn(
+              `Could not parse index file "${path.join(dir, entry.name)}": ${error}`,
+            );
+          }
+        }
+      }
+    };
+
+    scan(baseDir);
+    return result;
   }
 }

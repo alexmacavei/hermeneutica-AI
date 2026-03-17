@@ -162,6 +162,19 @@ describe('PatristicLoaderService', () => {
 
       expect(meta.sourceUrl).toBe(url);
     });
+
+    it('should override author and work from indexEntry when provided', () => {
+      const baseDir = '/data/patristic';
+      const filePath = path.join(baseDir, 'fathers', '2801.htm');
+      const meta = service.extractMetadata(filePath, baseDir, undefined, {
+        author: 'Athanasius',
+        work: 'Against the Heathen',
+      });
+
+      expect(meta.author).toBe('Athanasius');
+      expect(meta.work).toBe('Against the Heathen');
+      expect(meta.chapter).toBe('2801');
+    });
   });
 
   // ─── splitIntoChunks() ──────────────────────────────────────────────────────
@@ -241,6 +254,153 @@ describe('PatristicLoaderService', () => {
       expect(files).not.toContain(
         path.join('/data/patristic', 'ignore.pdf'),
       );
+    });
+
+    it('should exclude index.html navigation files', () => {
+      const fakeEntries = [
+        { name: 'index.html', isDirectory: () => false, isFile: () => true },
+        { name: 'INDEX.HTM', isDirectory: () => false, isFile: () => true },
+        { name: '2801.htm', isDirectory: () => false, isFile: () => true },
+      ] as unknown as fs.Dirent[];
+
+      (mockFs.readdirSync as jest.Mock).mockReturnValueOnce(fakeEntries);
+
+      const files = service.collectFiles('/data/patristic/fathers');
+
+      expect(files).not.toContain(
+        path.join('/data/patristic/fathers', 'index.html'),
+      );
+      expect(files).not.toContain(
+        path.join('/data/patristic/fathers', 'INDEX.HTM'),
+      );
+      expect(files).toContain(
+        path.join('/data/patristic/fathers', '2801.htm'),
+      );
+    });
+  });
+
+  // ─── parseNewAdventIndex() ──────────────────────────────────────────────────
+
+  describe('parseNewAdventIndex()', () => {
+    it('should parse author headings and associate works correctly', () => {
+      const html = `
+        <p><a><strong>Athanasius</strong></a>
+        <font color="#EC9800">[DOCTOR]</font>
+        <br>&nbsp;&nbsp;-&nbsp;<a href="../fathers/2801.htm">Against the Heathen</a>
+        <br>&nbsp;&nbsp;-&nbsp;<a href="../fathers/2802.htm">On the Incarnation of the Word</a>
+        </p>`;
+
+      const map = service.parseNewAdventIndex(html);
+
+      expect(map.get('2801.htm')).toEqual({
+        author: 'Athanasius',
+        work: 'Against the Heathen',
+      });
+      expect(map.get('2802.htm')).toEqual({
+        author: 'Athanasius',
+        work: 'On the Incarnation of the Word',
+      });
+    });
+
+    it('should associate each work with the most recently seen author', () => {
+      const html = `
+        <a><strong>Athanasius</strong></a>
+        <a href="../fathers/2801.htm">Against the Heathen</a>
+        <a><strong>Basil</strong></a>
+        <a href="../fathers/3001.htm">Letters of St. Basil</a>`;
+
+      const map = service.parseNewAdventIndex(html);
+
+      expect(map.get('2801.htm')?.author).toBe('Athanasius');
+      expect(map.get('3001.htm')?.author).toBe('Basil');
+    });
+
+    it('should ignore non-numeric hrefs (navigation links)', () => {
+      const html = `
+        <a><strong>Tertullian</strong></a>
+        <a href="../fathers/0301.htm">Apology</a>
+        <a href="mailto:webmaster@newadvent.org">Contact</a>
+        <a href="about.html">About</a>`;
+
+      const map = service.parseNewAdventIndex(html);
+
+      expect(map.size).toBe(1);
+      expect(map.has('0301.htm')).toBe(true);
+    });
+
+    it('should return an empty map for HTML with no recognisable entries', () => {
+      const html = '<p>No links here at all.</p>';
+      const map = service.parseNewAdventIndex(html);
+      expect(map.size).toBe(0);
+    });
+
+    it('should normalise filenames to lowercase', () => {
+      const html = `
+        <a><strong>Origen</strong></a>
+        <a href="../fathers/0900.HTM">De Principiis</a>`;
+
+      const map = service.parseNewAdventIndex(html);
+
+      expect(map.has('0900.htm')).toBe(true);
+      expect(map.get('0900.htm')?.author).toBe('Origen');
+    });
+
+    it('should strip extra tags from the author name', () => {
+      const html = `
+        <a><strong>Clement <em>of Alexandria</em></strong></a>
+        <a href="../fathers/0210.htm">Exhortation to the Heathen</a>`;
+
+      const map = service.parseNewAdventIndex(html);
+
+      expect(map.get('0210.htm')?.author).toBe('Clement of Alexandria');
+    });
+  });
+
+  // ─── buildDirectoryIndexMaps() ──────────────────────────────────────────────
+
+  describe('buildDirectoryIndexMaps()', () => {
+    it('should find and parse an index.html in a subdirectory', () => {
+      const baseDir = '/data/patristic';
+      const fathersDir = path.join(baseDir, 'fathers');
+      const indexHtml = `
+        <a><strong>Athanasius</strong></a>
+        <a href="../fathers/2801.htm">Against the Heathen</a>`;
+
+      // readdirSync for baseDir → one subdirectory "fathers"
+      (mockFs.readdirSync as jest.Mock)
+        .mockReturnValueOnce([
+          { name: 'fathers', isDirectory: () => true, isFile: () => false },
+        ] as unknown as fs.Dirent[])
+        // readdirSync for fathers/ → index.html
+        .mockReturnValueOnce([
+          { name: 'index.html', isDirectory: () => false, isFile: () => true },
+        ] as unknown as fs.Dirent[]);
+
+      (mockFs.readFileSync as jest.Mock).mockReturnValue(indexHtml);
+
+      const maps = service.buildDirectoryIndexMaps(baseDir);
+
+      expect(maps.has(fathersDir)).toBe(true);
+      expect(maps.get(fathersDir)?.get('2801.htm')).toEqual({
+        author: 'Athanasius',
+        work: 'Against the Heathen',
+      });
+    });
+
+    it('should not add a directory entry when no entries are parsed', () => {
+      const baseDir = '/data/patristic';
+
+      (mockFs.readdirSync as jest.Mock)
+        .mockReturnValueOnce([
+          { name: 'index.html', isDirectory: () => false, isFile: () => true },
+        ] as unknown as fs.Dirent[]);
+
+      // index.html has no recognisable entries
+      (mockFs.readFileSync as jest.Mock).mockReturnValue('<p>Empty</p>');
+
+      const maps = service.buildDirectoryIndexMaps(baseDir);
+
+      expect(maps.size).toBe(0);
     });
   });
 });
