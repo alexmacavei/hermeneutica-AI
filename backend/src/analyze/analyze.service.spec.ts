@@ -9,7 +9,7 @@ describe('AnalyzeService', () => {
   let aiService: AiService;
 
   const mockAiService = {
-    generateFourCards: jest.fn(),
+    generateThreeCards: jest.fn(),
   };
 
   const mockPatristicRagService = {
@@ -35,15 +35,14 @@ describe('AnalyzeService', () => {
 
   describe('analyze()', () => {
     it('should return analysis result with patristics field from RAG service', async () => {
-      const mockCards = {
+      const mockThreeCards = {
         hermeneutics: 'Interpretare în 4 sensuri: literal, tropologic, alegoric, anagogic',
         philosophy: 'Platonism creștin: scala ființei, theosis',
-        patristics: 'Ioan Gură de Aur: Omilii la Matei (from LLM)',
         philology: 'πτωχοί (ptōchoi): cerșetor total, Strong\'s G4434',
       };
       const ragPatristics = 'Ioan Gură de Aur – Omilii la Ioan: Comentariu patristic RAG.';
 
-      mockAiService.generateFourCards.mockResolvedValue(mockCards);
+      mockAiService.generateThreeCards.mockResolvedValue(mockThreeCards);
       mockPatristicRagService.buildPatristicSummary.mockResolvedValue(ragPatristics);
 
       const dto: AnalyzeDto = {
@@ -57,19 +56,18 @@ describe('AnalyzeService', () => {
       expect(result.reference).toBe('Matei 5:3');
       expect(result.language).toBe('Sinodală Română');
       expect(result.text).toBe(dto.text);
-      // The patristics field must come from the RAG service, not the LLM
+      // The patristics field must come exclusively from the RAG service
       expect(result.cards.patristics).toBe(ragPatristics);
-      expect(result.cards.hermeneutics).toBe(mockCards.hermeneutics);
-      expect(result.cards.philosophy).toBe(mockCards.philosophy);
-      expect(result.cards.philology).toBe(mockCards.philology);
+      expect(result.cards.hermeneutics).toBe(mockThreeCards.hermeneutics);
+      expect(result.cards.philosophy).toBe(mockThreeCards.philosophy);
+      expect(result.cards.philology).toBe(mockThreeCards.philology);
       expect(result.timestamp).toBeDefined();
     });
 
     it('should use default language when not provided', async () => {
-      mockAiService.generateFourCards.mockResolvedValue({
+      mockAiService.generateThreeCards.mockResolvedValue({
         hermeneutics: 'test',
         philosophy: 'test',
-        patristics: 'test',
         philology: 'test',
       });
       mockPatristicRagService.buildPatristicSummary.mockResolvedValue('rag patristics');
@@ -83,11 +81,10 @@ describe('AnalyzeService', () => {
       expect(result.language).toBe('Sinodală Română');
     });
 
-    it('should call aiService.generateFourCards with correct params', async () => {
-      mockAiService.generateFourCards.mockResolvedValue({
+    it('should call aiService.generateThreeCards with correct params', async () => {
+      mockAiService.generateThreeCards.mockResolvedValue({
         hermeneutics: '',
         philosophy: '',
-        patristics: '',
         philology: '',
       });
       mockPatristicRagService.buildPatristicSummary.mockResolvedValue('');
@@ -100,7 +97,7 @@ describe('AnalyzeService', () => {
 
       await service.analyze(dto);
 
-      expect(aiService.generateFourCards).toHaveBeenCalledWith(
+      expect(aiService.generateThreeCards).toHaveBeenCalledWith(
         'La început era Cuvântul',
         'Ioan 1:1',
         'Greacă',
@@ -108,10 +105,9 @@ describe('AnalyzeService', () => {
     });
 
     it('should call patristicRagService.buildPatristicSummary with text and range', async () => {
-      mockAiService.generateFourCards.mockResolvedValue({
+      mockAiService.generateThreeCards.mockResolvedValue({
         hermeneutics: '',
         philosophy: '',
-        patristics: '',
         philology: '',
       });
       mockPatristicRagService.buildPatristicSummary.mockResolvedValue('patristic result');
@@ -131,10 +127,9 @@ describe('AnalyzeService', () => {
     });
 
     it('should return timestamp in ISO format', async () => {
-      mockAiService.generateFourCards.mockResolvedValue({
+      mockAiService.generateThreeCards.mockResolvedValue({
         hermeneutics: '',
         philosophy: '',
-        patristics: '',
         philology: '',
       });
       mockPatristicRagService.buildPatristicSummary.mockResolvedValue('');

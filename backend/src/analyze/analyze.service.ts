@@ -23,20 +23,18 @@ export class AnalyzeService {
   async analyze(dto: AnalyzeDto): Promise<AnalysisResult> {
     const language = dto.language ?? 'Sinodală Română';
 
-    const [cards, patristics] = await Promise.all([
-      this.aiService.generateFourCards(dto.text, dto.range, language),
+    const [threeCards, patristics] = await Promise.all([
+      this.aiService.generateThreeCards(dto.text, dto.range, language),
       this.patristicRagService.buildPatristicSummary(dto.text, dto.range),
     ]);
 
-    this.logger.debug(
-      `Replacing LLM patristics with RAG result for "${dto.range}"`,
-    );
+    this.logger.debug(`Assembled patristics via RAG for "${dto.range}"`);
 
     return {
       reference: dto.range,
       language,
       text: dto.text,
-      cards: { ...cards, patristics },
+      cards: { ...threeCards, patristics },
       timestamp: new Date().toISOString(),
     };
   }

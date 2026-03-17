@@ -3,6 +3,10 @@ import { AiService } from '../ai/ai.service';
 import { DatabaseService } from '../database/database.service';
 import { SEARCH_PATRISTIC_BY_EMBEDDING } from './patristic-queries';
 import { PATRISTIC_SIMILARITY_THRESHOLD } from './pipeline.config';
+import {
+  PATRISTIC_RAG_SYSTEM_PROMPT,
+  buildPatristicUserMessage,
+} from './patristic-rag.prompts';
 
 /** A single patristic chunk returned by the similarity search. */
 export interface PatristicChunkResult {
@@ -62,6 +66,8 @@ export class PatristicRagService {
     }
 
     try {
+      // Embed the query verse so it can be compared against the stored
+      // patristic chunk embeddings using pgvector cosine similarity.
       const queryText = `${reference} ${verseText}`;
       const embedding = await this.aiService.generateEmbedding(queryText);
       const vectorStr = `[${embedding.join(',')}]`;
@@ -115,27 +121,10 @@ export class PatristicRagService {
       )
       .join('\n\n');
 
-    const systemPrompt = `Ești un teolog ortodox expert în literatura patristică.
-Vei genera comentarii patristice EXCLUSIV pe baza fragmentelor furnizate în mesajul utilizatorului.
-
-Reguli stricte:
-- Nu inventa autori sau lucrări care nu apar explicit în fragmentele de context primite.
-- Folosește un ton sobru, teologic, academic; evită stilul informal.
-- Oferă 2–3 comentarii scurte, fiecare cu numele autorului și al operei, în limba română.
-- Dacă fragmentele nu sunt suficient de relevante pentru verset, returnează exact mesajul: "${PATRISTIC_FALLBACK}"
-- Nu adăuga informații din afara contextului primit.`;
-
-    const userMessage = `Verset: ${reference} – „${verseText}"
-
-Fragmente patristice relevante din corpusul local:
-${contextBlocks}
-
-Pe baza EXCLUSIVĂ a fragmentelor de mai sus, oferă 2–3 comentarii patristice scurte (max 250 cuvinte total), cu autorul și opera pentru fiecare comentariu.`;
-
     const result = await this.aiService.chat(
       [
-        { role: 'system', content: systemPrompt },
-        { role: 'user', content: userMessage },
+        { role: 'system', content: PATRISTIC_RAG_SYSTEM_PROMPT },
+        { role: 'user', content: buildPatristicUserMessage(reference, verseText, contextBlocks) },
       ],
       { temperature: 0.3, max_tokens: 600 },
     );
