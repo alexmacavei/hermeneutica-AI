@@ -174,7 +174,7 @@ describe('SearchService', () => {
     });
 
     it('should skip ingestion when chapter is already indexed', async () => {
-      mockPool.query.mockResolvedValue({ rows: [{ count: '31' }] });
+      mockPool.query.mockResolvedValue({ rows: [{ count: 31 }] });
 
       await service.ingestChapter('BSR', 'GEN', 'Facerea', 1, [
         { number: '1', text: 'La început a făcut Dumnezeu cerurile şi pământul.' },
@@ -185,7 +185,7 @@ describe('SearchService', () => {
 
     it('should ingest verses when chapter is not yet indexed', async () => {
       const mockEmbedding = new Array(1536).fill(0.2);
-      mockPool.query.mockResolvedValueOnce({ rows: [{ count: '0' }] });
+      mockPool.query.mockResolvedValueOnce({ rows: [{ count: 0 }] });
 
       const mockClient = {
         query: jest.fn().mockResolvedValue({}),

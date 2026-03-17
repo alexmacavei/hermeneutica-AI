@@ -32,7 +32,7 @@ interface VerseRow {
 }
 
 interface CountRow {
-  count: string;
+  count: number;
 }
 
 /**
@@ -131,7 +131,7 @@ export class SearchService {
            AND chapter_number = $3`,
         [translationId, bookId, chapterNumber],
       );
-      if (Number(existing[0]?.count ?? 0) > 0) return;
+      if ((existing[0]?.count ?? 0) > 0) return;
 
       const texts = verses.map((v) => v.text);
       const embeddings = await this.generateEmbeddings(texts);
@@ -188,7 +188,11 @@ export class SearchService {
       model: this.embeddingModel,
       input: text,
     });
-    return response.data[0]!.embedding;
+    const embedding = response.data[0]?.embedding;
+    if (!embedding) {
+      throw new Error('OpenAI returned no embedding for the given text.');
+    }
+    return embedding;
   }
 
   private async generateEmbeddings(texts: string[]): Promise<number[][]> {
