@@ -24,7 +24,7 @@
 
 ## 📖 Descriere / Description
 
-**RO:** AI Hermeneutica Orthodoxa este o aplicație web full-stack care permite navigarea textului biblic (via helloao.org API) și oferă analiză hermeneutică ortodoxă în 4 dimensiuni prin AI (GPT-4o):
+**RO:** AI Hermeneutica Orthodoxa este o aplicație web full-stack care permite navigarea textului biblic (via helloao.org API) și oferă analiză hermeneutică ortodoxă în 4 dimensiuni prin AI (GPT-4o), precum și studiu biblic paralel între toate traducerile disponibile:
 
 | Card | Conținut |
 |------|----------|
@@ -32,8 +32,9 @@
 | 🧠 **Influențe Filozofice** | Platonism creștin, Neoplatonism, Stoicism patristic |
 | ⛪ **Comentarii Patristice** | Citații din Sf. Ioan Gură de Aur, Chiril Alexandrianul, Vasile cel Mare etc. |
 | 🔤 **Analiză Filologică** | Greacă/Ebraică biblică, Strong's, LXX, morfologie |
+| 📚 **Studiu Paralel** | Versetul selectat afișat simultan în toate traducerile disponibile (N/A pentru traduceri cu canon diferit) |
 
-**EN:** AI Hermeneutica Orthodoxa is a full-stack web application for navigating Biblical text (via helloao.org API) and receiving AI-powered orthodox hermeneutic analysis across 4 dimensions via GPT-4o.
+**EN:** AI Hermeneutica Orthodoxa is a full-stack web application for navigating Biblical text (via helloao.org API), receiving AI-powered orthodox hermeneutic analysis across 4 dimensions via GPT-4o, and comparing selected verses side-by-side across all available translations.
 
 ---
 
@@ -99,6 +100,7 @@ AI-Hermeneutica-Orthodoxa/
 │   │   │   ├── bible-selector.component.ts
 │   │   │   ├── bible-text.component.ts
 │   │   │   ├── bible-viewer.component.ts
+│   │   │   ├── parallel-viewer.component.ts  # Studiu paralel
 │   │   │   └── verse-highlighter.directive.ts
 │   │   ├── analysis/           # 4 Carduri rezultate
 │   │   │   └── results-viewer.component.ts
@@ -217,6 +219,31 @@ Analizează un fragment biblic și returnează 4 carduri hermeneutice.
 }
 ```
 
+### `GET /api/bible/parallel/:bookId/:chapter`
+
+Returnează versetul/versetele selectate din toate traducerile disponibile (mai puțin traducerea curentă), în paralel. Folosit de panoul "Studiu Paralel".
+
+**Query params:**
+- `verseStart` *(obligatoriu)* – numărul primului verset
+- `verseEnd` *(opțional)* – numărul ultimului verset (implicit = `verseStart`)
+- `exclude` *(opțional)* – ID-ul traducerii active; aceasta va fi omisă din răspuns
+
+```bash
+GET /api/bible/parallel/JHN/3?verseStart=16&exclude=BSR
+```
+
+**Response:**
+```json
+[
+  { "translationId": "WLC",  "translationName": "Westminster Leningrad Codex", "available": false, "verses": [] },
+  { "translationId": "LXX",  "translationName": "Septuaginta",                 "available": false, "verses": [] },
+  { "translationId": "UGNT", "translationName": "Unlocked Greek New Testament","available": true,  "verses": [{ "number": "16", "text": "Οὕτως γὰρ ἠγάπησεν..." }] },
+  { "translationId": "KJVA", "translationName": "King James Version",          "available": true,  "verses": [{ "number": "16", "text": "For God so loved..."   }] }
+]
+```
+
+> **Notă:** Traducerile cu un canon diferit (ex. `WLC` – doar VT, `UGNT` – doar NT) vor returna `available: false` și `verses: []` pentru versetele din afara canonului lor.
+
 ### `GET /api/bible/translations`
 
 Listează traducerile biblice disponibile.
@@ -310,6 +337,7 @@ Arii de contribuție:
 - [ ] Adăugare cărți biblice complete
 - [ ] Integrare Ebraică (VT cu Strong's)
 - [ ] Căutare semantică (pgvector)
+- [x] Studiu paralel (comparare versete între traduceri)
 - [ ] Export PDF analize
 - [ ] Traducere în alte limbi
 
