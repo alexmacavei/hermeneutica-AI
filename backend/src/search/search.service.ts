@@ -1,7 +1,11 @@
 import { Injectable, Logger } from '@nestjs/common';
-import { ConfigService } from '@nestjs/config';
-import OpenAI from 'openai';
+import { AiService } from '../ai/ai.service';
 import { DatabaseService } from '../database/database.service';
+import {
+  COUNT_INDEXED_VERSES,
+  SEARCH_VERSES_BY_EMBEDDING,
+  UPSERT_VERSE_EMBEDDING,
+} from './search.queries';
 
 export interface SearchResult {
   translationId: string;
@@ -46,18 +50,11 @@ interface CountRow {
 @Injectable()
 export class SearchService {
   private readonly logger = new Logger(SearchService.name);
-  private readonly openai: OpenAI;
-  private readonly hasApiKey: boolean;
-  private readonly embeddingModel = 'text-embedding-3-small';
 
   constructor(
-    private readonly configService: ConfigService,
+    private readonly aiService: AiService,
     private readonly databaseService: DatabaseService,
-  ) {
-    const apiKey = this.configService.get<string>('openai.apiKey') ?? '';
-    this.hasApiKey = apiKey.length > 0;
-    this.openai = new OpenAI({ apiKey });
-  }
+  ) {}
 
   /**
    * Searches for Bible verses semantically related to `query` within the
@@ -70,22 +67,16 @@ export class SearchService {
     limit = 10,
   ): Promise<SearchResponse> {
     const pool = this.databaseService.getPool();
-    if (!pool || !this.hasApiKey) {
+    if (!pool || !this.aiService.hasApiKey) {
       return { query, translationId, results: [], total: 0 };
     }
 
     try {
-      const embedding = await this.generateEmbedding(query);
+      const embedding = await this.aiService.generateEmbedding(query);
       const vectorStr = `[${embedding.join(',')}]`;
 
       const { rows } = await pool.query<VerseRow>(
-        `SELECT translation_id, book_id, book_name,
-                chapter_number, verse_number, verse_text,
-                1 - (embedding <=> $1::vector) AS similarity
-         FROM verse_embeddings
-         WHERE translation_id = $2
-         ORDER BY embedding <=> $1::vector
-         LIMIT $3`,
+        SEARCH_VERSES_BY_EMBEDDING,
         [vectorStr, translationId, limit],
       );
 
@@ -120,21 +111,17 @@ export class SearchService {
     verses: { number: string; text: string }[],
   ): Promise<void> {
     const pool = this.databaseService.getPool();
-    if (!pool || !this.hasApiKey || verses.length === 0) return;
+    if (!pool || !this.aiService.hasApiKey || verses.length === 0) return;
 
     try {
       const { rows: existing } = await pool.query<CountRow>(
-        `SELECT count(*)::int AS count
-         FROM verse_embeddings
-         WHERE translation_id = $1
-           AND book_id        = $2
-           AND chapter_number = $3`,
+        COUNT_INDEXED_VERSES,
         [translationId, bookId, chapterNumber],
       );
       if ((existing[0]?.count ?? 0) > 0) return;
 
       const texts = verses.map((v) => v.text);
-      const embeddings = await this.generateEmbeddings(texts);
+      const embeddings = await this.aiService.generateEmbeddings(texts);
 
       const client = await pool.connect();
       try {
@@ -145,23 +132,15 @@ export class SearchService {
           if (!verse || !embedding) continue;
 
           const vectorStr = `[${embedding.join(',')}]`;
-          await client.query(
-            `INSERT INTO verse_embeddings
-               (translation_id, book_id, book_name,
-                chapter_number, verse_number, verse_text, embedding)
-             VALUES ($1, $2, $3, $4, $5, $6, $7::vector)
-             ON CONFLICT (translation_id, book_id, chapter_number, verse_number)
-             DO NOTHING`,
-            [
-              translationId,
-              bookId,
-              bookName,
-              chapterNumber,
-              parseInt(verse.number, 10),
-              verse.text,
-              vectorStr,
-            ],
-          );
+          await client.query(UPSERT_VERSE_EMBEDDING, [
+            translationId,
+            bookId,
+            bookName,
+            chapterNumber,
+            parseInt(verse.number, 10),
+            verse.text,
+            vectorStr,
+          ]);
         }
         await client.query('COMMIT');
         this.logger.log(
@@ -179,28 +158,5 @@ export class SearchService {
         error,
       );
     }
-  }
-
-  // ── Private helpers ──────────────────────────────────────────────────────
-
-  private async generateEmbedding(text: string): Promise<number[]> {
-    const response = await this.openai.embeddings.create({
-      model: this.embeddingModel,
-      input: text,
-    });
-    const embedding = response.data[0]?.embedding;
-    if (!embedding) {
-      throw new Error('OpenAI returned no embedding for the given text.');
-    }
-    return embedding;
-  }
-
-  private async generateEmbeddings(texts: string[]): Promise<number[][]> {
-    if (texts.length === 0) return [];
-    const response = await this.openai.embeddings.create({
-      model: this.embeddingModel,
-      input: texts,
-    });
-    return response.data.map((d) => d.embedding);
   }
 }

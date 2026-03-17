@@ -1,32 +1,16 @@
 import { Test, TestingModule } from '@nestjs/testing';
-import { ConfigService } from '@nestjs/config';
-import { SearchService, SearchResponse } from './search.service';
+import { SearchService } from './search.service';
+import { AiService } from '../ai/ai.service';
 import { DatabaseService } from '../database/database.service';
-
-// Mock the openai module
-jest.mock('openai', () => {
-  return {
-    __esModule: true,
-    default: jest.fn().mockImplementation(() => ({
-      embeddings: {
-        create: jest.fn(),
-      },
-    })),
-  };
-});
 
 describe('SearchService', () => {
   let service: SearchService;
-  let databaseService: DatabaseService;
   let mockPool: { query: jest.Mock; connect: jest.Mock };
-  let mockOpenAiEmbeddings: { create: jest.Mock };
 
-  const mockConfigService = {
-    get: jest.fn((key: string) => {
-      if (key === 'openai.apiKey') return 'sk-test-key';
-      if (key === 'databaseUrl') return 'postgresql://test:test@localhost:5432/test';
-      return undefined;
-    }),
+  const mockAiService = {
+    hasApiKey: true,
+    generateEmbedding: jest.fn(),
+    generateEmbeddings: jest.fn(),
   };
 
   const mockDatabaseService = {
@@ -44,19 +28,12 @@ describe('SearchService', () => {
     const module: TestingModule = await Test.createTestingModule({
       providers: [
         SearchService,
-        { provide: ConfigService, useValue: mockConfigService },
+        { provide: AiService, useValue: mockAiService },
         { provide: DatabaseService, useValue: mockDatabaseService },
       ],
     }).compile();
 
     service = module.get<SearchService>(SearchService);
-    databaseService = module.get<DatabaseService>(DatabaseService);
-
-    // Get the mocked openai instance
-    // eslint-disable-next-line @typescript-eslint/no-require-imports
-    const OpenAI = require('openai').default;
-    const openaiInstance = OpenAI.mock.results[0]?.value;
-    mockOpenAiEmbeddings = openaiInstance?.embeddings;
   });
 
   afterEach(() => {
@@ -78,17 +55,12 @@ describe('SearchService', () => {
     });
 
     it('should return empty results when API key is not set', async () => {
-      const configWithoutKey = {
-        get: jest.fn((key: string) => {
-          if (key === 'openai.apiKey') return '';
-          return undefined;
-        }),
-      };
+      const aiServiceWithoutKey = { ...mockAiService, hasApiKey: false };
 
       const module: TestingModule = await Test.createTestingModule({
         providers: [
           SearchService,
-          { provide: ConfigService, useValue: configWithoutKey },
+          { provide: AiService, useValue: aiServiceWithoutKey },
           { provide: DatabaseService, useValue: mockDatabaseService },
         ],
       }).compile();
@@ -106,9 +78,7 @@ describe('SearchService', () => {
 
     it('should return search results from database', async () => {
       const mockEmbedding = new Array(1536).fill(0.1);
-      mockOpenAiEmbeddings.create.mockResolvedValue({
-        data: [{ embedding: mockEmbedding }],
-      });
+      mockAiService.generateEmbedding.mockResolvedValue(mockEmbedding);
 
       mockPool.query.mockResolvedValue({
         rows: [
@@ -143,9 +113,7 @@ describe('SearchService', () => {
 
     it('should return empty results on database error', async () => {
       const mockEmbedding = new Array(1536).fill(0.1);
-      mockOpenAiEmbeddings.create.mockResolvedValue({
-        data: [{ embedding: mockEmbedding }],
-      });
+      mockAiService.generateEmbedding.mockResolvedValue(mockEmbedding);
 
       mockPool.query.mockRejectedValue(new Error('DB connection failed'));
 
@@ -170,7 +138,7 @@ describe('SearchService', () => {
         ]),
       ).resolves.toBeUndefined();
 
-      expect(mockOpenAiEmbeddings?.create).not.toHaveBeenCalled();
+      expect(mockAiService.generateEmbeddings).not.toHaveBeenCalled();
     });
 
     it('should skip ingestion when chapter is already indexed', async () => {
@@ -180,7 +148,7 @@ describe('SearchService', () => {
         { number: '1', text: 'La început a făcut Dumnezeu cerurile şi pământul.' },
       ]);
 
-      expect(mockOpenAiEmbeddings?.create).not.toHaveBeenCalled();
+      expect(mockAiService.generateEmbeddings).not.toHaveBeenCalled();
     });
 
     it('should ingest verses when chapter is not yet indexed', async () => {
@@ -193,19 +161,17 @@ describe('SearchService', () => {
       };
       mockPool.connect.mockResolvedValue(mockClient);
 
-      mockOpenAiEmbeddings.create.mockResolvedValue({
-        data: [
-          { embedding: mockEmbedding },
-          { embedding: mockEmbedding },
-        ],
-      });
+      mockAiService.generateEmbeddings.mockResolvedValue([
+        mockEmbedding,
+        mockEmbedding,
+      ]);
 
       await service.ingestChapter('BSR', 'GEN', 'Facerea', 1, [
         { number: '1', text: 'La început a făcut Dumnezeu cerurile şi pământul.' },
         { number: '2', text: 'Şi pământul era netocmit şi gol.' },
       ]);
 
-      expect(mockOpenAiEmbeddings.create).toHaveBeenCalledTimes(1);
+      expect(mockAiService.generateEmbeddings).toHaveBeenCalledTimes(1);
       expect(mockClient.query).toHaveBeenCalledWith('BEGIN');
       expect(mockClient.query).toHaveBeenCalledWith('COMMIT');
       expect(mockClient.release).toHaveBeenCalled();
@@ -215,7 +181,7 @@ describe('SearchService', () => {
       await service.ingestChapter('BSR', 'GEN', 'Facerea', 1, []);
 
       expect(mockPool.query).not.toHaveBeenCalled();
-      expect(mockOpenAiEmbeddings?.create).not.toHaveBeenCalled();
+      expect(mockAiService.generateEmbeddings).not.toHaveBeenCalled();
     });
   });
 });

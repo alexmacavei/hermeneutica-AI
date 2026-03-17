@@ -34,8 +34,9 @@ export class AiService {
   private readonly openai: OpenAI;
   private readonly prompts: HermeneuticaPromptConfig;
   private readonly model: string;
-  private readonly hasApiKey: boolean;
+  readonly hasApiKey: boolean;
   private readonly systemMessage: string;
+  private readonly embeddingModel = 'text-embedding-3-small';
 
   constructor(private readonly configService: ConfigService) {
     const apiKey = this.configService.get<string>('openai.apiKey') ?? '';
@@ -92,6 +93,34 @@ export class AiService {
       this.logger.error('OpenAI API error', error);
       return this.getFallbackCards(reference, text);
     }
+  }
+
+  /**
+   * Generates a single embedding vector for the given text.
+   * Throws if the API returns an empty response.
+   */
+  async generateEmbedding(text: string): Promise<number[]> {
+    const response = await this.openai.embeddings.create({
+      model: this.embeddingModel,
+      input: text,
+    });
+    const embedding = response.data[0]?.embedding;
+    if (!embedding) {
+      throw new Error('OpenAI returned no embedding for the given text.');
+    }
+    return embedding;
+  }
+
+  /**
+   * Generates embedding vectors for a batch of texts in a single API call.
+   */
+  async generateEmbeddings(texts: string[]): Promise<number[][]> {
+    if (texts.length === 0) return [];
+    const response = await this.openai.embeddings.create({
+      model: this.embeddingModel,
+      input: texts,
+    });
+    return response.data.map((d) => d.embedding);
   }
 
   private getFallbackCards(
