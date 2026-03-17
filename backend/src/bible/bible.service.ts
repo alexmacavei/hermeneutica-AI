@@ -3,12 +3,12 @@ import {
   Injectable,
   InternalServerErrorException,
   Logger,
-  NotFoundException
-} from '@nestjs/common';
-import { join } from 'path';
-import { access, readFile } from 'fs/promises';
+  NotFoundException,
+} from "@nestjs/common";
+import { join } from "path";
+import { access, readFile } from "fs/promises";
 
-const BIBLE_API_BASE = 'https://bible.helloao.org/api';
+const BIBLE_API_BASE = "https://bible.helloao.org/api";
 
 /** Maximum chapter number accepted in API requests (Psalms has 150; 200 gives comfortable headroom). */
 const MAX_CHAPTER = 200;
@@ -23,11 +23,11 @@ const MAX_VERSE = 500;
  * and Romanian Synodal Bible (local file; included only when available).
  */
 const ALLOWED_TRANSLATION_IDS = [
-  'hbo_wlc',
-  'grc_bre',
-  'grc_byz',
-  'eng_kja',
-  'sinodala_ro',
+  "hbo_wlc",
+  "grc_bre",
+  "grc_byz",
+  "eng_kja",
+  "ro_sinodala",
 ] as const;
 
 // ─── Upstream API types ────────────────────────────────────────────────────
@@ -138,21 +138,21 @@ export class BibleService {
     // Process each allowed translation
     const results = await Promise.all(
       ALLOWED_TRANSLATION_IDS.map(async (id) => {
-        if (id === 'sinodala_ro') {
+        if (id === "ro_sinodala") {
           // Local translation
           const localBiblePath = this.getLocalBiblePath();
           try {
             await access(localBiblePath);
             return {
-              id: 'sinodala_ro',
-              name: 'Biblia Sinodală',
-              englishName: 'Romanian Synodal Bible',
-              language: 'ro',
-              textDirection: 'ltr',
+              id: "ro_sinodala",
+              name: "Biblia Sinodală",
+              englishName: "Romanian Synodal Bible",
+              language: "ro",
+              textDirection: "ltr",
             };
           } catch {
             this.logger.warn(
-              `Local Bible file not found at ${localBiblePath}; sinodala_ro translation will not be available.`,
+              `Local Bible file not found at ${localBiblePath}; ro_sinodala translation will not be available.`,
             );
             return null;
           }
@@ -200,14 +200,14 @@ export class BibleService {
   }
 
   async getBooks(translationId: string): Promise<Book[]> {
-    this.validateSegment(translationId, 'translationId');
+    this.validateSegment(translationId, "translationId");
 
     if (this.booksCache.has(translationId)) {
       return this.booksCache.get(translationId)!;
     }
 
     let books: Book[];
-    if (translationId === 'sinodala_ro') {
+    if (translationId === "ro_sinodala") {
       const localData = await this.loadLocalBible();
       books = localData.books.map((b) => ({
         id: b.id,
@@ -235,14 +235,14 @@ export class BibleService {
     bookId: string,
     chapter: number,
   ): Promise<BibleVerse[]> {
-    this.validateSegment(translationId, 'translationId');
-    this.validateSegment(bookId, 'bookId');
+    this.validateSegment(translationId, "translationId");
+    this.validateSegment(bookId, "bookId");
 
     // Sanity-check the chapter number.  Psalms (150), Revelation (22) are the
     // practical upper bounds; MAX_CHAPTER gives comfortable headroom without
     // permitting obviously invalid values that would just produce API 404s.
     if (chapter < 1 || chapter > MAX_CHAPTER) {
-      throw new BadRequestException('chapter must be between 1 and 200');
+      throw new BadRequestException("chapter must be between 1 and 200");
     }
 
     const cacheKey = `${translationId}/${bookId}/${chapter}`;
@@ -252,18 +252,18 @@ export class BibleService {
 
     let verses: BibleVerse[];
 
-    if (translationId === 'sinodala_ro') {
+    if (translationId === "ro_sinodala") {
       const localData = await this.loadLocalBible();
       const book = localData.books.find((b) => b.id === bookId);
       if (!book) {
-        throw new NotFoundException(`Book ${bookId} not found in sinodala_ro`);
+        throw new NotFoundException(`Book ${bookId} not found in ro_sinodala`);
       }
       const chapterData = book.chapters.find(
         (c) => c.chapter.number === chapter,
       );
       if (!chapterData) {
         throw new NotFoundException(
-          `Chapter ${chapter} not found in book ${bookId} of sinodala_ro`,
+          `Chapter ${chapter} not found in book ${bookId} of ro_sinodala`,
         );
       }
       verses = this.parseVerses(chapterData);
@@ -353,7 +353,7 @@ export class BibleService {
 
     if (data.chapter?.content) {
       return data.chapter.content
-        .filter((item) => item.type === 'verse' && item.number != null)
+        .filter((item) => item.type === "verse" && item.number != null)
         .map((item) => ({
           number: String(item.number),
           text: this.extractText(item.content ?? []),
@@ -363,12 +363,10 @@ export class BibleService {
     return [];
   }
 
-  private extractText(
-    content: (string | { text?: string })[],
-  ): string {
+  private extractText(content: (string | { text?: string })[]): string {
     return content
-      .map((c) => (typeof c === 'string' ? c : (c.text ?? '')))
-      .join(' ')
+      .map((c) => (typeof c === "string" ? c : (c.text ?? "")))
+      .join(" ")
       .trim();
   }
 
@@ -383,8 +381,8 @@ export class BibleService {
   }
 
   private getLocalBiblePath(): string {
-    const dataDir = process.env['DATA_DIR'] ?? join(process.cwd(), 'data');
-    return join(dataDir, 'bibles', 'sinodala_ro.json');
+    const dataDir = process.env["DATA_DIR"] ?? join(process.cwd(), "data");
+    return join(dataDir, "bibles", "ro_sinodala.json");
   }
 
   private async loadLocalBible(): Promise<LocalBibleData> {
@@ -393,12 +391,12 @@ export class BibleService {
     const filePath = this.getLocalBiblePath();
     try {
       this.logger.log(`Loading local Bible from disk: ${filePath}`);
-      const content = await readFile(filePath, 'utf-8');
+      const content = await readFile(filePath, "utf-8");
       this.localBibleCache = JSON.parse(content) as LocalBibleData;
       return this.localBibleCache;
     } catch (error) {
       this.logger.error(`Error loading local Bible file at ${filePath}`, error);
-      throw new InternalServerErrorException('Failed to load local Bible data');
+      throw new InternalServerErrorException("Failed to load local Bible data");
     }
   }
 
@@ -409,7 +407,7 @@ export class BibleService {
     } catch (error) {
       this.logger.error(`Network error fetching ${url}`, error);
       throw new InternalServerErrorException(
-        'Cannot reach the Bible API. Check network connectivity.',
+        "Cannot reach the Bible API. Check network connectivity.",
       );
     }
 
