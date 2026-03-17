@@ -55,6 +55,21 @@ export class DatabaseService implements OnModuleInit {
           UNIQUE (translation_id, book_id, chapter_number, verse_number)
         )
       `);
+      await client.query(`
+        CREATE TABLE IF NOT EXISTS patristic_chunks (
+          id           SERIAL PRIMARY KEY,
+          author       TEXT          NOT NULL,
+          work         TEXT          NOT NULL,
+          chapter      TEXT,
+          source_file  TEXT          NOT NULL,
+          source_url   TEXT,
+          chunk_index  INT           NOT NULL,
+          chunk_text   TEXT          NOT NULL,
+          embedding    vector(1536),
+          created_at   TIMESTAMPTZ   DEFAULT now(),
+          UNIQUE (source_file, chunk_index)
+        )
+      `);
     } finally {
       client.release();
     }

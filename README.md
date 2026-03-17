@@ -91,6 +91,14 @@ AI-Hermeneutica-Orthodoxa/
 │   │   │   └── bible.service.spec.ts
 │   │   ├── config/             # Configuration
 │   │   │   └── configuration.ts
+│   │   ├── patristic/          # Patristic corpus integration (local files)
+│   │   │   ├── pipeline.config.ts           # Chunk size, similarity threshold
+│   │   │   ├── patristic-loader.service.ts  # File scan, HTML clean, chunking
+│   │   │   ├── patristic-embedding.service.ts # Embed + store in patristic_chunks
+│   │   │   ├── patristic-queries.ts         # SQL queries
+│   │   │   └── patristic.module.ts
+│   │   ├── scripts/
+│   │   │   └── index-patristic.ts  # CLI: PATRISTIC_DATA_DIR=... npm run index:patristic
 │   │   ├── app.module.ts
 │   │   └── main.ts
 │   └── Dockerfile
@@ -304,6 +312,48 @@ cd backend && npm run test:cov
 # Frontend tests
 cd frontend && npm test
 ```
+
+---
+
+## 📜 Date Patristice / Patristic Data
+
+> **Important:** Repository-ul NU conține texte patristice.  
+> Fișierele sursă (New Advent – Church Fathers, Migne Patrologia Graeca etc.) nu sunt incluse
+> din motive de dimensiune și copyright.  
+> Codul de integrare este prezent; textele trebuie obținute legal de către utilizator.
+
+### Cum se integrează texte patristice locale
+
+1. Descarcă sau achiziționează arhiva patristică (de ex. [New Advent Church Fathers](https://www.newadvent.org/fathers/)).
+2. Dezarhivează fișierele într-un director local (ex. `/home/user/patristic-data`).
+   Structura recomandată (flexibilă):
+   ```
+   /home/user/patristic-data/
+   ├── chrysostom/
+   │   ├── homilies-matthew/
+   │   │   ├── homily1.html
+   │   │   └── homily2.html
+   │   └── on-the-priesthood/
+   │       └── book1.html
+   └── basil/
+       └── hexaemeron/
+           └── homily1.html
+   ```
+3. Setează variabila de mediu și rulează indexarea:
+   ```bash
+   cd backend
+   PATRISTIC_DATA_DIR=/home/user/patristic-data npm run index:patristic
+   ```
+4. Comanda populează tabelul `patristic_chunks` în baza de date PostgreSQL cu embeddings vectoriale,
+   gata pentru căutare semantică.
+
+### Variabile de mediu pentru date patristice
+
+| Variabilă | Descriere |
+|-----------|-----------|
+| `PATRISTIC_DATA_DIR` | Calea absolută către directorul cu fișierele patristice locale (`.html` / `.txt`). Dacă nu este setată, indexarea este omisă fără erori. |
+
+> Adaugă `PATRISTIC_DATA_DIR=/calea/ta` în fișierul `.env` (copiat din `.env.example`).
 
 ---
 

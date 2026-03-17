@@ -5,6 +5,7 @@ import { AiModule } from './ai/ai.module';
 import { AnalyzeModule } from './analyze/analyze.module';
 import { DatabaseModule } from './database/database.module';
 import { SearchModule } from './search/search.module';
+import { PatristicModule } from './patristic/patristic.module';
 import configuration from './config/configuration';
 
 @Module({
@@ -18,6 +19,7 @@ import configuration from './config/configuration';
     AiModule,
     AnalyzeModule,
     SearchModule,
+    PatristicModule,
   ],
 })
 export class AppModule {}
