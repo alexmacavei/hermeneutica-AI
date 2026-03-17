@@ -140,9 +140,9 @@ export class BibleService {
       ALLOWED_TRANSLATION_IDS.map(async (id) => {
         if (id === 'sinodala_ro') {
           // Local translation
-          const bsrPath = this.getLocalBiblePath();
+          const localBiblePath = this.getLocalBiblePath();
           try {
-            await access(bsrPath);
+            await access(localBiblePath);
             return {
               id: 'sinodala_ro',
               name: 'Biblia Sinodală',
@@ -152,7 +152,7 @@ export class BibleService {
             };
           } catch {
             this.logger.warn(
-              `Local Bible file not found at ${bsrPath}; sinodala_ro translation will not be available.`,
+              `Local Bible file not found at ${localBiblePath}; sinodala_ro translation will not be available.`,
             );
             return null;
           }
