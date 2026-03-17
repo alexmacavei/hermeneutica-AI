@@ -205,6 +205,28 @@ describe('BibleService', () => {
       });
     });
 
+    it('should exclude the specified translation from the results', async () => {
+      // Set up translations cache (4 translations, no BSR)
+      mockFetch.mockResolvedValueOnce({
+        ok: true,
+        status: 200,
+        json: () => Promise.resolve(mockTranslationsResponse),
+      });
+      mockAccess.mockRejectedValue(new Error('ENOENT'));
+      await service.getTranslations();
+
+      mockFetch.mockResolvedValue({
+        ok: true,
+        status: 200,
+        json: () => Promise.resolve(mockChapterContent),
+      });
+
+      const result = await service.getParallelVerses('GEN', 1, 1, 1, 'WLC');
+
+      const ids = result.map((t) => t.translationId);
+      expect(ids).not.toContain('WLC');
+    });
+
     it('should throw BadRequestException for an invalid chapter number', async () => {
       await expect(
         service.getParallelVerses('GEN', 0, 1, 1),

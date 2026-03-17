@@ -263,8 +263,12 @@ export class BibleService {
     chapter: number,
     verseStart: number,
     verseEnd: number,
+    excludeTranslationId?: string,
   ): Promise<ParallelTranslation[]> {
     this.validateSegment(bookId, 'bookId');
+    if (excludeTranslationId) {
+      this.validateSegment(excludeTranslationId, 'excludeTranslationId');
+    }
 
     if (chapter < 1 || chapter > MAX_CHAPTER) {
       throw new BadRequestException('chapter must be between 1 and 200');
@@ -274,9 +278,12 @@ export class BibleService {
     }
 
     const translations = await this.getTranslations();
+    const filtered = excludeTranslationId
+      ? translations.filter((t) => t.id !== excludeTranslationId)
+      : translations;
 
     const results = await Promise.all(
-      translations.map(async (translation): Promise<ParallelTranslation> => {
+      filtered.map(async (translation): Promise<ParallelTranslation> => {
         try {
           const allVerses = await this.getChapter(
             translation.id,

@@ -65,16 +65,24 @@ export class BibleApiService {
     );
   }
 
-  /** Fetch the selected verse(s) from all available translations for parallel study. */
+  /** Fetch the selected verse(s) from all available translations for parallel study,
+   *  excluding the translation the user is currently viewing. */
   getParallelVerses(
     bookId: string,
     chapter: number,
     verseStart: number,
     verseEnd: number,
+    excludeTranslationId: string,
   ): Observable<ParallelTranslation[]> {
     return this.http.get<ParallelTranslation[]>(
       `${this.base}/parallel/${bookId}/${chapter}`,
-      { params: { verseStart: String(verseStart), verseEnd: String(verseEnd) } },
+      {
+        params: {
+          verseStart: String(verseStart),
+          verseEnd: String(verseEnd),
+          exclude: excludeTranslationId,
+        },
+      },
     );
   }
 }

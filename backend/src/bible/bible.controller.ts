@@ -43,6 +43,7 @@ export class BibleController {
     @Param('chapter', ParseIntPipe) chapter: number,
     @Query('verseStart') verseStart: string,
     @Query('verseEnd') verseEnd: string,
+    @Query('exclude') exclude?: string,
   ): Promise<ParallelTranslation[]> {
     const start = parseInt(verseStart, 10);
     if (isNaN(start)) {
@@ -52,7 +53,7 @@ export class BibleController {
     if (isNaN(end)) {
       throw new BadRequestException('verseEnd must be a number');
     }
-    return this.bibleService.getParallelVerses(bookId, chapter, start, end);
+    return this.bibleService.getParallelVerses(bookId, chapter, start, end, exclude);
   }
 
   /** Get verses for a specific chapter. */

@@ -404,6 +404,7 @@ export class BibleViewerComponent {
         this.currentNav.chapter,
         verseStart,
         verseEnd,
+        this.currentNav.translationId,
       )
       .pipe(
         catchError(() => {
