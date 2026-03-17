@@ -80,6 +80,15 @@ export interface BibleVerse {
   text: string;
 }
 
+export interface ParallelTranslation {
+  translationId: string;
+  translationName: string;
+  language: string;
+  textDirection: string;
+  available: boolean;
+  verses: BibleVerse[];
+}
+
 // ─── Local Bible types ─────────────────────────────────────────────────────
 
 interface LocalBibleVerse {
@@ -241,6 +250,59 @@ export class BibleService {
 
     this.chapterCache.set(cacheKey, verses);
     return verses;
+  }
+
+  async getParallelVerses(
+    bookId: string,
+    chapter: number,
+    verseStart: number,
+    verseEnd: number,
+  ): Promise<ParallelTranslation[]> {
+    this.validateSegment(bookId, 'bookId');
+
+    if (chapter < 1 || chapter > 200) {
+      throw new BadRequestException('chapter must be between 1 and 200');
+    }
+    if (verseStart < 1 || verseEnd < verseStart || verseEnd > 500) {
+      throw new BadRequestException('Invalid verse range');
+    }
+
+    const translations = await this.getTranslations();
+
+    const results = await Promise.all(
+      translations.map(async (translation): Promise<ParallelTranslation> => {
+        try {
+          const allVerses = await this.getChapter(
+            translation.id,
+            bookId,
+            chapter,
+          );
+          const verses = allVerses.filter((v) => {
+            const num = parseInt(v.number, 10);
+            return !isNaN(num) && num >= verseStart && num <= verseEnd;
+          });
+          return {
+            translationId: translation.id,
+            translationName: translation.name,
+            language: translation.language,
+            textDirection: translation.textDirection,
+            available: verses.length > 0,
+            verses,
+          };
+        } catch {
+          return {
+            translationId: translation.id,
+            translationName: translation.name,
+            language: translation.language,
+            textDirection: translation.textDirection,
+            available: false,
+            verses: [],
+          };
+        }
+      }),
+    );
+
+    return results;
   }
 
   // ── Private helpers ────────────────────────────────────────────────────
