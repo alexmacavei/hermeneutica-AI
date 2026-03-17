@@ -1,5 +1,6 @@
-import { Injectable } from '@nestjs/common';
+import { Injectable, Logger } from '@nestjs/common';
 import { AiService, HermeneuticaCards } from '../ai/ai.service';
+import { PatristicRagService } from '../patristic/patristic-rag.service';
 import { AnalyzeDto } from './dto/analyze.dto';
 
 export interface AnalysisResult {
@@ -12,22 +13,30 @@ export interface AnalysisResult {
 
 @Injectable()
 export class AnalyzeService {
-  constructor(private readonly aiService: AiService) {}
+  private readonly logger = new Logger(AnalyzeService.name);
+
+  constructor(
+    private readonly aiService: AiService,
+    private readonly patristicRagService: PatristicRagService,
+  ) {}
 
   async analyze(dto: AnalyzeDto): Promise<AnalysisResult> {
     const language = dto.language ?? 'Sinodală Română';
 
-    const cards = await this.aiService.generateFourCards(
-      dto.text,
-      dto.range,
-      language,
+    const [cards, patristics] = await Promise.all([
+      this.aiService.generateFourCards(dto.text, dto.range, language),
+      this.patristicRagService.buildPatristicSummary(dto.text, dto.range),
+    ]);
+
+    this.logger.debug(
+      `Replacing LLM patristics with RAG result for "${dto.range}"`,
     );
 
     return {
       reference: dto.range,
       language,
       text: dto.text,
-      cards,
+      cards: { ...cards, patristics },
       timestamp: new Date().toISOString(),
     };
   }

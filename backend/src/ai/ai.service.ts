@@ -123,6 +123,34 @@ export class AiService {
     return response.data.map((d) => d.embedding);
   }
 
+  /**
+   * Sends a chat completion request with the given messages.
+   * Returns the assistant's reply as a trimmed string, or an empty string when
+   * the API key is missing or the call fails.
+   */
+  async chat(
+    messages: Array<{ role: 'system' | 'user' | 'assistant'; content: string }>,
+    options?: { temperature?: number; max_tokens?: number },
+  ): Promise<string> {
+    if (!this.hasApiKey) {
+      return '';
+    }
+    try {
+      const completion = await this.openai.chat.completions.create({
+        model: this.model,
+        messages,
+        temperature: options?.temperature ?? 0.7,
+        ...(options?.max_tokens !== undefined
+          ? { max_tokens: options.max_tokens }
+          : {}),
+      });
+      return completion.choices[0]?.message?.content?.trim() ?? '';
+    } catch (error) {
+      this.logger.error('OpenAI chat error', error);
+      return '';
+    }
+  }
+
   private getFallbackCards(
     reference: string,
     text: string,

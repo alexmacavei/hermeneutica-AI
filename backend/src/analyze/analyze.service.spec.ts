@@ -1,6 +1,7 @@
 import { Test, TestingModule } from '@nestjs/testing';
 import { AnalyzeService } from './analyze.service';
 import { AiService } from '../ai/ai.service';
+import { PatristicRagService } from '../patristic/patristic-rag.service';
 import { AnalyzeDto } from './dto/analyze.dto';
 
 describe('AnalyzeService', () => {
@@ -11,11 +12,16 @@ describe('AnalyzeService', () => {
     generateFourCards: jest.fn(),
   };
 
+  const mockPatristicRagService = {
+    buildPatristicSummary: jest.fn(),
+  };
+
   beforeEach(async () => {
     const module: TestingModule = await Test.createTestingModule({
       providers: [
         AnalyzeService,
         { provide: AiService, useValue: mockAiService },
+        { provide: PatristicRagService, useValue: mockPatristicRagService },
       ],
     }).compile();
 
@@ -28,15 +34,17 @@ describe('AnalyzeService', () => {
   });
 
   describe('analyze()', () => {
-    it('should return analysis result with 4 cards', async () => {
+    it('should return analysis result with patristics field from RAG service', async () => {
       const mockCards = {
         hermeneutics: 'Interpretare în 4 sensuri: literal, tropologic, alegoric, anagogic',
         philosophy: 'Platonism creștin: scala ființei, theosis',
-        patristics: 'Ioan Gură de Aur: Omilii la Matei',
+        patristics: 'Ioan Gură de Aur: Omilii la Matei (from LLM)',
         philology: 'πτωχοί (ptōchoi): cerșetor total, Strong\'s G4434',
       };
+      const ragPatristics = 'Ioan Gură de Aur – Omilii la Ioan: Comentariu patristic RAG.';
 
       mockAiService.generateFourCards.mockResolvedValue(mockCards);
+      mockPatristicRagService.buildPatristicSummary.mockResolvedValue(ragPatristics);
 
       const dto: AnalyzeDto = {
         text: 'Fericiți cei săraci cu duhul, că a lor este Împărăția cerurilor.',
@@ -49,7 +57,11 @@ describe('AnalyzeService', () => {
       expect(result.reference).toBe('Matei 5:3');
       expect(result.language).toBe('Sinodală Română');
       expect(result.text).toBe(dto.text);
-      expect(result.cards).toEqual(mockCards);
+      // The patristics field must come from the RAG service, not the LLM
+      expect(result.cards.patristics).toBe(ragPatristics);
+      expect(result.cards.hermeneutics).toBe(mockCards.hermeneutics);
+      expect(result.cards.philosophy).toBe(mockCards.philosophy);
+      expect(result.cards.philology).toBe(mockCards.philology);
       expect(result.timestamp).toBeDefined();
     });
 
@@ -60,6 +72,7 @@ describe('AnalyzeService', () => {
         patristics: 'test',
         philology: 'test',
       });
+      mockPatristicRagService.buildPatristicSummary.mockResolvedValue('rag patristics');
 
       const dto: AnalyzeDto = {
         text: 'Fericiți cei săraci cu duhul',
@@ -77,6 +90,7 @@ describe('AnalyzeService', () => {
         patristics: '',
         philology: '',
       });
+      mockPatristicRagService.buildPatristicSummary.mockResolvedValue('');
 
       const dto: AnalyzeDto = {
         text: 'La început era Cuvântul',
@@ -93,6 +107,29 @@ describe('AnalyzeService', () => {
       );
     });
 
+    it('should call patristicRagService.buildPatristicSummary with text and range', async () => {
+      mockAiService.generateFourCards.mockResolvedValue({
+        hermeneutics: '',
+        philosophy: '',
+        patristics: '',
+        philology: '',
+      });
+      mockPatristicRagService.buildPatristicSummary.mockResolvedValue('patristic result');
+
+      const dto: AnalyzeDto = {
+        text: 'Căci atât de mult a iubit Dumnezeu lumea',
+        range: 'Ioan 3:16',
+        language: 'Sinodală Română',
+      };
+
+      await service.analyze(dto);
+
+      expect(mockPatristicRagService.buildPatristicSummary).toHaveBeenCalledWith(
+        'Căci atât de mult a iubit Dumnezeu lumea',
+        'Ioan 3:16',
+      );
+    });
+
     it('should return timestamp in ISO format', async () => {
       mockAiService.generateFourCards.mockResolvedValue({
         hermeneutics: '',
@@ -100,6 +137,7 @@ describe('AnalyzeService', () => {
         patristics: '',
         philology: '',
       });
+      mockPatristicRagService.buildPatristicSummary.mockResolvedValue('');
 
       const dto: AnalyzeDto = {
         text: 'Test text',
