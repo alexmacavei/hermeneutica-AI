@@ -376,7 +376,10 @@ describe('PatristicLoaderService', () => {
           { name: 'index.html', isDirectory: () => false, isFile: () => true },
         ] as unknown as fs.Dirent[]);
 
+      // readFileSync: first call for index.html, then existsSync+readFileSync
+      // for the sub-link expansion of 2801.htm (file does not exist).
       (mockFs.readFileSync as jest.Mock).mockReturnValue(indexHtml);
+      (mockFs.existsSync as jest.Mock).mockReturnValue(false);
 
       const maps = service.buildDirectoryIndexMaps(baseDir);
 
@@ -401,6 +404,235 @@ describe('PatristicLoaderService', () => {
       const maps = service.buildDirectoryIndexMaps(baseDir);
 
       expect(maps.size).toBe(0);
+    });
+
+    it('should expand book-level files from an intermediate work page', () => {
+      const baseDir = '/data/patristic';
+      const fathersDir = path.join(baseDir, 'fathers');
+
+      // fathers/index.html maps 3404.htm → Ambrose / "On the Christian Faith"
+      const indexHtml = `
+        <a><strong>Ambrose (340-397)</strong></a>
+        <a href="../fathers/3404.htm">On the Christian Faith (De fide)</a>`;
+
+      // 3404.htm links to book sub-pages
+      const workHtml = `
+        <p><a href="../fathers/34041.htm">Book I</a>
+        <br><a href="../fathers/34042.htm">Book II</a>
+        <br><a href="../fathers/34043.htm">Book III</a>
+        </p>`;
+
+      (mockFs.readdirSync as jest.Mock)
+        .mockReturnValueOnce([
+          { name: 'fathers', isDirectory: () => true, isFile: () => false },
+        ] as unknown as fs.Dirent[])
+        .mockReturnValueOnce([
+          { name: 'index.html', isDirectory: () => false, isFile: () => true },
+        ] as unknown as fs.Dirent[]);
+
+      // readFileSync: first for index.html, then for 3404.htm
+      (mockFs.readFileSync as jest.Mock)
+        .mockReturnValueOnce(indexHtml)
+        .mockReturnValueOnce(workHtml);
+
+      // existsSync returns true for the work file 3404.htm
+      (mockFs.existsSync as jest.Mock).mockReturnValue(true);
+
+      const maps = service.buildDirectoryIndexMaps(baseDir);
+      const dirMap = maps.get(fathersDir);
+
+      // Original entry is preserved
+      expect(dirMap?.get('3404.htm')).toEqual({
+        author: 'Ambrose (340-397)',
+        work: 'On the Christian Faith (De fide)',
+      });
+
+      // Book-level files inherit the parent author and work
+      expect(dirMap?.get('34041.htm')).toEqual({
+        author: 'Ambrose (340-397)',
+        work: 'On the Christian Faith (De fide)',
+      });
+      expect(dirMap?.get('34042.htm')).toEqual({
+        author: 'Ambrose (340-397)',
+        work: 'On the Christian Faith (De fide)',
+      });
+      expect(dirMap?.get('34043.htm')).toEqual({
+        author: 'Ambrose (340-397)',
+        work: 'On the Christian Faith (De fide)',
+      });
+    });
+
+    it('should preserve author/work for a single-level content file with no sub-books', () => {
+      const baseDir = '/data/patristic';
+      const fathersDir = path.join(baseDir, 'fathers');
+
+      // fathers/index.html maps 2903.htm → Gregory of Nyssa
+      // (a single-page work with no book sub-links)
+      const indexHtml = `
+        <a><strong>Gregory of Nyssa</strong></a>
+        <a href="../fathers/2903.htm">On the Holy Spirit, Against the Macedonians</a>`;
+
+      // 2903.htm contains actual patristic content directly.
+      // It has only encyclopedia cross-reference links (non-numeric hrefs)
+      // and no numbered patristic sub-links.
+      const contentHtml = `
+        <div id="springfield2">
+          <h1>On the Holy Spirit, Against the Macedonians</h1>
+          <p>Forasmuch as the <a href="../cathen/06950c.htm">Holy Spirit</a>
+          is of one substance with the Father and the Son...</p>
+        </div>`;
+
+      (mockFs.readdirSync as jest.Mock)
+        .mockReturnValueOnce([
+          { name: 'fathers', isDirectory: () => true, isFile: () => false },
+        ] as unknown as fs.Dirent[])
+        .mockReturnValueOnce([
+          { name: 'index.html', isDirectory: () => false, isFile: () => true },
+        ] as unknown as fs.Dirent[]);
+
+      // readFileSync: first for index.html, then for 2903.htm
+      (mockFs.readFileSync as jest.Mock)
+        .mockReturnValueOnce(indexHtml)
+        .mockReturnValueOnce(contentHtml);
+
+      // existsSync returns true so the content file is read
+      (mockFs.existsSync as jest.Mock).mockReturnValue(true);
+
+      const maps = service.buildDirectoryIndexMaps(baseDir);
+      const dirMap = maps.get(fathersDir);
+
+      // 2903.htm retains its author/work from the index
+      expect(dirMap?.get('2903.htm')).toEqual({
+        author: 'Gregory of Nyssa',
+        work: 'On the Holy Spirit, Against the Macedonians',
+      });
+
+      // No spurious entries from the cathen cross-reference links
+      expect(dirMap?.size).toBe(1);
+    });
+
+    it('should expand chapter files from a work page whose links have HTML-tagged text (Irenaeus pattern)', () => {
+      const baseDir = '/data/patristic';
+      const fathersDir = path.join(baseDir, 'fathers');
+
+      // fathers/index.html maps 0103.htm → Irenaeus / "Against Heresies"
+      const indexHtml = `
+        <a><strong>Irenaeus of Lyons (130-202)</strong></a>
+        <a href="../fathers/0103.htm">Against Heresies (Adversus Haereses)</a>`;
+
+      // 0103.htm: books are <h2> headings (not links); chapters ARE links
+      // but their visible text contains HTML markup (common in older NewAdvent pages).
+      const workHtml = `
+        <h2>Book I</h2>
+        <p>
+          <a href="../fathers/0103100.htm">Preface. <em>Introduction.</em></a><br>
+          <a href="../fathers/0103101.htm"><em>Chapter I</em>.—The heretics follow neither Scripture nor tradition.</a><br>
+          <a href="../fathers/0103102.htm"><em>Chapter II</em>.—The system of Ptolemy.</a>
+        </p>
+        <h2>Book II</h2>
+        <p>
+          <a href="../fathers/0103200.htm">Preface</a>
+        </p>`;
+
+      (mockFs.readdirSync as jest.Mock)
+        .mockReturnValueOnce([
+          { name: 'fathers', isDirectory: () => true, isFile: () => false },
+        ] as unknown as fs.Dirent[])
+        .mockReturnValueOnce([
+          { name: 'index.html', isDirectory: () => false, isFile: () => true },
+        ] as unknown as fs.Dirent[]);
+
+      // readFileSync: first for index.html, then for 0103.htm
+      (mockFs.readFileSync as jest.Mock)
+        .mockReturnValueOnce(indexHtml)
+        .mockReturnValueOnce(workHtml);
+
+      // existsSync returns true for the work file 0103.htm
+      (mockFs.existsSync as jest.Mock).mockReturnValue(true);
+
+      const maps = service.buildDirectoryIndexMaps(baseDir);
+      const dirMap = maps.get(fathersDir);
+
+      const expected = {
+        author: 'Irenaeus of Lyons (130-202)',
+        work: 'Against Heresies (Adversus Haereses)',
+      };
+
+      // The TOC file itself is preserved
+      expect(dirMap?.get('0103.htm')).toEqual(expected);
+
+      // Chapter files with HTML-tagged link text are still captured
+      expect(dirMap?.get('0103100.htm')).toEqual(expected);
+      expect(dirMap?.get('0103101.htm')).toEqual(expected);
+      expect(dirMap?.get('0103102.htm')).toEqual(expected);
+      expect(dirMap?.get('0103200.htm')).toEqual(expected);
+    });
+  });
+
+  // ─── extractDivById() ───────────────────────────────────────────────────────
+
+  describe('extractDivById()', () => {
+    it('should extract inner content of the named div', () => {
+      const html = '<div id="springfield2"><p>Patristic text.</p></div>';
+      const result = service.extractDivById(html, 'springfield2');
+      expect(result).toBe('<p>Patristic text.</p>');
+    });
+
+    it('should handle nested divs correctly', () => {
+      const html =
+        '<div id="springfield2"><div class="inner"><p>Content</p></div></div>';
+      const result = service.extractDivById(html, 'springfield2');
+      expect(result).toBe('<div class="inner"><p>Content</p></div>');
+    });
+
+    it('should return undefined when the id is not present', () => {
+      const html = '<div id="other"><p>Other content</p></div>';
+      expect(service.extractDivById(html, 'springfield2')).toBeUndefined();
+    });
+
+    it('should be case-insensitive for the opening tag', () => {
+      const html = '<DIV ID="springfield2"><p>Text</p></DIV>';
+      const result = service.extractDivById(html, 'springfield2');
+      expect(result).toBe('<p>Text</p>');
+    });
+  });
+
+  // ─── cleanHtml() – pub div and springfield2 ─────────────────────────────────
+
+  describe('cleanHtml() – NewAdvent-specific cleaning', () => {
+    it('should remove the <div class="pub"> "About this page" block', () => {
+      const html = `<div id="springfield2"><p>Patristic content.</p></div>
+        <div class="pub"><h2>About this page</h2><p id="src"><strong>Source.</strong> Translated by Roberts.</p></div>`;
+      const result = service.cleanHtml(html);
+      expect(result).not.toContain('About this page');
+      expect(result).not.toContain('Source.');
+      expect(result).toContain('Patristic content.');
+    });
+
+    it('should restrict content to div#springfield2 when present', () => {
+      const html = `
+        <html>
+          <body>
+            <div id="nav"><a href="/">Home</a></div>
+            <div id="springfield2">
+              <h1>On the Christian Faith</h1>
+              <p>Book text here.</p>
+            </div>
+            <div id="footer">Footer content</div>
+          </body>
+        </html>`;
+      const result = service.cleanHtml(html);
+      expect(result).toContain('On the Christian Faith');
+      expect(result).toContain('Book text here.');
+      expect(result).not.toContain('Footer content');
+      expect(result).not.toContain('Home');
+    });
+
+    it('should process entire page when div#springfield2 is absent', () => {
+      const html = '<p>All content visible.</p><p>More here.</p>';
+      const result = service.cleanHtml(html);
+      expect(result).toContain('All content visible.');
+      expect(result).toContain('More here.');
     });
   });
 });
