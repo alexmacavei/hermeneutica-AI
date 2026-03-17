@@ -22,6 +22,15 @@ export interface BibleVerse {
   text: string;
 }
 
+export interface ParallelTranslation {
+  translationId: string;
+  translationName: string;
+  language: string;
+  textDirection: string;
+  available: boolean;
+  verses: BibleVerse[];
+}
+
 @Injectable({ providedIn: 'root' })
 export class BibleApiService {
   private readonly base = `${environment.apiUrl}/bible`;
@@ -53,6 +62,27 @@ export class BibleApiService {
   ): Observable<BibleVerse[]> {
     return this.http.get<BibleVerse[]>(
       `${this.base}/${translationId}/${bookId}/${chapter}`,
+    );
+  }
+
+  /** Fetch the selected verse(s) from all available translations for parallel study,
+   *  excluding the translation the user is currently viewing. */
+  getParallelVerses(
+    bookId: string,
+    chapter: number,
+    verseStart: number,
+    verseEnd: number,
+    excludeTranslationId: string,
+  ): Observable<ParallelTranslation[]> {
+    return this.http.get<ParallelTranslation[]>(
+      `${this.base}/parallel/${bookId}/${chapter}`,
+      {
+        params: {
+          verseStart: String(verseStart),
+          verseEnd: String(verseEnd),
+          exclude: excludeTranslationId,
+        },
+      },
     );
   }
 }

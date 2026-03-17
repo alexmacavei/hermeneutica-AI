@@ -10,6 +10,12 @@ import { access, readFile } from 'fs/promises';
 
 const BIBLE_API_BASE = 'https://bible.helloao.org/api';
 
+/** Maximum chapter number accepted in API requests (Psalms has 150; 200 gives comfortable headroom). */
+const MAX_CHAPTER = 200;
+
+/** Maximum verse number accepted in parallel-verse requests. */
+const MAX_VERSE = 500;
+
 /**
  * Ordered list of translation IDs available in the application.
  * Corresponds to: Hebrew Masoretic Text, Greek Septuagint,
@@ -78,6 +84,15 @@ export interface Book {
 export interface BibleVerse {
   number: string;
   text: string;
+}
+
+export interface ParallelTranslation {
+  translationId: string;
+  translationName: string;
+  language: string;
+  textDirection: string;
+  available: boolean;
+  verses: BibleVerse[];
 }
 
 // ─── Local Bible types ─────────────────────────────────────────────────────
@@ -204,9 +219,9 @@ export class BibleService {
     this.validateSegment(bookId, 'bookId');
 
     // Sanity-check the chapter number.  Psalms (150), Revelation (22) are the
-    // practical upper bounds; 200 gives comfortable headroom without permitting
-    // obviously invalid values that would just produce API 404s.
-    if (chapter < 1 || chapter > 200) {
+    // practical upper bounds; MAX_CHAPTER gives comfortable headroom without
+    // permitting obviously invalid values that would just produce API 404s.
+    if (chapter < 1 || chapter > MAX_CHAPTER) {
       throw new BadRequestException('chapter must be between 1 and 200');
     }
 
@@ -241,6 +256,66 @@ export class BibleService {
 
     this.chapterCache.set(cacheKey, verses);
     return verses;
+  }
+
+  async getParallelVerses(
+    bookId: string,
+    chapter: number,
+    verseStart: number,
+    verseEnd: number,
+    excludeTranslationId?: string,
+  ): Promise<ParallelTranslation[]> {
+    this.validateSegment(bookId, 'bookId');
+    if (excludeTranslationId) {
+      this.validateSegment(excludeTranslationId, 'excludeTranslationId');
+    }
+
+    if (chapter < 1 || chapter > MAX_CHAPTER) {
+      throw new BadRequestException('chapter must be between 1 and 200');
+    }
+    if (verseStart < 1 || verseEnd < verseStart || verseEnd > MAX_VERSE) {
+      throw new BadRequestException('Invalid verse range');
+    }
+
+    const translations = await this.getTranslations();
+    const filtered = excludeTranslationId
+      ? translations.filter((t) => t.id !== excludeTranslationId)
+      : translations;
+
+    const results = await Promise.all(
+      filtered.map(async (translation): Promise<ParallelTranslation> => {
+        try {
+          const allVerses = await this.getChapter(
+            translation.id,
+            bookId,
+            chapter,
+          );
+          const verses = allVerses.filter((v) => {
+            const num = parseInt(v.number, 10);
+            return !isNaN(num) && num >= verseStart && num <= verseEnd;
+          });
+          return {
+            translationId: translation.id,
+            translationName: translation.name,
+            language: translation.language,
+            textDirection: translation.textDirection,
+            available: verses.length > 0,
+            verses,
+          };
+        } catch {
+          return {
+            translationId: translation.id,
+            translationName: translation.name,
+            language: translation.language,
+            textDirection: translation.textDirection,
+            available: false,
+            verses: [],
+          };
+        }
+      }),
+    );
+
+    return results;
   }
 
   // ── Private helpers ────────────────────────────────────────────────────
