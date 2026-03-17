@@ -13,17 +13,6 @@ jest.mock('fs/promises', () => ({
   readFile: (...args: unknown[]) => mockReadFile(...args),
 }));
 
-const mockTranslationsResponse = {
-  translations: [
-    { id: 'WLC', name: 'Hebrew Bible', englishName: 'Hebrew Masoretic Text', language: 'hbo', textDirection: 'rtl' },
-    { id: 'LXX', name: 'Septuaginta', englishName: 'Septuagint', language: 'grc', textDirection: 'ltr' },
-    { id: 'UGNT', name: 'Greek NT', englishName: 'Unlocked Greek New Testament', language: 'grc', textDirection: 'ltr' },
-    { id: 'KJVA', name: 'King James Version with Apocrypha', englishName: 'King James Version with Apocrypha', language: 'eng', textDirection: 'ltr' },
-    { id: 'BSB', name: 'Berean Standard Bible', englishName: 'Berean Standard Bible', language: 'eng', textDirection: 'ltr' },
-    { id: 'NET', name: 'New English Translation', englishName: 'New English Translation', language: 'eng', textDirection: 'ltr' },
-  ],
-};
-
 const mockBooksResponse = (id: string) => ({
   translation: {
     id,
@@ -146,11 +135,14 @@ describe('BibleService', () => {
     };
 
     it('should return parallel verses for all available translations', async () => {
-      // Set up translations cache
-      mockFetch.mockResolvedValueOnce({
-        ok: true,
-        status: 200,
-        json: () => Promise.resolve(mockTranslationsResponse),
+      // Set up translations cache using per-translation books.json endpoint
+      mockFetch.mockImplementation((url: string) => {
+        const id = url.split('/').slice(-2, -1)[0];
+        return Promise.resolve({
+          ok: true,
+          status: 200,
+          json: () => Promise.resolve(mockBooksResponse(id)),
+        });
       });
       mockAccess.mockRejectedValue(new Error('ENOENT'));
       await service.getTranslations();
@@ -175,11 +167,14 @@ describe('BibleService', () => {
     });
 
     it('should mark a translation as unavailable when the book does not exist', async () => {
-      // Set up translations cache (4 translations, no BSR)
-      mockFetch.mockResolvedValueOnce({
-        ok: true,
-        status: 200,
-        json: () => Promise.resolve(mockTranslationsResponse),
+      // Set up translations cache (4 upstream translations, no sinodala_ro)
+      mockFetch.mockImplementation((url: string) => {
+        const id = url.split('/').slice(-2, -1)[0];
+        return Promise.resolve({
+          ok: true,
+          status: 200,
+          json: () => Promise.resolve(mockBooksResponse(id)),
+        });
       });
       mockAccess.mockRejectedValue(new Error('ENOENT'));
       await service.getTranslations();
@@ -204,11 +199,14 @@ describe('BibleService', () => {
     });
 
     it('should filter verses to the requested range', async () => {
-      // Set up translations cache
-      mockFetch.mockResolvedValueOnce({
-        ok: true,
-        status: 200,
-        json: () => Promise.resolve(mockTranslationsResponse),
+      // Set up translations cache using per-translation books.json endpoint
+      mockFetch.mockImplementation((url: string) => {
+        const id = url.split('/').slice(-2, -1)[0];
+        return Promise.resolve({
+          ok: true,
+          status: 200,
+          json: () => Promise.resolve(mockBooksResponse(id)),
+        });
       });
       mockAccess.mockRejectedValue(new Error('ENOENT'));
       await service.getTranslations();
@@ -228,11 +226,14 @@ describe('BibleService', () => {
     });
 
     it('should exclude the specified translation from the results', async () => {
-      // Set up translations cache (4 translations, no BSR)
-      mockFetch.mockResolvedValueOnce({
-        ok: true,
-        status: 200,
-        json: () => Promise.resolve(mockTranslationsResponse),
+      // Set up translations cache (4 upstream translations, no sinodala_ro)
+      mockFetch.mockImplementation((url: string) => {
+        const id = url.split('/').slice(-2, -1)[0];
+        return Promise.resolve({
+          ok: true,
+          status: 200,
+          json: () => Promise.resolve(mockBooksResponse(id)),
+        });
       });
       mockAccess.mockRejectedValue(new Error('ENOENT'));
       await service.getTranslations();
@@ -243,10 +244,10 @@ describe('BibleService', () => {
         json: () => Promise.resolve(mockChapterContent),
       });
 
-      const result = await service.getParallelVerses('GEN', 1, 1, 1, 'WLC');
+      const result = await service.getParallelVerses('GEN', 1, 1, 1, 'hbo_wlc');
 
       const ids = result.map((t) => t.translationId);
-      expect(ids).not.toContain('WLC');
+      expect(ids).not.toContain('hbo_wlc');
     });
 
     it('should throw BadRequestException for an invalid chapter number', async () => {

@@ -128,7 +128,7 @@ import { ParallelTranslation } from '../services/bible-api.service';
       white-space: nowrap;
     }
 
-    :host ::ng-deep .close-btn.p-button {
+    :host ::ng-deep .close-btn .p-button {
       color: var(--text-muted) !important;
       width: 32px;
       height: 32px;
@@ -136,7 +136,7 @@ import { ParallelTranslation } from '../services/bible-api.service';
       flex-shrink: 0;
     }
 
-    :host ::ng-deep .close-btn.p-button:hover {
+    :host ::ng-deep .close-btn .p-button:hover {
       color: var(--text-light) !important;
       background: rgba(121, 134, 203, 0.15) !important;
     }

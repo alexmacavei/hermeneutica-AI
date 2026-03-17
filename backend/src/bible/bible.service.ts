@@ -4,9 +4,9 @@ import {
   InternalServerErrorException,
   Logger,
   NotFoundException
-} from "@nestjs/common";
-import { join } from "path";
-import { access, readFile } from "fs/promises";
+} from '@nestjs/common';
+import { join } from 'path';
+import { access, readFile } from 'fs/promises';
 
 const BIBLE_API_BASE = 'https://bible.helloao.org/api';
 
@@ -384,7 +384,7 @@ export class BibleService {
 
   private getLocalBiblePath(): string {
     const dataDir = process.env['DATA_DIR'] ?? join(process.cwd(), 'data');
-    return join(dataDir, 'bibles', 'ro_sinodala.json');
+    return join(dataDir, 'bibles', 'sinodala_ro.json');
   }
 
   private async loadLocalBible(): Promise<LocalBibleData> {
