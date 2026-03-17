@@ -120,8 +120,8 @@ export class PatristicLoaderService {
     let text = html;
 
     // Remove <script> and <style> blocks entirely
-    text = text.replace(/<script\b[^>]*>[\s\S]*?<\/script>/gi, ' ');
-    text = text.replace(/<style\b[^>]*>[\s\S]*?<\/style>/gi, ' ');
+    text = text.replace(/<script\b[^>]*>[\s\S]*?<\/script[^>]*>/gi, ' ');
+    text = text.replace(/<style\b[^>]*>[\s\S]*?<\/style[^>]*>/gi, ' ');
 
     // Remove HTML comments
     text = text.replace(/<!--[\s\S]*?-->/g, ' ');
@@ -132,9 +132,8 @@ export class PatristicLoaderService {
     // Remove all remaining tags
     text = text.replace(/<[^>]+>/g, ' ');
 
-    // Decode common HTML entities
+    // Decode common HTML entities (&amp; last to avoid double-unescaping)
     text = text
-      .replace(/&amp;/gi, '&')
       .replace(/&lt;/gi, '<')
       .replace(/&gt;/gi, '>')
       .replace(/&quot;/gi, '"')
@@ -147,7 +146,9 @@ export class PatristicLoaderService {
       .replace(/&lsquo;/gi, '\u2018')
       .replace(/&rsquo;/gi, '\u2019')
       .replace(/&#x[0-9a-fA-F]+;/g, ' ')
-      .replace(/&#\d+;/g, ' ');
+      .replace(/&#\d+;/g, ' ')
+      // &amp; is decoded last so that e.g. &amp;lt; becomes &lt; (not <)
+      .replace(/&amp;/gi, '&');
 
     // Collapse whitespace
     text = text.replace(/[ \t]+/g, ' ');
