@@ -347,6 +347,21 @@ cd frontend && npm test
 4. Comanda populează tabelul `patristic_chunks` în baza de date PostgreSQL cu embeddings vectoriale,
    gata pentru căutare semantică.
 
+> **Important:** E important să știm că în final, tot vor rămâne o serie de embeddings cu author sau work unknown.
+> Aceasta este cauzată fie de parsare fie de faptul că unele documente nu au referințe directe în top index.html. Nu ar trebui să fie prea multe.
+> Acestea trebuie "vânate" de mână și actualizate cu query-uri similare cu cele de mai jos, ținând cont că acestea reprezintă DOAR (!!) un exemplu (Canoanele Apostolice):
+
+```sql
+select chapter, count(*) from patristic_chunks
+where work = 'unknown' or author = 'unknown'
+group by chapter;
+
+update patristic_chunks
+set work = 'The Apostolic Canons',
+    author = 'Anonymous'
+where chapter = '3820';
+```
+
 ### Variabile de mediu pentru date patristice
 
 | Variabilă | Descriere |
