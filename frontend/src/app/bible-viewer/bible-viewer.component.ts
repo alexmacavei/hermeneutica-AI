@@ -3,13 +3,15 @@ import { CommonModule } from '@angular/common';
 import { ButtonModule } from 'primeng/button';
 import { ToastModule } from 'primeng/toast';
 import { MessageService } from 'primeng/api';
-import { catchError, finalize, of, switchMap } from 'rxjs';
+import { catchError, finalize, of } from 'rxjs';
 
 import { BibleSelectorComponent, BibleNavigation } from './bible-selector.component';
 import { BibleTextComponent } from './bible-text.component';
 import { ResultsViewerComponent } from '../analysis/results-viewer.component';
+import { SemanticSearchComponent, SearchNavigateEvent } from './semantic-search.component';
 import { AnalysisService, AnalysisResult } from '../services/analysis.service';
 import { BibleApiService, BibleVerse } from '../services/bible-api.service';
+import { SearchService } from '../services/search.service';
 import { VerseSelection } from './verse-highlighter.directive';
 
 @Component({
@@ -22,6 +24,7 @@ import { VerseSelection } from './verse-highlighter.directive';
     BibleSelectorComponent,
     BibleTextComponent,
     ResultsViewerComponent,
+    SemanticSearchComponent,
   ],
   providers: [MessageService],
   template: `
@@ -37,6 +40,10 @@ import { VerseSelection } from './verse-highlighter.directive';
         <app-bible-selector
           (navigate)="onNavigate($event)"
         ></app-bible-selector>
+        <app-semantic-search
+          [translationId]="currentNav?.translationId ?? ''"
+          (navigateTo)="onSearchNavigate($event)"
+        ></app-semantic-search>
       </header>
 
       <!-- Main Layout -->
@@ -233,6 +240,7 @@ export class BibleViewerComponent {
   constructor(
     private readonly bibleApi: BibleApiService,
     private readonly analysisService: AnalysisService,
+    private readonly searchService: SearchService,
     private readonly messageService: MessageService,
   ) {}
 
@@ -258,6 +266,43 @@ export class BibleViewerComponent {
       )
       .subscribe((verses) => {
         this.currentVerses = verses;
+        // Lazily ingest embeddings for this chapter in the background
+        if (verses.length > 0) {
+          this.searchService.ingestChapter(
+            nav.translationId,
+            nav.bookId,
+            nav.bookName,
+            nav.chapter,
+            verses,
+          );
+        }
+      });
+  }
+
+  /**
+   * Handles navigation events from the semantic search component.
+   * Loads books for the current translation to get numChapters, then navigates.
+   */
+  onSearchNavigate(event: SearchNavigateEvent): void {
+    if (!this.currentNav) return;
+    const { translationId, translationName } = this.currentNav;
+
+    this.bibleApi.getBooks(translationId)
+      .pipe(catchError(() => of([])))
+      .subscribe((books) => {
+        const book = books.find((b) => b.id === event.bookId);
+        if (!book) return;
+        const nav: BibleNavigation = {
+          translationId,
+          translationName,
+          bookId: event.bookId,
+          bookName: event.bookName,
+          chapter: event.chapter,
+          numChapters: book.numChapters,
+        };
+        this.onNavigate(nav);
+        // Highlight the specific verse after the chapter loads
+        this.selectedVerseNumbers = [String(event.verseNumber)];
       });
   }
 
