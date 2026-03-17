@@ -12,6 +12,9 @@ export interface HermeneuticaCards {
   philology: string;
 }
 
+/** Cards generated directly by the LLM (patristics is supplied separately via RAG). */
+export type ThreeCards = Omit<HermeneuticaCards, 'patristics'>;
+
 interface CardPrompt {
   title: string;
   prompt: string;
@@ -23,7 +26,6 @@ interface HermeneuticaPromptConfig {
   cards: {
     hermeneutics: CardPrompt;
     philosophy: CardPrompt;
-    patristics: CardPrompt;
     philology: CardPrompt;
   };
 }
@@ -61,11 +63,11 @@ export class AiService {
     this.systemMessage = `${this.prompts.system}\n\n## Instrucțiuni per card:\n${cardInstructions}`;
   }
 
-  async generateFourCards(
+  async generateThreeCards(
     text: string,
     reference: string,
     language: string = 'Sinodală Română',
-  ): Promise<HermeneuticaCards> {
+  ): Promise<ThreeCards> {
     if (!this.hasApiKey) {
       return this.getFallbackCards(reference, text);
     }
@@ -88,7 +90,7 @@ export class AiService {
       });
 
       const content = completion.choices[0]?.message?.content ?? '{}';
-      return JSON.parse(content) as HermeneuticaCards;
+      return JSON.parse(content) as ThreeCards;
     } catch (error) {
       this.logger.error('OpenAI API error', error);
       return this.getFallbackCards(reference, text);
@@ -123,14 +125,41 @@ export class AiService {
     return response.data.map((d) => d.embedding);
   }
 
+  /**
+   * Sends a chat completion request with the given messages.
+   * Returns the assistant's reply as a trimmed string, or an empty string when
+   * the API key is missing or the call fails.
+   */
+  async chat(
+    messages: Array<{ role: 'system' | 'user' | 'assistant'; content: string }>,
+    options?: { temperature?: number; max_tokens?: number },
+  ): Promise<string> {
+    if (!this.hasApiKey) {
+      return '';
+    }
+    try {
+      const completion = await this.openai.chat.completions.create({
+        model: this.model,
+        messages,
+        temperature: options?.temperature ?? 0.7,
+        ...(options?.max_tokens !== undefined
+          ? { max_tokens: options.max_tokens }
+          : {}),
+      });
+      return completion.choices[0]?.message?.content?.trim() ?? '';
+    } catch (error) {
+      this.logger.error('OpenAI chat error', error);
+      return '';
+    }
+  }
+
   private getFallbackCards(
     reference: string,
     text: string,
-  ): HermeneuticaCards {
+  ): ThreeCards {
     return {
       hermeneutics: `Analiză hermeneutică pentru ${reference}: ${text.slice(0, 50)}... [Serviciul AI temporar indisponibil. Vă rugăm configurați OPENAI_API_KEY.]`,
       philosophy: `Analiză filozofică pentru ${reference}: [Serviciul AI temporar indisponibil.]`,
-      patristics: `Comentarii patristice pentru ${reference}: [Serviciul AI temporar indisponibil.]`,
       philology: `Analiză filologică pentru ${reference}: [Serviciul AI temporar indisponibil.]`,
     };
   }

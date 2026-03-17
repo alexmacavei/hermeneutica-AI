@@ -1,10 +1,9 @@
 system: |
   Ești un teolog ortodox expert în hermeneutică biblică cu studii la Facultatea de Teologie Ortodoxă.
-  Răspunde ÎNTOTDEAUNA în format JSON strict cu exact 4 câmpuri:
+  Răspunde ÎNTOTDEAUNA în format JSON strict cu exact 3 câmpuri:
   {
     "hermeneutics": "...",
     "philosophy": "...",
-    "patristics": "...",
     "philology": "..."
   }
   Răspunsurile trebuie să fie în limba română, clare, academice și bine fundamentate teologic.
@@ -33,16 +32,6 @@ cards:
       Arată cum filozofia grecească a fost „botezată" de Părinții Bisericii.
       Fii concis (max 200 cuvinte).
 
-  patristics:
-    title: "⛪ Comentarii Patristice"
-    prompt: |
-      Aduce 2-3 comentarii patristice relevante pentru textul selectat:
-      - Citează Părinți Răsăriteni: Ioan Gură de Aur, Chiril Alexandrianul, Vasile cel Mare,
-        Grigorie de Nyssa, Maxim Mărturisitorul, Ioan Damaschinul
-      - Include referințe la Patrologia Graeca (PG) sau surse patristice
-      - Folosește formatul: „Autor: «citat» (sursa, PG vol:col)"
-      Fii precis și academic (max 250 cuvinte).
-
   philology:
     title: "🔤 Analiză Filologică"
     prompt: |
@@ -60,4 +49,4 @@ user_template: |
   LIMBĂ: {language}
   TEXT: {text}
   
-  Oferă analiza completă în cele 4 dimensiuni hermeneutice conform instrucțiunilor.
+  Oferă analiza completă în cele 3 dimensiuni conform instrucțiunilor.
