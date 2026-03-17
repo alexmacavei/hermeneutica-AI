@@ -10,11 +10,9 @@ import { BibleTextComponent } from './bible-text.component';
 import { ResultsViewerComponent } from '../analysis/results-viewer.component';
 import { SemanticSearchComponent, SearchNavigateEvent } from './semantic-search.component';
 import { AnalysisService, AnalysisResult } from '../services/analysis.service';
-import { BibleApiService, BibleVerse } from '../services/bible-api.service';
+import { BibleApiService, BibleVerse, ParallelTranslation } from '../services/bible-api.service';
 import { SearchService } from '../services/search.service';
 import { ParallelViewerComponent } from './parallel-viewer.component';
-import { AnalysisService, AnalysisResult } from '../services/analysis.service';
-import { BibleApiService, BibleVerse, ParallelTranslation } from '../services/bible-api.service';
 import { VerseSelection } from './verse-highlighter.directive';
 
 @Component({
