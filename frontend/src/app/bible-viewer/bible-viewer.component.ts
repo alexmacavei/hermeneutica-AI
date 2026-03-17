@@ -329,9 +329,8 @@ export class BibleViewerComponent {
 
   onVerseSelected(selection: VerseSelection): void {
     this.selectedSelection = selection;
-    // Reset parallel data when a new verse is selected
+    // Clear stale parallel data; if panel is already open, auto-fetch for the new verse
     this.parallelVerses = [];
-    this.showParallelView = false;
 
     const match = /(\d+)(?:-(\d+))?$/.exec(selection.range);
     if (match) {
@@ -341,6 +340,10 @@ export class BibleViewerComponent {
         { length: end - start + 1 },
         (_, i) => String(start + i),
       );
+    }
+
+    if (this.showParallelView) {
+      this.openParallelView();
     }
   }
 

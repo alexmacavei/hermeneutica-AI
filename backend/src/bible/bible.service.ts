@@ -10,6 +10,12 @@ import { access, readFile } from 'fs/promises';
 
 const BIBLE_API_BASE = 'https://bible.helloao.org/api';
 
+/** Maximum chapter number accepted in API requests (Psalms has 150; 200 gives comfortable headroom). */
+const MAX_CHAPTER = 200;
+
+/** Maximum verse number accepted in parallel-verse requests. */
+const MAX_VERSE = 500;
+
 /**
  * Ordered list of translation IDs available in the application.
  * Corresponds to: Hebrew Masoretic Text, Greek Septuagint,
@@ -213,9 +219,9 @@ export class BibleService {
     this.validateSegment(bookId, 'bookId');
 
     // Sanity-check the chapter number.  Psalms (150), Revelation (22) are the
-    // practical upper bounds; 200 gives comfortable headroom without permitting
-    // obviously invalid values that would just produce API 404s.
-    if (chapter < 1 || chapter > 200) {
+    // practical upper bounds; MAX_CHAPTER gives comfortable headroom without
+    // permitting obviously invalid values that would just produce API 404s.
+    if (chapter < 1 || chapter > MAX_CHAPTER) {
       throw new BadRequestException('chapter must be between 1 and 200');
     }
 
@@ -260,10 +266,10 @@ export class BibleService {
   ): Promise<ParallelTranslation[]> {
     this.validateSegment(bookId, 'bookId');
 
-    if (chapter < 1 || chapter > 200) {
+    if (chapter < 1 || chapter > MAX_CHAPTER) {
       throw new BadRequestException('chapter must be between 1 and 200');
     }
-    if (verseStart < 1 || verseEnd < verseStart || verseEnd > 500) {
+    if (verseStart < 1 || verseEnd < verseStart || verseEnd > MAX_VERSE) {
       throw new BadRequestException('Invalid verse range');
     }
 
