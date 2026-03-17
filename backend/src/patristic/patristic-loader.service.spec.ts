@@ -461,6 +461,55 @@ describe('PatristicLoaderService', () => {
         work: 'On the Christian Faith (De fide)',
       });
     });
+
+    it('should preserve author/work for a single-level content file with no sub-books', () => {
+      const baseDir = '/data/patristic';
+      const fathersDir = path.join(baseDir, 'fathers');
+
+      // fathers/index.html maps 2903.htm → Gregory of Nyssa
+      // (a single-page work with no book sub-links)
+      const indexHtml = `
+        <a><strong>Gregory of Nyssa</strong></a>
+        <a href="../fathers/2903.htm">On the Holy Spirit, Against the Macedonians</a>`;
+
+      // 2903.htm contains actual patristic content directly.
+      // It has only encyclopedia cross-reference links (non-numeric hrefs)
+      // and no numbered patristic sub-links.
+      const contentHtml = `
+        <div id="springfield2">
+          <h1>On the Holy Spirit, Against the Macedonians</h1>
+          <p>Forasmuch as the <a href="../cathen/06950c.htm">Holy Spirit</a>
+          is of one substance with the Father and the Son...</p>
+        </div>`;
+
+      (mockFs.readdirSync as jest.Mock)
+        .mockReturnValueOnce([
+          { name: 'fathers', isDirectory: () => true, isFile: () => false },
+        ] as unknown as fs.Dirent[])
+        .mockReturnValueOnce([
+          { name: 'index.html', isDirectory: () => false, isFile: () => true },
+        ] as unknown as fs.Dirent[]);
+
+      // readFileSync: first for index.html, then for 2903.htm
+      (mockFs.readFileSync as jest.Mock)
+        .mockReturnValueOnce(indexHtml)
+        .mockReturnValueOnce(contentHtml);
+
+      // existsSync returns true so the content file is read
+      (mockFs.existsSync as jest.Mock).mockReturnValue(true);
+
+      const maps = service.buildDirectoryIndexMaps(baseDir);
+      const dirMap = maps.get(fathersDir);
+
+      // 2903.htm retains its author/work from the index
+      expect(dirMap?.get('2903.htm')).toEqual({
+        author: 'Gregory of Nyssa',
+        work: 'On the Holy Spirit, Against the Macedonians',
+      });
+
+      // No spurious entries from the cathen cross-reference links
+      expect(dirMap?.size).toBe(1);
+    });
   });
 
   // ─── extractDivById() ───────────────────────────────────────────────────────
