@@ -510,6 +510,63 @@ describe('PatristicLoaderService', () => {
       // No spurious entries from the cathen cross-reference links
       expect(dirMap?.size).toBe(1);
     });
+
+    it('should expand chapter files from a work page whose links have HTML-tagged text (Irenaeus pattern)', () => {
+      const baseDir = '/data/patristic';
+      const fathersDir = path.join(baseDir, 'fathers');
+
+      // fathers/index.html maps 0103.htm → Irenaeus / "Against Heresies"
+      const indexHtml = `
+        <a><strong>Irenaeus of Lyons (130-202)</strong></a>
+        <a href="../fathers/0103.htm">Against Heresies (Adversus Haereses)</a>`;
+
+      // 0103.htm: books are <h2> headings (not links); chapters ARE links
+      // but their visible text contains HTML markup (common in older NewAdvent pages).
+      const workHtml = `
+        <h2>Book I</h2>
+        <p>
+          <a href="../fathers/0103100.htm">Preface. <em>Introduction.</em></a><br>
+          <a href="../fathers/0103101.htm"><em>Chapter I</em>.—The heretics follow neither Scripture nor tradition.</a><br>
+          <a href="../fathers/0103102.htm"><em>Chapter II</em>.—The system of Ptolemy.</a>
+        </p>
+        <h2>Book II</h2>
+        <p>
+          <a href="../fathers/0103200.htm">Preface</a>
+        </p>`;
+
+      (mockFs.readdirSync as jest.Mock)
+        .mockReturnValueOnce([
+          { name: 'fathers', isDirectory: () => true, isFile: () => false },
+        ] as unknown as fs.Dirent[])
+        .mockReturnValueOnce([
+          { name: 'index.html', isDirectory: () => false, isFile: () => true },
+        ] as unknown as fs.Dirent[]);
+
+      // readFileSync: first for index.html, then for 0103.htm
+      (mockFs.readFileSync as jest.Mock)
+        .mockReturnValueOnce(indexHtml)
+        .mockReturnValueOnce(workHtml);
+
+      // existsSync returns true for the work file 0103.htm
+      (mockFs.existsSync as jest.Mock).mockReturnValue(true);
+
+      const maps = service.buildDirectoryIndexMaps(baseDir);
+      const dirMap = maps.get(fathersDir);
+
+      const expected = {
+        author: 'Irenaeus of Lyons (130-202)',
+        work: 'Against Heresies (Adversus Haereses)',
+      };
+
+      // The TOC file itself is preserved
+      expect(dirMap?.get('0103.htm')).toEqual(expected);
+
+      // Chapter files with HTML-tagged link text are still captured
+      expect(dirMap?.get('0103100.htm')).toEqual(expected);
+      expect(dirMap?.get('0103101.htm')).toEqual(expected);
+      expect(dirMap?.get('0103102.htm')).toEqual(expected);
+      expect(dirMap?.get('0103200.htm')).toEqual(expected);
+    });
   });
 
   // ─── extractDivById() ───────────────────────────────────────────────────────

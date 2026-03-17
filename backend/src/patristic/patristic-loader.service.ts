@@ -555,13 +555,19 @@ export class PatristicLoaderService {
    * the same `author` and `work` as the parent `parentEntry`.  Only numbered
    * `.htm` / `.html` filenames are collected; navigation and external links are
    * ignored.
+   *
+   * Only the opening anchor tag is inspected (not the link text) so that links
+   * whose visible text contains HTML markup — e.g.
+   * `<a href="0103100.htm">Preface. <em>Introduction.</em></a>` — are
+   * correctly captured even though the link text is not plain text.
    */
   private parseSubLinks(
     html: string,
     parentEntry: IndexEntry,
   ): Map<string, IndexEntry> {
     const map = new Map<string, IndexEntry>();
-    const re = /<a\s[^>]*href=["']([^"']+)["'][^>]*>([^<]+)<\/a>/gi;
+    // Match only the opening <a ...> tag; the link text may contain inner HTML.
+    const re = /<a\s[^>]*href=["']([^"']+)["'][^>]*>/gi;
     let m: RegExpExecArray | null;
     while ((m = re.exec(html)) !== null) {
       const fileName = this.extractFilename(m[1]);
