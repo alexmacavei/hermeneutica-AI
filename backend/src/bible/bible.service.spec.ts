@@ -41,51 +41,51 @@ describe('BibleService', () => {
   });
 
   describe('getTranslations()', () => {
-    it('should return only the 4 upstream allowed translations when sinodala_ro file is absent', async () => {
+    it("should return only the 4 upstream allowed translations when ro_sinodala file is absent", async () => {
       mockFetch.mockImplementation((url: string) => {
-        const id = url.split('/').slice(-2, -1)[0];
+        const id = url.split("/").slice(-2, -1)[0];
         return Promise.resolve({
           ok: true,
           status: 200,
           json: () => Promise.resolve(mockBooksResponse(id)),
         });
       });
-      // Simulate missing sinodala_ro file
-      mockAccess.mockRejectedValue(new Error('ENOENT'));
+      // Simulate missing ro_sinodala file
+      mockAccess.mockRejectedValue(new Error("ENOENT"));
 
       const translations = await service.getTranslations();
 
       expect(translations).toHaveLength(4);
       const ids = translations.map((t) => t.id);
-      expect(ids).toContain('hbo_wlc');
-      expect(ids).toContain('grc_bre');
-      expect(ids).toContain('grc_byz');
-      expect(ids).toContain('eng_kja');
-      expect(ids).not.toContain('sinodala_ro');
+      expect(ids).toContain("hbo_wlc");
+      expect(ids).toContain("grc_bre");
+      expect(ids).toContain("grc_byz");
+      expect(ids).toContain("eng_kja");
+      expect(ids).not.toContain("ro_sinodala");
     });
 
-    it('should include sinodala_ro as the 5th translation when sinodala_ro file is present', async () => {
+    it("should include ro_sinodala as the 5th translation when ro_sinodala file is present", async () => {
       mockFetch.mockImplementation((url: string) => {
-        const id = url.split('/').slice(-2, -1)[0];
+        const id = url.split("/").slice(-2, -1)[0];
         return Promise.resolve({
           ok: true,
           status: 200,
           json: () => Promise.resolve(mockBooksResponse(id)),
         });
       });
-      // Simulate present sinodala_ro file
+      // Simulate present ro_sinodala file
       mockAccess.mockResolvedValue(undefined);
 
       const translations = await service.getTranslations();
 
       expect(translations).toHaveLength(5);
       const ids = translations.map((t) => t.id);
-      expect(ids).toContain('sinodala_ro');
+      expect(ids).toContain("ro_sinodala");
     });
 
-    it('should return translations in the correct order: hbo_wlc, grc_bre, grc_byz, eng_kja, sinodala_ro', async () => {
+    it("should return translations in the correct order: hbo_wlc, grc_bre, grc_byz, eng_kja, ro_sinodala", async () => {
       mockFetch.mockImplementation((url: string) => {
-        const id = url.split('/').slice(-2, -1)[0];
+        const id = url.split("/").slice(-2, -1)[0];
         return Promise.resolve({
           ok: true,
           status: 200,
@@ -96,11 +96,11 @@ describe('BibleService', () => {
 
       const translations = await service.getTranslations();
 
-      expect(translations[0].id).toBe('hbo_wlc');
-      expect(translations[1].id).toBe('grc_bre');
-      expect(translations[2].id).toBe('grc_byz');
-      expect(translations[3].id).toBe('eng_kja');
-      expect(translations[4].id).toBe('sinodala_ro');
+      expect(translations[0].id).toBe("hbo_wlc");
+      expect(translations[1].id).toBe("grc_bre");
+      expect(translations[2].id).toBe("grc_byz");
+      expect(translations[3].id).toBe("eng_kja");
+      expect(translations[4].id).toBe("ro_sinodala");
     });
 
     it('should cache translations after the first request', async () => {
@@ -167,16 +167,16 @@ describe('BibleService', () => {
     });
 
     it('should mark a translation as unavailable when the book does not exist', async () => {
-      // Set up translations cache (4 upstream translations, no sinodala_ro)
+      // Set up translations cache (4 upstream translations, no ro_sinodala)
       mockFetch.mockImplementation((url: string) => {
-        const id = url.split('/').slice(-2, -1)[0];
+        const id = url.split("/").slice(-2, -1)[0];
         return Promise.resolve({
           ok: true,
           status: 200,
           json: () => Promise.resolve(mockBooksResponse(id)),
         });
       });
-      mockAccess.mockRejectedValue(new Error('ENOENT'));
+      mockAccess.mockRejectedValue(new Error("ENOENT"));
       await service.getTranslations();
 
       // First two translations return 404 (book not available), rest succeed
@@ -189,7 +189,7 @@ describe('BibleService', () => {
           json: () => Promise.resolve(mockChapterContent),
         });
 
-      const result = await service.getParallelVerses('MAT', 5, 3, 3);
+      const result = await service.getParallelVerses("MAT", 5, 3, 3);
 
       const unavailable = result.filter((t) => !t.available);
       expect(unavailable.length).toBeGreaterThanOrEqual(2);
@@ -226,16 +226,16 @@ describe('BibleService', () => {
     });
 
     it('should exclude the specified translation from the results', async () => {
-      // Set up translations cache (4 upstream translations, no sinodala_ro)
+      // Set up translations cache (4 upstream translations, no ro_sinodala)
       mockFetch.mockImplementation((url: string) => {
-        const id = url.split('/').slice(-2, -1)[0];
+        const id = url.split("/").slice(-2, -1)[0];
         return Promise.resolve({
           ok: true,
           status: 200,
           json: () => Promise.resolve(mockBooksResponse(id)),
         });
       });
-      mockAccess.mockRejectedValue(new Error('ENOENT'));
+      mockAccess.mockRejectedValue(new Error("ENOENT"));
       await service.getTranslations();
 
       mockFetch.mockResolvedValue({
@@ -244,10 +244,10 @@ describe('BibleService', () => {
         json: () => Promise.resolve(mockChapterContent),
       });
 
-      const result = await service.getParallelVerses('GEN', 1, 1, 1, 'hbo_wlc');
+      const result = await service.getParallelVerses("GEN", 1, 1, 1, "hbo_wlc");
 
       const ids = result.map((t) => t.translationId);
-      expect(ids).not.toContain('hbo_wlc');
+      expect(ids).not.toContain("hbo_wlc");
     });
 
     it('should throw BadRequestException for an invalid chapter number', async () => {
