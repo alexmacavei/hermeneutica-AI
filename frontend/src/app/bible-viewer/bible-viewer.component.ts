@@ -238,7 +238,7 @@ import { VerseSelection } from './verse-highlighter.directive';
         font-style: italic;
         opacity: 0.6;
       }
-      .nav-btn {
+      :host ::ng-deep .nav-btn .p-button {
         color: var(--text-muted) !important;
       }
       .analyze-bar {
@@ -250,7 +250,7 @@ import { VerseSelection } from './verse-highlighter.directive';
         gap: 20px;
         flex-wrap: wrap;
       }
-      :host ::ng-deep .analyze-btn.p-button {
+      :host ::ng-deep .analyze-btn .p-button {
         background: var(--cross-red);
         border-color: var(--cross-red);
         color: white;
@@ -260,11 +260,11 @@ import { VerseSelection } from './verse-highlighter.directive';
         border-radius: 24px;
         height: 46px;
       }
-      :host ::ng-deep .analyze-btn.p-button:not(:disabled):hover {
+      :host ::ng-deep .analyze-btn .p-button:not(:disabled):hover {
         background: #b71c1c;
         border-color: #b71c1c;
       }
-      :host ::ng-deep .analyze-btn.p-button:disabled {
+      :host ::ng-deep .analyze-btn .p-button:disabled {
         background: rgba(198, 40, 40, 0.3);
         border-color: rgba(198, 40, 40, 0.3);
         color: rgba(255, 255, 255, 0.4);
