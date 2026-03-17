@@ -130,6 +130,8 @@ export class PatristicLoaderService {
    * Strips HTML markup from a raw HTML string, returning plain text.
    *
    * Handles:
+   * - `<div class="pub">` blocks (NewAdvent "About this page" section, removed entirely)
+   * - Content scoping to `<div id="springfield2">` when present (main content area)
    * - `<script>` / `<style>` blocks (removed entirely with their content)
    * - HTML comments
    * - Footnote/endnote references (e.g. `<sup>`, `<a>` with numeric text)
@@ -138,6 +140,21 @@ export class PatristicLoaderService {
    */
   cleanHtml(html: string): string {
     let text = html;
+
+    // Remove the NewAdvent "About this page" publication info block.
+    // This div appears on every page and contains translator/editor credits
+    // that should not be part of the searchable patristic content.
+    text = text.replace(
+      /<div\b[^>]*\bclass=["'][^"']*\bpub\b[^"']*["'][^>]*>[\s\S]*?<\/div\s*>/gi,
+      ' ',
+    );
+
+    // If the page has a main-content div (#springfield2), restrict processing
+    // to its contents so that site navigation, headers, and footers are excluded.
+    const springfieldContent = this.extractDivById(text, 'springfield2');
+    if (springfieldContent !== undefined) {
+      text = springfieldContent;
+    }
 
     // Remove <script> and <style> blocks entirely
     text = text.replace(/<script\b[^>]*>[\s\S]*?<\/script[^>]*>/gi, ' ');
@@ -185,6 +202,46 @@ export class PatristicLoaderService {
       /<link[^>]+rel=["']canonical["'][^>]+href=["']([^"']+)["']/i,
     );
     return match?.[1];
+  }
+
+  /**
+   * Extracts the inner HTML of the first `<div>` whose `id` attribute equals
+   * `id` (case-insensitive).  Uses a depth counter driven by a word-boundary
+   * regex (`<div\b` / `</div\b`) to correctly handle nested `<div>` elements
+   * without accidentally matching element names that start with "div" (e.g.
+   * `<divider>`).
+   *
+   * Returns `undefined` when no matching `<div>` is found.
+   */
+  extractDivById(html: string, id: string): string | undefined {
+    const startTagRe = new RegExp(
+      `<div\\b[^>]*\\bid=["']${id}["'][^>]*>`,
+      'i',
+    );
+    const match = startTagRe.exec(html);
+    if (!match) return undefined;
+
+    const innerStart = match.index + match[0].length;
+
+    // Walk forward counting open/close div tags using word-boundary matching
+    // so that tags like <diversion> are not mistakenly counted.
+    const divRe = /<(\/?)div\b/gi;
+    divRe.lastIndex = innerStart;
+    let depth = 1;
+
+    let m: RegExpExecArray | null;
+    while ((m = divRe.exec(html)) !== null && depth > 0) {
+      if (m[1] === '/') {
+        depth--;
+        if (depth === 0) {
+          return html.slice(innerStart, m.index);
+        }
+      } else {
+        depth++;
+      }
+    }
+
+    return undefined;
   }
 
   // ─── Metadata Extraction ─────────────────────────────────────────────────────
@@ -402,6 +459,11 @@ export class PatristicLoaderService {
    * Returns a map keyed by **absolute directory path** to per-filename index
    * map (as returned by `parseNewAdventIndex`).  Only directories that
    * produced at least one entry are included.
+   *
+   * After building the first-level map from each `index.html`, the map is
+   * expanded one level deeper via `expandIndexMapWithSubLinks` so that book
+   * files (e.g. `34041.htm`) that are only referenced from an intermediate
+   * work page (e.g. `3404.htm`) still inherit the correct author and work.
    */
   buildDirectoryIndexMaps(
     baseDir: string,
@@ -431,9 +493,10 @@ export class PatristicLoaderService {
             );
             const indexMap = this.parseNewAdventIndex(html);
             if (indexMap.size > 0) {
-              result.set(dir, indexMap);
+              const expanded = this.expandIndexMapWithSubLinks(dir, indexMap);
+              result.set(dir, expanded);
               this.logger.log(
-                `Parsed index "${entry.name}" in "${dir}": ${indexMap.size} entry(ies).`,
+                `Parsed index "${entry.name}" in "${dir}": ${expanded.size} entry(ies).`,
               );
             }
           } catch (error) {
@@ -447,5 +510,68 @@ export class PatristicLoaderService {
 
     scan(baseDir);
     return result;
+  }
+
+  /**
+   * Expands a first-level index map by reading each mapped file in `dir` and
+   * collecting any further numbered `.htm` / `.html` sub-links it contains
+   * (e.g. the book files `34041.htm`, `34042.htm` linked from `3404.htm`).
+   *
+   * Sub-links inherit the `author` and `work` of their parent entry.  Existing
+   * entries in `indexMap` are never overwritten, so the original work-level
+   * metadata always takes precedence.
+   */
+  private expandIndexMapWithSubLinks(
+    dir: string,
+    indexMap: Map<string, IndexEntry>,
+  ): Map<string, IndexEntry> {
+    const expanded = new Map<string, IndexEntry>(indexMap);
+
+    for (const [fileName, entry] of indexMap) {
+      const filePath = path.join(dir, fileName);
+      if (!fs.existsSync(filePath)) continue;
+
+      try {
+        const html = fs.readFileSync(filePath, 'utf-8');
+        const subLinks = this.parseSubLinks(html, entry);
+        for (const [subFile, subEntry] of subLinks) {
+          if (!expanded.has(subFile)) {
+            expanded.set(subFile, subEntry);
+          }
+        }
+      } catch {
+        // Silently skip files that cannot be read
+      }
+    }
+
+    return expanded;
+  }
+
+  /**
+   * Parses a work-listing HTML page (e.g. `3404.htm`) for links to numbered
+   * book/chapter files (e.g. `34041.htm`).
+   *
+   * Returns a map from **lowercase filename** to an `IndexEntry` that carries
+   * the same `author` and `work` as the parent `parentEntry`.  Only numbered
+   * `.htm` / `.html` filenames are collected; navigation and external links are
+   * ignored.
+   */
+  private parseSubLinks(
+    html: string,
+    parentEntry: IndexEntry,
+  ): Map<string, IndexEntry> {
+    const map = new Map<string, IndexEntry>();
+    const re = /<a\s[^>]*href=["']([^"']+)["'][^>]*>([^<]+)<\/a>/gi;
+    let m: RegExpExecArray | null;
+    while ((m = re.exec(html)) !== null) {
+      const fileName = this.extractFilename(m[1]);
+      if (fileName && /^\d+\.html?$/.test(fileName)) {
+        map.set(fileName, {
+          author: parentEntry.author,
+          work: parentEntry.work,
+        });
+      }
+    }
+    return map;
   }
 }
