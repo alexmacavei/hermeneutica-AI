@@ -1,4 +1,4 @@
-import { Injectable } from '@angular/core';
+import { inject, Injectable } from '@angular/core';
 import { HttpClient } from '@angular/common/http';
 import { Observable, shareReplay } from 'rxjs';
 import { environment } from '../../environments/environment';
@@ -33,12 +33,13 @@ export interface ParallelTranslation {
 
 @Injectable({ providedIn: 'root' })
 export class BibleApiService {
+  private readonly http = inject(HttpClient);
   private readonly base = `${environment.apiUrl}/bible`;
 
   // Simple per-request share cache so repeated subscribers don't double-fire
   private readonly translationsCache$: Observable<Translation[]>;
 
-  constructor(private readonly http: HttpClient) {
+  constructor() {
     this.translationsCache$ = this.http
       .get<Translation[]>(`${this.base}/translations`)
       .pipe(shareReplay(1));

@@ -1,4 +1,4 @@
-import { Injectable } from '@angular/core';
+import { inject, Injectable } from '@angular/core';
 import { HttpClient, HttpParams } from '@angular/common/http';
 import { Observable, of } from 'rxjs';
 import { catchError } from 'rxjs/operators';
@@ -24,9 +24,8 @@ export interface SearchResponse {
 
 @Injectable({ providedIn: 'root' })
 export class SearchService {
+  private readonly http = inject(HttpClient);
   private readonly base = `${environment.apiUrl}/search`;
-
-  constructor(private readonly http: HttpClient) {}
 
   /**
    * Performs semantic search for verses related to `query` within the
@@ -45,9 +44,7 @@ export class SearchService {
     return this.http
       .get<SearchResponse>(this.base, { params })
       .pipe(
-        catchError(() =>
-          of({ query, translationId, results: [], total: 0 }),
-        ),
+        catchError(() => of({ query, translationId, results: [], total: 0 })),
       );
   }
 

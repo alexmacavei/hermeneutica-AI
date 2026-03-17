@@ -24,6 +24,19 @@ const mockTranslationsResponse = {
   ],
 };
 
+const mockBooksResponse = (id: string) => ({
+  translation: {
+    id,
+    name: `${id} Name`,
+    englishName: `${id} English Name`,
+    language: 'und',
+    textDirection: 'ltr',
+  },
+  books: [
+    { id: 'GEN', name: 'Genesis', numChapters: 50 },
+  ],
+});
+
 describe('BibleService', () => {
   let service: BibleService;
 
@@ -39,75 +52,84 @@ describe('BibleService', () => {
   });
 
   describe('getTranslations()', () => {
-    it('should return only the 4 upstream allowed translations when BSR file is absent', async () => {
-      mockFetch.mockResolvedValue({
-        ok: true,
-        status: 200,
-        json: () => Promise.resolve(mockTranslationsResponse),
+    it('should return only the 4 upstream allowed translations when sinodala_ro file is absent', async () => {
+      mockFetch.mockImplementation((url: string) => {
+        const id = url.split('/').slice(-2, -1)[0];
+        return Promise.resolve({
+          ok: true,
+          status: 200,
+          json: () => Promise.resolve(mockBooksResponse(id)),
+        });
       });
-      // Simulate missing BSR.json
+      // Simulate missing sinodala_ro file
       mockAccess.mockRejectedValue(new Error('ENOENT'));
 
       const translations = await service.getTranslations();
 
       expect(translations).toHaveLength(4);
       const ids = translations.map((t) => t.id);
-      expect(ids).toContain('WLC');
-      expect(ids).toContain('LXX');
-      expect(ids).toContain('UGNT');
-      expect(ids).toContain('KJVA');
-      expect(ids).not.toContain('BSR');
-      expect(ids).not.toContain('BSB');
-      expect(ids).not.toContain('NET');
+      expect(ids).toContain('hbo_wlc');
+      expect(ids).toContain('grc_bre');
+      expect(ids).toContain('grc_byz');
+      expect(ids).toContain('eng_kja');
+      expect(ids).not.toContain('sinodala_ro');
     });
 
-    it('should include BSR as the 5th translation when BSR file is present', async () => {
-      mockFetch.mockResolvedValue({
-        ok: true,
-        status: 200,
-        json: () => Promise.resolve(mockTranslationsResponse),
+    it('should include sinodala_ro as the 5th translation when sinodala_ro file is present', async () => {
+      mockFetch.mockImplementation((url: string) => {
+        const id = url.split('/').slice(-2, -1)[0];
+        return Promise.resolve({
+          ok: true,
+          status: 200,
+          json: () => Promise.resolve(mockBooksResponse(id)),
+        });
       });
-      // Simulate present BSR.json
+      // Simulate present sinodala_ro file
       mockAccess.mockResolvedValue(undefined);
 
       const translations = await service.getTranslations();
 
       expect(translations).toHaveLength(5);
       const ids = translations.map((t) => t.id);
-      expect(ids).toContain('BSR');
-      expect(ids).not.toContain('BSB');
-      expect(ids).not.toContain('NET');
+      expect(ids).toContain('sinodala_ro');
     });
 
-    it('should return translations in the correct order: WLC, LXX, UGNT, KJVA, BSR', async () => {
-      mockFetch.mockResolvedValue({
-        ok: true,
-        status: 200,
-        json: () => Promise.resolve(mockTranslationsResponse),
+    it('should return translations in the correct order: hbo_wlc, grc_bre, grc_byz, eng_kja, sinodala_ro', async () => {
+      mockFetch.mockImplementation((url: string) => {
+        const id = url.split('/').slice(-2, -1)[0];
+        return Promise.resolve({
+          ok: true,
+          status: 200,
+          json: () => Promise.resolve(mockBooksResponse(id)),
+        });
       });
       mockAccess.mockResolvedValue(undefined);
 
       const translations = await service.getTranslations();
 
-      expect(translations[0].id).toBe('WLC');
-      expect(translations[1].id).toBe('LXX');
-      expect(translations[2].id).toBe('UGNT');
-      expect(translations[3].id).toBe('KJVA');
-      expect(translations[4].id).toBe('BSR');
+      expect(translations[0].id).toBe('hbo_wlc');
+      expect(translations[1].id).toBe('grc_bre');
+      expect(translations[2].id).toBe('grc_byz');
+      expect(translations[3].id).toBe('eng_kja');
+      expect(translations[4].id).toBe('sinodala_ro');
     });
 
     it('should cache translations after the first request', async () => {
-      mockFetch.mockResolvedValue({
-        ok: true,
-        status: 200,
-        json: () => Promise.resolve(mockTranslationsResponse),
+      mockFetch.mockImplementation((url: string) => {
+        const id = url.split('/').slice(-2, -1)[0];
+        return Promise.resolve({
+          ok: true,
+          status: 200,
+          json: () => Promise.resolve(mockBooksResponse(id)),
+        });
       });
       mockAccess.mockRejectedValue(new Error('ENOENT'));
 
       await service.getTranslations();
       await service.getTranslations();
 
-      expect(mockFetch).toHaveBeenCalledTimes(1);
+      // Called 4 times for the 4 upstream translations once, then cached
+      expect(mockFetch).toHaveBeenCalledTimes(4);
     });
   });
 

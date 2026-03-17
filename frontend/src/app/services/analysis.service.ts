@@ -1,4 +1,4 @@
-import { Injectable } from '@angular/core';
+import { inject, Injectable } from '@angular/core';
 import { HttpClient } from '@angular/common/http';
 import { Observable } from 'rxjs';
 import { environment } from '../../environments/environment';
@@ -27,13 +27,9 @@ export interface AnalyzeRequest {
 @Injectable({ providedIn: 'root' })
 export class AnalysisService {
   private readonly apiUrl = environment.apiUrl;
-
-  constructor(private readonly http: HttpClient) {}
+  private readonly http = inject(HttpClient);
 
   analyze(request: AnalyzeRequest): Observable<AnalysisResult> {
-    return this.http.post<AnalysisResult>(
-      `${this.apiUrl}/analyze`,
-      request,
-    );
+    return this.http.post<AnalysisResult>(`${this.apiUrl}/analyze`, request);
   }
 }

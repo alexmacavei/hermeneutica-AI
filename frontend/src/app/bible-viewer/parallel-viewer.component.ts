@@ -19,13 +19,14 @@ import { ParallelTranslation } from '../services/bible-api.service';
             <span class="reference-badge" *ngIf="reference">{{ reference }}</span>
           </div>
         </div>
-        <button
-          pButton
+        <p-button
           icon="pi pi-times"
-          class="p-button-text p-button-rounded close-btn"
+          variant="text"
+          class="close-btn"
           (click)="close.emit()"
           title="Închide panoul"
-        ></button>
+          [rounded]="true"
+        ></p-button>
       </div>
 
       <!-- Loading state -->
