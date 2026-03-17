@@ -5,4 +5,5 @@ export default () => ({
     model: process.env['OPENAI_MODEL'] ?? 'gpt-4o',
   },
   frontendUrl: process.env['FRONTEND_URL'] ?? 'http://localhost:4200',
+  databaseUrl: process.env['DATABASE_URL'] ?? '',
 });
