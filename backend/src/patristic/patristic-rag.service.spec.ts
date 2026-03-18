@@ -37,6 +37,7 @@ describe('PatristicRagService', () => {
     hasApiKey: true,
     generateEmbedding: jest.fn(),
     generatePatristicSummary: jest.fn(),
+    translateToEnglish: jest.fn(),
   };
 
   const mockDatabaseService = {
@@ -53,6 +54,11 @@ describe('PatristicRagService', () => {
     }).compile();
 
     service = module.get<PatristicRagService>(PatristicRagService);
+
+    // Default: translateToEnglish is a pass-through so existing tests are unaffected.
+    mockAiService.translateToEnglish.mockImplementation((t: string) =>
+      Promise.resolve(t),
+    );
   });
 
   afterEach(() => {
@@ -123,8 +129,10 @@ describe('PatristicRagService', () => {
       });
     });
 
-    it('should call generateEmbedding with combined reference and verse text', async () => {
+    it('should translate verse to English and embed the English text', async () => {
+      const englishTranslation = 'John 1:1 In the beginning was the Word';
       mockDatabaseService.getPool.mockReturnValue(mockPool);
+      mockAiService.translateToEnglish.mockResolvedValue(englishTranslation);
       mockAiService.generateEmbedding.mockResolvedValue(mockEmbedding);
       mockPool.query.mockResolvedValue({ rows: [] });
 
@@ -133,8 +141,11 @@ describe('PatristicRagService', () => {
         'Ioan 1:1',
       );
 
-      expect(mockAiService.generateEmbedding).toHaveBeenCalledWith(
+      expect(mockAiService.translateToEnglish).toHaveBeenCalledWith(
         'Ioan 1:1 La început era Cuvântul',
+      );
+      expect(mockAiService.generateEmbedding).toHaveBeenCalledWith(
+        englishTranslation,
       );
     });
 

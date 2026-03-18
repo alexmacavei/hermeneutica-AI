@@ -62,10 +62,12 @@ export class PatristicRagService {
     }
 
     try {
-      // Embed the query verse so it can be compared against the stored
-      // patristic chunk embeddings using pgvector cosine similarity.
+      // Translate the verse to English so the embedding aligns with the
+      // English-language patristic chunks stored in the database (NewAdvent).
+      // The final commentary will still be generated in Romanian.
       const queryText = `${reference} ${verseText}`;
-      const embedding = await this.aiService.generateEmbedding(queryText);
+      const englishQuery = await this.aiService.translateToEnglish(queryText);
+      const embedding = await this.aiService.generateEmbedding(englishQuery);
       const vectorStr = `[${embedding.join(',')}]`;
 
       // Fetch more candidates than the final limit so that the threshold filter

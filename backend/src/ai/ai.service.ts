@@ -158,6 +158,40 @@ export class AiService {
   }
 
   /**
+   * Translates arbitrary text to English using a lightweight, low-cost model.
+   *
+   * Used before generating patristic RAG embeddings so that the query language
+   * matches the English-language chunks stored in the database (sourced from
+   * NewAdvent).  Falls back to the original text when the API key is absent or
+   * the call fails, so the retrieval still works (at reduced quality).
+   */
+  async translateToEnglish(text: string): Promise<string> {
+    if (!this.hasApiKey) return text;
+    try {
+      const completion = await this.openai.chat.completions.create({
+        model: 'gpt-4o-mini',
+        messages: [
+          {
+            role: 'system',
+            content:
+              'Translate the following text to English. Reply with only the translation — no explanations, no extra text.',
+          },
+          { role: 'user', content: text },
+        ],
+        temperature: 0,
+        max_tokens: 300,
+      });
+      return completion.choices[0]?.message?.content?.trim() || text;
+    } catch (error) {
+      this.logger.warn(
+        'Translation to English failed; falling back to original text.',
+        error,
+      );
+      return text;
+    }
+  }
+
+  /**
    * Specifically for the Patristic RAG flow: builds the prompt and calls the LLM.
    */
   async generatePatristicSummary(
