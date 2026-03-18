@@ -99,7 +99,21 @@ export class PatristicEmbeddingService {
 
     for (let i = 0; i < chunks.length; i += this.BATCH_SIZE) {
       const batch = chunks.slice(i, i + this.BATCH_SIZE);
-      const texts = batch.map((c) => c.text);
+      const texts = batch.map((c) => {
+        // Prepend author / work / chapter so the embedding captures
+        // metadata context alongside the raw chunk text.  This improves
+        // cross-language retrieval because the query (Romanian verse) and
+        // the stored vectors share topical context words (author names,
+        // work titles, biblical book references).
+        const meta = [
+          c.metadata.author,
+          c.metadata.work,
+          c.metadata.chapter,
+        ]
+          .filter(Boolean)
+          .join(' – ');
+        return meta ? `${meta}:\n${c.text}` : c.text;
+      });
 
       const embeddings = await this.aiService.generateEmbeddings(texts);
 

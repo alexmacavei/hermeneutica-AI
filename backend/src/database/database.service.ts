@@ -70,6 +70,12 @@ export class DatabaseService implements OnModuleInit {
           UNIQUE (source_file, chunk_index)
         )
       `);
+      // HNSW index for fast cosine-similarity search on patristic embeddings.
+      // vector_cosine_ops matches the <=> operator used in SEARCH_PATRISTIC_BY_EMBEDDING.
+      await client.query(`
+        CREATE INDEX IF NOT EXISTS idx_patristic_chunks_embedding
+        ON patristic_chunks USING hnsw (embedding vector_cosine_ops)
+      `);
     } finally {
       client.release();
     }

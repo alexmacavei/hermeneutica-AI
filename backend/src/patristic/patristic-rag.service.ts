@@ -2,7 +2,7 @@ import { Injectable, Logger } from '@nestjs/common';
 import { AiService } from '../ai/ai.service';
 import { DatabaseService } from '../database/database.service';
 import { SEARCH_PATRISTIC_BY_EMBEDDING } from './patristic-queries';
-import { PATRISTIC_SIMILARITY_THRESHOLD } from './pipeline.config';
+import { PATRISTIC_SIMILARITY_THRESHOLD, PATRISTIC_SEARCH_CANDIDATES } from './pipeline.config';
 
 /** A single patristic chunk returned by the similarity search. */
 export interface PatristicChunkResult {
@@ -68,13 +68,18 @@ export class PatristicRagService {
       const embedding = await this.aiService.generateEmbedding(queryText);
       const vectorStr = `[${embedding.join(',')}]`;
 
+      // Fetch more candidates than the final limit so that the threshold filter
+      // has enough material to work with even when the closest vectors are only
+      // moderately similar (common in cross-language matching).
+      const candidateLimit = limit * PATRISTIC_SEARCH_CANDIDATES;
       const { rows } = await pool.query<PatristicRow>(
         SEARCH_PATRISTIC_BY_EMBEDDING,
-        [vectorStr, limit],
+        [vectorStr, candidateLimit],
       );
 
       return rows
         .filter((row) => Number(row.similarity) >= PATRISTIC_SIMILARITY_THRESHOLD)
+        .slice(0, limit)
         .map((row) => ({
           author: row.author,
           work: row.work,
