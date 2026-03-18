@@ -433,6 +433,7 @@ export class BibleViewerComponent {
         text: this.selectedSelection.text,
         range: this.selectedSelection.range,
         language: this.currentNav.translationName,
+        translationId: this.currentNav.translationId,
       })
       .pipe(
         catchError((err) => {

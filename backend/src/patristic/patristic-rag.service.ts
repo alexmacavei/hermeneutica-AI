@@ -47,14 +47,18 @@ export class PatristicRagService {
    * Only chunks whose cosine-similarity score meets the configured threshold
    * are returned.  An empty array signals that the corpus has no good match.
    *
-   * @param verseText  Plain-text content of the Bible verse.
-   * @param reference  Human-readable reference (e.g. „Ioan 3,16").
-   * @param limit      Maximum number of chunks to retrieve (default 3).
+   * @param verseText      Plain-text content of the Bible verse.
+   * @param reference      Human-readable reference (e.g. „Ioan 3,16").
+   * @param limit          Maximum number of chunks to retrieve (default 3).
+   * @param translationId  Optional translation identifier (e.g. `eng_kja`).
+   *                       When the ID starts with `eng_` the verse is already
+   *                       in English and translation is skipped.
    */
   async findRelevantChunksForVerse(
     verseText: string,
     reference: string,
     limit = 3,
+    translationId?: string,
   ): Promise<PatristicChunkResult[]> {
     const pool = this.databaseService.getPool();
     if (!pool || !this.aiService.hasApiKey) {
@@ -64,9 +68,14 @@ export class PatristicRagService {
     try {
       // Translate the verse to English so the embedding aligns with the
       // English-language patristic chunks stored in the database (NewAdvent).
+      // Skip translation when the selected Bible translation is already in
+      // English (translationId starts with "eng_", e.g. eng_kja).
       // The final commentary will still be generated in Romanian.
       const queryText = `${reference} ${verseText}`;
-      const englishQuery = await this.aiService.translateToEnglish(queryText);
+      const isEnglish = translationId?.startsWith('eng_') ?? false;
+      const englishQuery = isEnglish
+        ? queryText
+        : await this.aiService.translateToEnglish(queryText);
       const embedding = await this.aiService.generateEmbedding(englishQuery);
       const vectorStr = `[${embedding.join(',')}]`;
 
@@ -104,14 +113,18 @@ export class PatristicRagService {
    *  - the local corpus has no sufficiently similar chunks, or
    *  - the AI service is unavailable.
    *
-   * @param verseText  Plain-text content of the Bible verse.
-   * @param reference  Human-readable reference (e.g. „Ioan 3,16").
+   * @param verseText      Plain-text content of the Bible verse.
+   * @param reference      Human-readable reference (e.g. „Ioan 3,16").
+   * @param translationId  Optional translation identifier forwarded to
+   *                       {@link findRelevantChunksForVerse} to skip
+   *                       unnecessary translation for English-language Bibles.
    */
   async buildPatristicSummary(
     verseText: string,
     reference: string,
+    translationId?: string,
   ): Promise<string> {
-    const topChunks = await this.findRelevantChunksForVerse(verseText, reference);
+    const topChunks = await this.findRelevantChunksForVerse(verseText, reference, 3, translationId);
 
     if (topChunks.length === 0) {
       return PATRISTIC_FALLBACK;

@@ -149,6 +149,24 @@ describe('PatristicRagService', () => {
       );
     });
 
+    it('should skip translation and embed the original text for English translations', async () => {
+      mockDatabaseService.getPool.mockReturnValue(mockPool);
+      mockAiService.generateEmbedding.mockResolvedValue(mockEmbedding);
+      mockPool.query.mockResolvedValue({ rows: [] });
+
+      await service.findRelevantChunksForVerse(
+        'In the beginning was the Word',
+        'John 1:1',
+        3,
+        'eng_kja',
+      );
+
+      expect(mockAiService.translateToEnglish).not.toHaveBeenCalled();
+      expect(mockAiService.generateEmbedding).toHaveBeenCalledWith(
+        'John 1:1 In the beginning was the Word',
+      );
+    });
+
     it('should return empty array and log error when query fails', async () => {
       mockDatabaseService.getPool.mockReturnValue(mockPool);
       mockAiService.generateEmbedding.mockResolvedValue(mockEmbedding);
