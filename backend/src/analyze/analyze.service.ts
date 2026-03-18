@@ -25,7 +25,7 @@ export class AnalyzeService {
 
     const [threeCards, patristics] = await Promise.all([
       this.aiService.generateThreeCards(dto.text, dto.range, language),
-      this.patristicRagService.buildPatristicSummary(dto.text, dto.range),
+      this.patristicRagService.buildPatristicSummary(dto.text, dto.range, dto.translationId),
     ]);
 
     this.logger.debug(`Assembled patristics via RAG for "${dto.range}"`);

@@ -104,7 +104,7 @@ describe('AnalyzeService', () => {
       );
     });
 
-    it('should call patristicRagService.buildPatristicSummary with text and range', async () => {
+    it('should call patristicRagService.buildPatristicSummary with text, range and translationId', async () => {
       mockAiService.generateThreeCards.mockResolvedValue({
         hermeneutics: '',
         philosophy: '',
@@ -116,6 +116,7 @@ describe('AnalyzeService', () => {
         text: 'Căci atât de mult a iubit Dumnezeu lumea',
         range: 'Ioan 3:16',
         language: 'Sinodală Română',
+        translationId: 'ro_sinodala',
       };
 
       await service.analyze(dto);
@@ -123,6 +124,7 @@ describe('AnalyzeService', () => {
       expect(mockPatristicRagService.buildPatristicSummary).toHaveBeenCalledWith(
         'Căci atât de mult a iubit Dumnezeu lumea',
         'Ioan 3:16',
+        'ro_sinodala',
       );
     });
 

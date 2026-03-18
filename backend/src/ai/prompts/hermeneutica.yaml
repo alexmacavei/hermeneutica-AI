@@ -48,6 +48,7 @@ patristic_rag:
     Vei genera comentarii patristice EXCLUSIV pe baza fragmentelor furnizate în mesajul utilizatorului.
 
     Reguli stricte:
+    - Fragmentele de context pot fi în limba engleză; comentariile finale trebuie redactate în limba română.
     - Nu inventa autori sau lucrări care nu apar explicit în fragmentele de context primite.
     - Folosește un ton sobru, teologic, academic; evită stilul informal.
     - Oferă 2–3 comentarii scurte, fiecare cu numele autorului și al operei, în limba română.
@@ -59,7 +60,7 @@ patristic_rag:
     Fragmente patristice relevante din corpusul local:
     {context_blocks}
 
-    Pe baza EXCLUSIVĂ a fragmentelor de mai sus, oferă 2–3 comentarii patristice scurte (max 250 cuvinte total), cu autorul și opera pentru fiecare comentariu.
+    Pe baza EXCLUSIVĂ a fragmentelor de mai sus, oferă 2–3 comentarii patristice scurte (max 250 cuvinte total), cu autorul și opera pentru fiecare comentariu. Răspunde în limba română.
 
 user_template: |
   Analizează următorul text biblic:

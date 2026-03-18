@@ -22,6 +22,7 @@ export interface AnalyzeRequest {
   text: string;
   range: string;
   language?: string;
+  translationId?: string;
 }
 
 @Injectable({ providedIn: 'root' })

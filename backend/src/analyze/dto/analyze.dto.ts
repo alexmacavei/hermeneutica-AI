@@ -12,4 +12,8 @@ export class AnalyzeDto {
   @IsOptional()
   @IsString()
   language?: string;
+
+  @IsOptional()
+  @IsString()
+  translationId?: string;
 }

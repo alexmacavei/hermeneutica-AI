@@ -36,7 +36,8 @@ describe('PatristicRagService', () => {
   const mockAiService = {
     hasApiKey: true,
     generateEmbedding: jest.fn(),
-    chat: jest.fn(),
+    generatePatristicSummary: jest.fn(),
+    translateToEnglish: jest.fn(),
   };
 
   const mockDatabaseService = {
@@ -53,6 +54,11 @@ describe('PatristicRagService', () => {
     }).compile();
 
     service = module.get<PatristicRagService>(PatristicRagService);
+
+    // Default: translateToEnglish is a pass-through so existing tests are unaffected.
+    mockAiService.translateToEnglish.mockImplementation((t: string) =>
+      Promise.resolve(t),
+    );
   });
 
   afterEach(() => {
@@ -101,7 +107,7 @@ describe('PatristicRagService', () => {
             work: 'Opere',
             chapter: null,
             chunk_text: 'Fragment cu similaritate mică',
-            similarity: 0.5,
+            similarity: 0.2,
           },
         ],
       });
@@ -111,7 +117,8 @@ describe('PatristicRagService', () => {
         'Ioan 3:16',
       );
 
-      // Only the chunk above PATRISTIC_SIMILARITY_THRESHOLD (0.7) should be returned
+      // Only chunks at or above PATRISTIC_SIMILARITY_THRESHOLD (0.35) are returned.
+      // The first row (0.85) passes; the second (0.2) does not.
       expect(result).toHaveLength(1);
       expect(result[0]).toMatchObject({
         author: 'Ioan Gură de Aur',
@@ -122,8 +129,10 @@ describe('PatristicRagService', () => {
       });
     });
 
-    it('should call generateEmbedding with combined reference and verse text', async () => {
+    it('should translate verse to English and embed the English text', async () => {
+      const englishTranslation = 'John 1:1 In the beginning was the Word';
       mockDatabaseService.getPool.mockReturnValue(mockPool);
+      mockAiService.translateToEnglish.mockResolvedValue(englishTranslation);
       mockAiService.generateEmbedding.mockResolvedValue(mockEmbedding);
       mockPool.query.mockResolvedValue({ rows: [] });
 
@@ -132,8 +141,29 @@ describe('PatristicRagService', () => {
         'Ioan 1:1',
       );
 
-      expect(mockAiService.generateEmbedding).toHaveBeenCalledWith(
+      expect(mockAiService.translateToEnglish).toHaveBeenCalledWith(
         'Ioan 1:1 La început era Cuvântul',
+      );
+      expect(mockAiService.generateEmbedding).toHaveBeenCalledWith(
+        englishTranslation,
+      );
+    });
+
+    it('should skip translation and embed the original text for English translations', async () => {
+      mockDatabaseService.getPool.mockReturnValue(mockPool);
+      mockAiService.generateEmbedding.mockResolvedValue(mockEmbedding);
+      mockPool.query.mockResolvedValue({ rows: [] });
+
+      await service.findRelevantChunksForVerse(
+        'In the beginning was the Word',
+        'John 1:1',
+        3,
+        'eng_kja',
+      );
+
+      expect(mockAiService.translateToEnglish).not.toHaveBeenCalled();
+      expect(mockAiService.generateEmbedding).toHaveBeenCalledWith(
+        'John 1:1 In the beginning was the Word',
       );
     });
 
@@ -163,7 +193,7 @@ describe('PatristicRagService', () => {
       );
 
       expect(result).toBe(PATRISTIC_FALLBACK);
-      expect(mockAiService.chat).not.toHaveBeenCalled();
+      expect(mockAiService.generatePatristicSummary).not.toHaveBeenCalled();
     });
 
     it('should return fallback when no pool available', async () => {
@@ -193,7 +223,7 @@ describe('PatristicRagService', () => {
       });
       const expectedSummary =
         'Ioan Gură de Aur – Omilii la Ioan, Omilia 28: Comentariu relevant.';
-      mockAiService.chat.mockResolvedValue(expectedSummary);
+      mockAiService.generatePatristicSummary.mockResolvedValue(expectedSummary);
 
       const result = await service.buildPatristicSummary(
         'Căci atât de mult a iubit Dumnezeu lumea',
@@ -201,14 +231,12 @@ describe('PatristicRagService', () => {
       );
 
       expect(result).toBe(expectedSummary);
-      expect(mockAiService.chat).toHaveBeenCalledTimes(1);
-      const [messages, options] = mockAiService.chat.mock.calls[0];
-      expect(messages).toHaveLength(2);
-      expect(messages[0].role).toBe('system');
-      expect(messages[1].role).toBe('user');
-      expect(messages[1].content).toContain('Ioan 3:16');
-      expect(messages[1].content).toContain('Ioan Gură de Aur');
-      expect(options).toMatchObject({ temperature: 0.3, max_tokens: 600 });
+      expect(mockAiService.generatePatristicSummary).toHaveBeenCalledTimes(1);
+      const [reference, verseText, contextBlocks] =
+        mockAiService.generatePatristicSummary.mock.calls[0];
+      expect(reference).toBe('Ioan 3:16');
+      expect(verseText).toContain('Căci atât de mult');
+      expect(contextBlocks).toContain('Ioan Gură de Aur');
     });
 
     it('should return fallback when AI chat returns empty string', async () => {
@@ -225,7 +253,7 @@ describe('PatristicRagService', () => {
           },
         ],
       });
-      mockAiService.chat.mockResolvedValue('');
+      mockAiService.generatePatristicSummary.mockResolvedValue('');
 
       const result = await service.buildPatristicSummary(
         'Test verset',
@@ -249,12 +277,13 @@ describe('PatristicRagService', () => {
           },
         ],
       });
-      mockAiService.chat.mockResolvedValue('Vasile cel Mare: Comentariu.');
+      mockAiService.generatePatristicSummary.mockResolvedValue('Vasile cel Mare: Comentariu.');
 
       await service.buildPatristicSummary('La început', 'Facere 1:1');
 
-      const userMessage = mockAiService.chat.mock.calls[0][0][1].content;
-      expect(userMessage).toContain('Omilia 1');
+      const contextBlocks =
+        mockAiService.generatePatristicSummary.mock.calls[0][2];
+      expect(contextBlocks).toContain('Omilia 1');
     });
   });
 });
