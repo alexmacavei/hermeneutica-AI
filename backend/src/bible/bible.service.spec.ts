@@ -41,7 +41,7 @@ describe('BibleService', () => {
   });
 
   describe('getTranslations()', () => {
-    it("should return only the 4 upstream allowed translations when ro_sinodala file is absent", async () => {
+    it("should return only the 4 upstream allowed translations when both local files are absent", async () => {
       mockFetch.mockImplementation((url: string) => {
         const id = url.split("/").slice(-2, -1)[0];
         return Promise.resolve({
@@ -50,7 +50,7 @@ describe('BibleService', () => {
           json: () => Promise.resolve(mockBooksResponse(id)),
         });
       });
-      // Simulate missing ro_sinodala file
+      // Simulate missing local Bible files
       mockAccess.mockRejectedValue(new Error("ENOENT"));
 
       const translations = await service.getTranslations();
@@ -62,9 +62,10 @@ describe('BibleService', () => {
       expect(ids).toContain("grc_byz");
       expect(ids).toContain("eng_kja");
       expect(ids).not.toContain("ro_sinodala");
+      expect(ids).not.toContain("ro_anania");
     });
 
-    it("should include ro_sinodala as the 5th translation when ro_sinodala file is present", async () => {
+    it("should include ro_sinodala and ro_anania when both local files are present", async () => {
       mockFetch.mockImplementation((url: string) => {
         const id = url.split("/").slice(-2, -1)[0];
         return Promise.resolve({
@@ -73,17 +74,18 @@ describe('BibleService', () => {
           json: () => Promise.resolve(mockBooksResponse(id)),
         });
       });
-      // Simulate present ro_sinodala file
+      // Simulate both local Bible files present
       mockAccess.mockResolvedValue(undefined);
 
       const translations = await service.getTranslations();
 
-      expect(translations).toHaveLength(5);
+      expect(translations).toHaveLength(6);
       const ids = translations.map((t) => t.id);
       expect(ids).toContain("ro_sinodala");
+      expect(ids).toContain("ro_anania");
     });
 
-    it("should return translations in the correct order: hbo_wlc, grc_bre, grc_byz, eng_kja, ro_sinodala", async () => {
+    it("should return translations in the correct order: hbo_wlc, grc_bre, grc_byz, eng_kja, ro_sinodala, ro_anania", async () => {
       mockFetch.mockImplementation((url: string) => {
         const id = url.split("/").slice(-2, -1)[0];
         return Promise.resolve({
@@ -101,6 +103,7 @@ describe('BibleService', () => {
       expect(translations[2].id).toBe("grc_byz");
       expect(translations[3].id).toBe("eng_kja");
       expect(translations[4].id).toBe("ro_sinodala");
+      expect(translations[5].id).toBe("ro_anania");
     });
 
     it('should cache translations after the first request', async () => {

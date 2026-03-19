@@ -23,7 +23,7 @@
 
 ## 📖 Descriere / Description
 
-**RO:** AI Hermeneutica Orthodoxa este o aplicație web full-stack care permite navigarea textului biblic – via API [helloao.org](https://bible.helloao.org) pentru traducerile remote și local pentru **Biblia Sinodală Română** – și oferă analiză hermeneutică ortodoxă prin modele OpenAI, precum și studiu biblic paralel între toate traducerile disponibile.
+**RO:** AI Hermeneutica Orthodoxa este o aplicație web full-stack care permite navigarea textului biblic – via API [helloao.org](https://bible.helloao.org) pentru traducerile remote și local pentru **Biblia Sinodală Română** și **Biblia Anania** – și oferă analiză hermeneutică ortodoxă prin modele OpenAI, precum și studiu biblic paralel între toate traducerile disponibile.
 
 Analiza unui verset generează 4 carduri:
 
@@ -128,6 +128,7 @@ Utilizator selectează: "Fiindcă Dumnezeu aşa a iubit lumea, că pe Fiul Său 
 - Podman & Podman Compose
 - Cheie API OpenAI (pentru analiza AI)
 - **Biblia Sinodală Română** – generată local din scriptul `scripts/biblia-pipeline.ts` (vezi [Date Biblice](#-date-biblice--biblical-data))
+- **Biblia Anania** – generată local din scriptul `scripts/anania-pipeline.ts` (opțional; vezi [Date Biblice](#-date-biblice--biblical-data))
 - **Corpus patristic New Advent** *(opțional, pentru cardul Comentarii Patristice)* – vezi [docs/patristic-setup.md](docs/patristic-setup.md)
 
 ### Quick Start cu Podman
@@ -143,6 +144,10 @@ cp .env.example .env
 
 # 3. (Opțional) Populează Biblia Sinodală locală
 cd scripts && npm install && npm run biblia-pipeline
+cd ..
+
+# 3b. (Opțional) Populează Biblia Anania locală
+cd scripts && npm run anania-pipeline
 cd ..
 
 # 4. Pornește toate serviciile
@@ -262,8 +267,9 @@ Traducerile suportate / Supported translations:
 | `grc_byz` | Byzantine Greek NT | Greacă NT / Greek NT |
 | `eng_kja` | King James Version with Apocrypha | Engleză / English |
 | `ro_sinodala` | Biblia Sinodală Română | Română / Romanian |
+| `ro_anania` | Biblia Anania | Română / Romanian |
 
-> **Notă:** Traducerea `ro_sinodala` este disponibilă doar dacă fișierul local `data/bibles/ro_sinodala.json` a fost populat cu scriptul `scripts/biblia-pipeline.ts`. Vezi secțiunea [Date Biblice](#-date-biblice--biblical-data) de mai jos.
+> **Notă:** Traducerea `ro_sinodala` este disponibilă doar dacă fișierul local `data/bibles/ro_sinodala.json` a fost populat cu scriptul `scripts/biblia-pipeline.ts`. Traducerea `ro_anania` necesită `data/bibles/ro_anania.json` generat de `scripts/anania-pipeline.ts`. Vezi secțiunea [Date Biblice](#-date-biblice--biblical-data) de mai jos.
 
 ### `GET /api/bible/:translationId/books`
 
@@ -295,7 +301,7 @@ GET /api/bible/grc_byz/JHN/3
 | **Frontend** | Angular 19.2, PrimeNG 19.1 |
 | **Styling** | SCSS, PrimeIcons |
 | **Database** | PostgreSQL 16 + pgvector (căutare semantică vectorială) |
-| **Data Source** | bible.helloao.org (External API) + `ro_sinodala.json` (local) + New Advent corpus (local, opțional) |
+| **Data Source** | bible.helloao.org (External API) + `ro_sinodala.json` (local) + `ro_anania.json` (local, opțional) + New Advent corpus (local, opțional) |
 | **DevOps** | Podman, Podman Compose |
 | **CI/CD** | GitHub Actions |
 | **PWA** | Service Worker, Web Manifest |
@@ -353,7 +359,7 @@ Aplicația utilizează atât API-ul extern furnizat de [bible.helloao.org](https
 Caracteristici:
 - **Acces dinamic:** Navigare prin toate cărțile și capitolele disponibile în traducerile suportate.
 - **Traduceri remote:** `hbo_wlc` (Ebraică Masoretică), `grc_bre` (Septuaginta Brenton), `grc_byz` (Greacă Byzantină NT), `eng_kja` (KJV cu Apocrife) – servite live via bible.helloao.org.
-- **Traducere locală:** `ro_sinodala` (Biblia Sinodală Română) – populată cu scriptul `scripts/biblia-pipeline.ts` și stocată în `data/bibles/ro_sinodala.json`.
+- **Traduceri locale:** `ro_sinodala` (Biblia Sinodală Română) – populată cu scriptul `scripts/biblia-pipeline.ts` și stocată în `data/bibles/ro_sinodala.json`; `ro_anania` (Biblia Anania) – populată cu scriptul `scripts/anania-pipeline.ts` și stocată în `data/bibles/ro_anania.json`.
 - **Interfață simplificată:** Backend-ul NestJS acționează ca un proxy/adaptor, asigurând stabilitate și maparea corectă a versetelor pentru procesarea AI.
 
 ### Script Date / Data Pipeline Script
@@ -364,6 +370,10 @@ cd scripts
 npm install
 npm run biblia-pipeline
 # Generează: data/bibles/ro_sinodala.json
+
+# Descarcă și procesează Biblia Anania locală (opțional)
+npm run anania-pipeline
+# Generează: data/bibles/ro_anania.json
 ```
 
 ---
