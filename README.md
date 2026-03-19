@@ -161,6 +161,41 @@ podman compose down
 # DB:       localhost:5432 (PostgreSQL cu pgvector)
 ```
 
+### Local Development (with hot-reload)
+
+For a better developer experience, you can run the backend and frontend locally (with hot-reload) while keeping only PostgreSQL in Podman Compose.
+
+```bash
+# 1. Clone and configure (same as above – steps 1–3)
+
+# 2. In .env make sure DATA_DIR=../data (so the backend finds data/ from its cwd)
+#    DATABASE_URL should point to localhost:5432 (default in .env.example)
+
+# 3. Start only the database in Podman Compose
+podman compose -f docker-compose.dev.yml up -d
+
+# 4. Install root dev dependencies (concurrently)
+npm install
+
+# 5. Start both backend and frontend simultaneously with hot-reload
+npm run dev
+
+# Or start them separately in different terminals:
+npm run dev:backend   # NestJS with --watch (restarts on file changes)
+npm run dev:frontend  # Angular dev-server with hot-reload
+
+# Frontend: http://localhost:4200
+# API:      http://localhost:3001/api
+# DB:       localhost:5432 (PostgreSQL via Podman Compose)
+```
+
+Key environment variables for local dev (`.env`):
+
+| Variable | Local dev value | Docker Compose value |
+|----------|----------------|---------------------|
+| `DATABASE_URL` | `postgresql://...@localhost:5432/hermeneutica` | `postgresql://...@postgres:5432/hermeneutica` |
+| `DATA_DIR` | `../data` | `./data` |
+
 ### Variabile de Mediu / Environment Variables
 
 ```env
@@ -176,11 +211,14 @@ PORT=3001
 FRONTEND_URL=http://localhost:4200
 
 # PostgreSQL
+# Local dev (npm run dev): backend se conectează la postgres din Podman via localhost
 DATABASE_URL=postgresql://hermeneutica:hermeneutica_pass@localhost:5432/hermeneutica
+# Full Docker Compose (docker-compose.yml): folosiți @postgres:5432 în loc de @localhost:5432
 
 # Calea către directorul cu fișierele biblice locale (ro_sinodala.json)
-# Default: ./data (corect pentru container; pentru dev local: ../data)
-DATA_DIR=./data
+# Local dev (npm run dev:backend): DATA_DIR=../data  (relativ la backend/)
+# Full Docker Compose: DATA_DIR=./data  (relativ la /app în container)
+DATA_DIR=../data
 
 # Corpus patristic New Advent (opțional)
 # Setează calea absolută către directorul fathers/ din arhiva New Advent

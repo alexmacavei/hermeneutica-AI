@@ -1,0 +1,14 @@
+{
+  "name": "hermeneutica-ai",
+  "version": "1.0.0",
+  "description": "Root workspace – developer scripts for AI Hermeneutica Orthodoxa",
+  "private": true,
+  "scripts": {
+    "dev": "concurrently --names \"backend,frontend\" --prefix-colors \"cyan,magenta\" \"npm run dev:backend\" \"npm run dev:frontend\"",
+    "dev:backend": "cd backend && npm run start:dev",
+    "dev:frontend": "cd frontend && npm run start"
+  },
+  "devDependencies": {
+    "concurrently": "^9.2.1"
+  }
+}

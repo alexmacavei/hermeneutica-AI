@@ -1,0 +1,33 @@
+# docker-compose.dev.yml
+#
+# Developer override: starts ONLY the PostgreSQL service.
+# Use this when running the backend and frontend locally with hot-reload:
+#
+#   podman compose -f docker-compose.dev.yml up -d   # start only postgres
+#   npm run dev                                       # start backend + frontend locally
+#
+# The backend reads DATABASE_URL from .env (localhost:5432) so it connects
+# to the postgres container that has its port 5432 mapped to the host.
+
+version: '3.9'
+
+services:
+  postgres:
+    image: pgvector/pgvector:pg16
+    container_name: hermeneutica-db
+    environment:
+      POSTGRES_USER: hermeneutica
+      POSTGRES_PASSWORD: hermeneutica_pass
+      POSTGRES_DB: hermeneutica
+    volumes:
+      - pgdata:/var/lib/postgresql/data
+    ports:
+      - '5432:5432'
+    healthcheck:
+      test: ['CMD-SHELL', 'pg_isready -U hermeneutica']
+      interval: 10s
+      timeout: 5s
+      retries: 5
+
+volumes:
+  pgdata:
