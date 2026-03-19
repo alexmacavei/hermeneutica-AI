@@ -4,7 +4,8 @@
   "description": "Data pipeline scripts for hermeneutica-AI",
   "private": true,
   "scripts": {
-    "biblia-pipeline": "ts-node --project tsconfig.json biblia-pipeline.ts"
+    "biblia-pipeline": "ts-node --project tsconfig.json biblia-pipeline.ts",
+    "anania-pipeline": "ts-node --project tsconfig.json anania-pipeline.ts"
   },
   "dependencies": {
     "axios": "^1.6.7",

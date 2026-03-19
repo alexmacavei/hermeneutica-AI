@@ -28,7 +28,25 @@ const ALLOWED_TRANSLATION_IDS = [
   "grc_byz",
   "eng_kja",
   "ro_sinodala",
+  "ro_anania",
 ] as const;
+
+/** Metadata for translations whose text is served from a local JSON file. */
+const LOCAL_TRANSLATIONS: Record<
+  string,
+  { name: string; englishName: string; language: string }
+> = {
+  ro_sinodala: {
+    name: "Biblia Sinodală",
+    englishName: "Romanian Synodal Bible",
+    language: "ro",
+  },
+  ro_anania: {
+    name: "Biblia Anania",
+    englishName: "Romanian Anania Bible",
+    language: "ro",
+  },
+};
 
 // ─── Upstream API types ────────────────────────────────────────────────────
 
@@ -128,7 +146,7 @@ export class BibleService {
   private cachedTranslations: Translation[] | null = null;
   private readonly booksCache = new Map<string, Book[]>();
   private readonly chapterCache = new Map<string, BibleVerse[]>();
-  private localBibleCache: LocalBibleData | null = null;
+  private readonly localBibleCache = new Map<string, LocalBibleData>();
 
   // ── Public methods ─────────────────────────────────────────────────────
 
@@ -138,21 +156,22 @@ export class BibleService {
     // Process each allowed translation
     const results = await Promise.all(
       ALLOWED_TRANSLATION_IDS.map(async (id) => {
-        if (id === "ro_sinodala") {
-          // Local translation
-          const localBiblePath = this.getLocalBiblePath();
+        const localMeta = LOCAL_TRANSLATIONS[id];
+        if (localMeta) {
+          // Local translation – include only when the file is present on disk
+          const localBiblePath = this.getLocalBiblePath(id);
           try {
             await access(localBiblePath);
             return {
-              id: "ro_sinodala",
-              name: "Biblia Sinodală",
-              englishName: "Romanian Synodal Bible",
-              language: "ro",
+              id,
+              name: localMeta.name,
+              englishName: localMeta.englishName,
+              language: localMeta.language,
               textDirection: "ltr",
             };
           } catch {
             this.logger.warn(
-              `Local Bible file not found at ${localBiblePath}; ro_sinodala translation will not be available.`,
+              `Local Bible file not found at ${localBiblePath}; ${id} translation will not be available.`,
             );
             return null;
           }
@@ -207,8 +226,8 @@ export class BibleService {
     }
 
     let books: Book[];
-    if (translationId === "ro_sinodala") {
-      const localData = await this.loadLocalBible();
+    if (LOCAL_TRANSLATIONS[translationId]) {
+      const localData = await this.loadLocalBible(translationId);
       books = localData.books.map((b) => ({
         id: b.id,
         name: b.name,
@@ -252,18 +271,20 @@ export class BibleService {
 
     let verses: BibleVerse[];
 
-    if (translationId === "ro_sinodala") {
-      const localData = await this.loadLocalBible();
+    if (LOCAL_TRANSLATIONS[translationId]) {
+      const localData = await this.loadLocalBible(translationId);
       const book = localData.books.find((b) => b.id === bookId);
       if (!book) {
-        throw new NotFoundException(`Book ${bookId} not found in ro_sinodala`);
+        throw new NotFoundException(
+          `Book ${bookId} not found in ${translationId}`,
+        );
       }
       const chapterData = book.chapters.find(
         (c) => c.chapter.number === chapter,
       );
       if (!chapterData) {
         throw new NotFoundException(
-          `Chapter ${chapter} not found in book ${bookId} of ro_sinodala`,
+          `Chapter ${chapter} not found in book ${bookId} of ${translationId}`,
         );
       }
       verses = this.parseVerses(chapterData);
@@ -380,20 +401,22 @@ export class BibleService {
     }
   }
 
-  private getLocalBiblePath(): string {
+  private getLocalBiblePath(translationId: string): string {
     const dataDir = process.env["DATA_DIR"] ?? join(process.cwd(), "data");
-    return join(dataDir, "bibles", "ro_sinodala.json");
+    return join(dataDir, "bibles", `${translationId}.json`);
   }
 
-  private async loadLocalBible(): Promise<LocalBibleData> {
-    if (this.localBibleCache) return this.localBibleCache;
+  private async loadLocalBible(translationId: string): Promise<LocalBibleData> {
+    const cached = this.localBibleCache.get(translationId);
+    if (cached) return cached;
 
-    const filePath = this.getLocalBiblePath();
+    const filePath = this.getLocalBiblePath(translationId);
     try {
       this.logger.log(`Loading local Bible from disk: ${filePath}`);
       const content = await readFile(filePath, "utf-8");
-      this.localBibleCache = JSON.parse(content) as LocalBibleData;
-      return this.localBibleCache;
+      const data = JSON.parse(content) as LocalBibleData;
+      this.localBibleCache.set(translationId, data);
+      return data;
     } catch (error) {
       this.logger.error(`Error loading local Bible file at ${filePath}`, error);
       throw new InternalServerErrorException("Failed to load local Bible data");
