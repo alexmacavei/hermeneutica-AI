@@ -3,6 +3,7 @@ import { CommonModule } from '@angular/common';
 import { CardModule } from 'primeng/card';
 import { ProgressSpinnerModule } from 'primeng/progressspinner';
 import { AnalysisResult } from '../services/analysis.service';
+import { NotesDialogComponent } from './notes-dialog.component';
 
 interface AnalysisCard {
   key: keyof AnalysisResult['cards'];
@@ -14,7 +15,7 @@ interface AnalysisCard {
 @Component({
   selector: 'app-results-viewer',
   standalone: true,
-  imports: [CommonModule, CardModule, ProgressSpinnerModule],
+  imports: [CommonModule, CardModule, ProgressSpinnerModule, NotesDialogComponent],
   template: `
     <div class="results-section" *ngIf="result || loading">
       <!-- Header -->
@@ -25,6 +26,7 @@ interface AnalysisCard {
           <p class="reference-text">{{ result.text | slice:0:120 }}{{ result.text.length > 120 ? '...' : '' }}</p>
         </div>
         <span class="language-badge">{{ result.language }}</span>
+        <app-notes-dialog [verseReference]="result.reference"></app-notes-dialog>
       </div>
 
       <!-- Loading spinner -->

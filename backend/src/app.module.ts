@@ -6,6 +6,9 @@ import { AnalyzeModule } from './analyze/analyze.module';
 import { DatabaseModule } from './database/database.module';
 import { SearchModule } from './search/search.module';
 import { PatristicModule } from './patristic/patristic.module';
+import { AuthModule } from './auth/auth.module';
+import { UsersModule } from './users/users.module';
+import { NotesModule } from './notes/notes.module';
 import configuration from './config/configuration';
 
 @Module({
@@ -20,6 +23,9 @@ import configuration from './config/configuration';
     AnalyzeModule,
     SearchModule,
     PatristicModule,
+    AuthModule,
+    UsersModule,
+    NotesModule,
   ],
 })
 export class AppModule {}

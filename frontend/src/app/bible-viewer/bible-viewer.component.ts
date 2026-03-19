@@ -1,7 +1,9 @@
-import { Component } from '@angular/core';
+import { Component, OnInit } from '@angular/core';
 import { CommonModule } from '@angular/common';
 import { ButtonModule } from 'primeng/button';
 import { ToastModule } from 'primeng/toast';
+import { AvatarModule } from 'primeng/avatar';
+import { TooltipModule } from 'primeng/tooltip';
 import { MessageService } from 'primeng/api';
 import { catchError, finalize, of } from 'rxjs';
 import {
@@ -23,6 +25,8 @@ import {
 import { SearchService } from '../services/search.service';
 import { ParallelViewerComponent } from './parallel-viewer.component';
 import { VerseSelection } from './verse-highlighter.directive';
+import { AuthDialogComponent } from '../auth/auth-dialog.component';
+import { AuthService, CurrentUser } from '../services/auth.service';
 
 @Component({
   selector: 'app-bible-viewer',
@@ -31,15 +35,25 @@ import { VerseSelection } from './verse-highlighter.directive';
     CommonModule,
     ButtonModule,
     ToastModule,
+    AvatarModule,
+    TooltipModule,
     BibleSelectorComponent,
     BibleTextComponent,
     ResultsViewerComponent,
     SemanticSearchComponent,
     ParallelViewerComponent,
+    AuthDialogComponent,
   ],
   providers: [MessageService],
   template: `
     <p-toast position="top-right"></p-toast>
+
+    <!-- Auth Dialog -->
+    <app-auth-dialog
+      [(visible)]="authDialogVisible"
+      [mode]="authDialogMode"
+      (success)="onAuthSuccess()"
+    ></app-auth-dialog>
 
     <div class="viewer-shell">
       <!-- Navbar -->
@@ -55,6 +69,40 @@ import { VerseSelection } from './verse-highlighter.directive';
           [translationId]="currentNav?.translationId ?? ''"
           (navigateTo)="onSearchNavigate($event)"
         ></app-semantic-search>
+
+        <!-- Auth area -->
+        <div class="auth-area">
+          <ng-container *ngIf="!currentUser; else loggedIn">
+            <p-button
+              label="Login"
+              severity="secondary"
+              [text]="true"
+              (click)="openAuth('login')"
+              styleClass="auth-btn"
+            ></p-button>
+            <p-button
+              label="Register"
+              severity="secondary"
+              [outlined]="true"
+              (click)="openAuth('register')"
+              styleClass="auth-btn"
+            ></p-button>
+          </ng-container>
+          <ng-template #loggedIn>
+            <div
+              class="user-avatar-area"
+              [pTooltip]="currentUser!.email + ' – click pentru delogare'"
+              tooltipPosition="bottom"
+              (click)="logout()"
+            >
+              <p-avatar
+                [label]="currentUser!.email.charAt(0).toUpperCase()"
+                shape="circle"
+                styleClass="user-avatar"
+              ></p-avatar>
+            </div>
+          </ng-template>
+        </div>
       </header>
 
       <!-- Main Layout -->
@@ -300,6 +348,41 @@ import { VerseSelection } from './verse-highlighter.directive';
         font-size: 0.9rem;
         flex: 1;
       }
+      .auth-area {
+        margin-left: auto;
+        padding-right: 16px;
+        display: flex;
+        align-items: center;
+        gap: 8px;
+      }
+      :host ::ng-deep .auth-btn .p-button {
+        color: var(--text-muted, #90a4ae);
+        font-size: 0.88rem;
+        padding: 6px 14px;
+        height: 34px;
+      }
+      :host ::ng-deep .auth-btn .p-button:hover {
+        color: var(--text-light, #eceff1);
+      }
+      .user-avatar-area {
+        cursor: pointer;
+        display: flex;
+        align-items: center;
+        gap: 6px;
+      }
+      :host ::ng-deep .user-avatar {
+        background: rgba(26, 35, 126, 0.8);
+        color: var(--gold, #fdd835);
+        border: 1px solid rgba(121, 134, 203, 0.5);
+        font-size: 0.9rem;
+        font-weight: 700;
+        width: 34px;
+        height: 34px;
+        transition: border-color 0.2s;
+      }
+      .user-avatar-area:hover :host ::ng-deep .user-avatar {
+        border-color: var(--gold, #fdd835);
+      }
       @media (max-width: 768px) {
         .main-layout {
           flex-direction: column;
@@ -318,7 +401,7 @@ import { VerseSelection } from './verse-highlighter.directive';
     `,
   ],
 })
-export class BibleViewerComponent {
+export class BibleViewerComponent implements OnInit {
   currentNav: BibleNavigation | null = null;
   currentVerses: BibleVerse[] = [];
   selectedVerseNumbers: string[] = [];
@@ -332,12 +415,48 @@ export class BibleViewerComponent {
   parallelVerses: ParallelTranslation[] = [];
   loadingParallel = false;
 
+  authDialogVisible = false;
+  authDialogMode: 'login' | 'register' = 'login';
+  currentUser: CurrentUser | null = null;
+
   constructor(
     private readonly bibleApi: BibleApiService,
     private readonly analysisService: AnalysisService,
     private readonly searchService: SearchService,
     private readonly messageService: MessageService,
+    private readonly authService: AuthService,
   ) {}
+
+  ngOnInit(): void {
+    this.authService.currentUser$.subscribe((user) => {
+      this.currentUser = user;
+    });
+  }
+
+  openAuth(mode: 'login' | 'register'): void {
+    this.authDialogMode = mode;
+    this.authDialogVisible = true;
+  }
+
+  onAuthSuccess(): void {
+    const user = this.authService.currentUser;
+    this.messageService.add({
+      severity: 'success',
+      summary: 'Bun venit!',
+      detail: user ? `Autentificat ca ${user.email}` : 'Autentificare reușită.',
+      life: 3000,
+    });
+  }
+
+  logout(): void {
+    this.authService.logout();
+    this.messageService.add({
+      severity: 'info',
+      summary: 'Delogat',
+      detail: 'Ai ieșit din cont.',
+      life: 3000,
+    });
+  }
 
   onNavigate(nav: BibleNavigation): void {
     this.currentNav = nav;
