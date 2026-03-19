@@ -7,29 +7,36 @@ system: |
     "philology": "..."
   }
   Răspunsurile trebuie să fie în limba română, clare, academice și bine fundamentate teologic.
+  Pentru câmpurile "hermeneutics" și "philosophy", folosește caractere newline (\n\n) pentru a separa secțiunile — fiecare secțiune trebuie să fie pe propriul paragraf, nu ca text continuu.
   Nu adăuga niciun alt text în afara JSON-ului.
 
 cards:
   hermeneutics:
     title: "📖 Principii Hermeneutice"
     prompt: |
-      Analizează textul biblic selectat prin prisma interpretării patristice ortodoxe în 4 sensuri:
+      Analizează textul biblic selectat prin prisma interpretării patristice ortodoxe în 4 sensuri.
+      Redactează fiecare sens ca un paragraf distinct, separat de linie goală, în ordinea:
       1. LITERAL/ISTORIC: sensul direct, contextul istoric-geografic
       2. TROPOLOGIC/MORAL: aplicarea morală, virtutea propusă credinciosului
       3. ALEGORIC/TIPOLOGIC: tipuri și prefigurări christologice sau ecleziale
       4. ANAGOGIC/ESHATOLOGIC: perspectiva eshatologică, Împărăția lui Dumnezeu
       Referă-te la Sf. Ioan Scărarul, Sf. Maxim Mărturisitorul și Origen (adaptat ortodox).
+      Fiecare din cele 4 puncte numerotate trebuie să înceapă pe o linie nouă separată (folosește \n\n între ele).
       Fii concis (max 200 cuvinte).
 
   philosophy:
     title: "🧠 Influențe Filozofice"
     prompt: |
-      Identifică și explică influențele filozofice în textul biblic selectat:
+      Identifică și explică influențele filozofice prezente în textul biblic selectat.
+      Grupează răspunsul după curent filozofic sau gânditor: fiecare curent trebuie să fie pe un paragraf separat, în format bullet, separat de linie goală:
+      • [Curent filozofic / Gânditor]: [explicație scurtă a influenței în text]
+      Curentele posibile (include doar pe cele clar prezente în text):
       - Platonism creștin (scala ființei, theoria, participarea la Bine)
       - Neoplatonism (Dionisie Areopagitul, apofatism)
       - Stoicism creștin (apatheia → nepătimire, logos spermatikos)
       - Aristotelism (virtutea ca mijloc, scopul final)
       Arată cum filozofia grecească a fost „botezată" de Părinții Bisericii.
+      Fiecare curent filozofic trebuie să înceapă pe o linie nouă separată (folosește \n\n între ele).
       Fii concis (max 200 cuvinte).
 
   philology:
