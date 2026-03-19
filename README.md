@@ -23,7 +23,7 @@
 
 ## 📖 Descriere / Description
 
-**RO:** AI Hermeneutica Orthodoxa este o aplicație web full-stack care permite navigarea textului biblic (via helloao.org API) și oferă analiză hermeneutică ortodoxă prin modele OpenAI, precum și studiu biblic paralel între toate traducerile disponibile.
+**RO:** AI Hermeneutica Orthodoxa este o aplicație web full-stack care permite navigarea textului biblic – via API [helloao.org](https://bible.helloao.org) pentru traducerile remote și local pentru **Biblia Sinodală Română** – și oferă analiză hermeneutică ortodoxă prin modele OpenAI, precum și studiu biblic paralel între toate traducerile disponibile.
 
 Analiza unui verset generează 4 carduri:
 
@@ -57,7 +57,7 @@ Utilizator selectează: "Fiindcă Dumnezeu aşa a iubit lumea, că pe Fiul Său 
   Dionisie Areopagitul: iubirea divină (ἔρως) ca forță unificatoare ce leagă creatul de Necreat
   Stoicism patristic: Logosul cosmic identificat cu Hristos – providența activă în creație
 
-⛪ Comentarii Patristice (New Advent RAG):
+⛪ Comentarii Patristice:
   Ioan Gură de Aur: „Priveşte înălţimea darului: Cel Unul-Născut, Cel negrăit, Cel fără de
   margini, Cel egal cu Tatăl – a fost dat pentru noi." (Omilii la Ioan, 27)
   Chiril al Alexandriei: „Prin aceasta arată că nu din necesitate, ci din iubire curată
@@ -77,47 +77,45 @@ Utilizator selectează: "Fiindcă Dumnezeu aşa a iubit lumea, că pe Fiul Său 
 ## 🏗️ Arhitectură / Architecture
 
 ```
-┌─────────────────────────────────────────────────────────────────────┐
-│                        Browser (Angular 19)                         │
-│  BibleSelector ──► BibleText ──► VerseHighlighter                  │
-│        │                  │                                         │
-│        │         ParallelViewer (Studiu Paralel)                    │
-│        │                  │                                         │
-│        └──────────────────┴──────► ResultsViewer (4 Carduri)       │
-└────────────────────────┬────────────────────────────────────────────┘
-                         │ HTTP (REST)
-┌────────────────────────▼────────────────────────────────────────────┐
-│                     NestJS 10 Backend (API :3001)                   │
-│                                                                     │
-│   POST /api/analyze                                                 │
-│   ┌─────────────────────────────────────────────────────────┐      │
-│   │  AnalyzeService                                         │      │
-│   │   ├─ AiService.generateThreeCards()   → OpenAI LLM     │      │
-│   │   │   └─ Prompts: hermeneutica.yaml                     │      │
-│   │   └─ PatristicRagService.buildPatristicSummary()        │      │
-│   │       ├─ AiService.translateToEnglish()  (gpt-4o-mini)  │      │
-│   │       ├─ AiService.generateEmbedding()  (embedding-3-s) │      │
-│   │       ├─ DatabaseService  ──► pgvector cosine search    │      │
-│   │       └─ AiService.chat()               (LLM summary)  │      │
-│   └─────────────────────────────────────────────────────────┘      │
-│                                                                     │
-│   GET /api/bible/*  ──► BibleService                               │
-│   ├─ bible.helloao.org  (hbo_wlc, grc_bre, grc_byz, eng_kja)      │
-│   └─ data/bibles/ro_sinodala.json  (Biblia Sinodală Română)        │
-└────────────────────────┬────────────────────────────────────────────┘
-                         │
-┌────────────────────────▼────────────────────────────────────────────┐
-│              PostgreSQL 16 + pgvector                               │
-│   patristic_chunks  (text, embedding, author, work, chapter)       │
-│   verse_embeddings  (semantic search pentru versete)               │
-└─────────────────────────────────────────────────────────────────────┘
+                        ┌──────────────────────────────┐
+                        │   OpenAI API                 │
+                        │   • LLM (hermeneutică)       │
+                        │   • gpt-4o-mini (traducere)  │
+                        │   • text-embedding-3-small   │
+                        └──────────────┬───────────────┘
+                                       │ HTTPS
+┌───────────────────────┐              │              ┌────────────────────────┐
+│   Browser / Frontend  │  HTTP REST   │              │  bible.helloao.org     │
+│   (Angular 19 SPA)    │◄────────────►│              │  (traduceri remote)    │
+│                       │  :3001       │              └────────────┬───────────┘
+│   • Navigare biblică  │              │                           │ HTTPS
+│   • Studiu Paralel    │   ┌──────────▼──────────────────────────▼──────────┐
+│   • 4 Carduri AI      │   │           NestJS Backend (:3001)               │
+└───────────────────────┘   │                                                │
+                            │  POST /api/analyze                             │
+                            │   ├─ 3 carduri hermeneutice   → OpenAI LLM    │
+                            │   └─ card patristic RAG:                       │
+                            │       ├─ traducere EN          → OpenAI LLM    │
+                            │       ├─ embedding query       → OpenAI API    │
+                            │       ├─ căutare vectorială    → pgvector DB   │
+                            │       └─ sinteză citate        → OpenAI LLM    │
+                            │                                                │
+                            │  GET /api/bible/*                              │
+                            │   ├─ traduceri remote          → helloao.org   │
+                            │   └─ Biblia Sinodală Română    → fișier local  │
+                            └────────────────────┬───────────────────────────┘
+                                                 │
+                            ┌────────────────────▼───────────────────────────┐
+                            │         PostgreSQL 16 + pgvector               │
+                            │   patristic_chunks  (embeddings New Advent)    │
+                            │   verse_embeddings  (semantic search)          │
+                            └────────────────────────────────────────────────┘
 
-         ┌──────────────────────────────────────────┐
-         │  Indexare offline (npm run index:patristic)│
-         │  PatristicLoaderService  ──► HTML parse   │
-         │  PatristicEmbeddingService ──► OpenAI     │
-         │  PATRISTIC_DATA_DIR (New Advent .htm)     │
-         └──────────────────────────────────────────┘
+    ┌─────────────────────────────────────────────────┐
+    │  Indexare offline (npm run index:patristic)     │
+    │  New Advent .htm → chunks → OpenAI embeddings   │
+    │  → salvare în patristic_chunks (PostgreSQL)     │
+    └─────────────────────────────────────────────────┘
 ```
 
 ---
@@ -338,27 +336,7 @@ Pentru un ghid complet pas cu pas, consultă **[docs/patristic-setup.md](docs/pa
    ```
 4. Durată estimată: **20–30 minute**
 
-### Actualizare chunk-uri cu autor/operă necunoscute
-
-Unele chunk-uri pot rămâne cu `author = 'unknown'` sau `work = 'unknown'` după indexare
-(fișiere fără referințe directe în `index.html`). Identifică-le și corectează-le manual:
-
-```sql
--- Identifică chunk-urile cu metadate lipsă
-SELECT chapter, count(*)
-FROM patristic_chunks
-WHERE work = 'unknown' OR author = 'unknown'
-GROUP BY chapter;
-
--- Actualizează manual (exemplu: Canoanele Apostolice)
-UPDATE patristic_chunks
-SET work = 'The Apostolic Canons',
-    author = 'Anonymous'
-WHERE chapter = '3820';
-```
-
-> **Important:** Valorile din exemplu sunt ilustrative. Verifică ce fișiere corespund
-> capitolelor cu `unknown` înainte de a rula `UPDATE`.
+> Pentru detalii complete (inclusiv corectarea chunk-urilor cu autor/operă necunoscute), consultă **[docs/patristic-setup.md](docs/patristic-setup.md)**.
 
 ### Variabile de mediu pentru date patristice
 
@@ -396,12 +374,12 @@ Consultați [CONTRIBUTING.md](CONTRIBUTING.md) pentru ghidul de contribuție.
 
 Arii de contribuție:
 - [ ] Adăugare cărți biblice complete
-- [ ] Integrare Ebraică (VT cu Strong's)
+- [x] Integrare Ebraică/Greacă (hbo_wlc, grc_bre, grc_byz) – disponibile via Studiu Paralel
 - [x] Căutare semantică (pgvector) – implementată
 - [x] Studiu paralel (comparare versete între traduceri) – implementat
 - [x] Comentarii patristice prin RAG (New Advent) – implementat
 - [ ] Export PDF analize
-- [ ] Traducere în alte limbi
+- [ ] Traducere interfață în alte limbi (i18n)
 
 ---
 
