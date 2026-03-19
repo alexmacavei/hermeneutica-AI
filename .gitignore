@@ -44,5 +44,6 @@ data/patristic/
 patristic-data/
 **/patristic-data/
 
-# Script package lock (local install, not shared)
+# Package lock files (local installs, not shared)
 scripts/package-lock.json
+package-lock.json
