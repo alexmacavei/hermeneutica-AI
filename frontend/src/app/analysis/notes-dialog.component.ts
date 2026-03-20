@@ -8,8 +8,10 @@ import {
 } from '@angular/core';
 import { DatePipe } from '@angular/common';
 import { FormsModule } from '@angular/forms';
+import { AccordionModule } from 'primeng/accordion';
 import { ButtonModule } from 'primeng/button';
 import { DialogModule } from 'primeng/dialog';
+import { InputTextModule } from 'primeng/inputtext';
 import { TextareaModule } from 'primeng/textarea';
 import { TooltipModule } from 'primeng/tooltip';
 import { MessageService } from 'primeng/api';
@@ -24,8 +26,10 @@ import { AuthService } from '../services/auth.service';
   imports: [
     DatePipe,
     FormsModule,
+    AccordionModule,
     ButtonModule,
     DialogModule,
+    InputTextModule,
     TextareaModule,
     TooltipModule,
   ],
@@ -51,7 +55,7 @@ import { AuthService } from '../services/auth.service';
       [closable]="true"
       [draggable]="false"
       [resizable]="false"
-      [style]="{ width: '480px', maxWidth: '95vw' }"
+      [style]="{ width: '520px', maxWidth: '95vw' }"
       header="Notițe personale"
     >
       <div class="notes-dialog-content">
@@ -63,6 +67,14 @@ import { AuthService } from '../services/auth.service';
 
         <!-- Add new note -->
         <div class="add-note-section">
+          <input
+            pInputText
+            type="text"
+            [ngModel]="newNoteTitle()"
+            (ngModelChange)="newNoteTitle.set($event)"
+            placeholder="Titlu notiță (opțional)…"
+            class="w-full note-title-input"
+          />
           <textarea
             pTextarea
             [ngModel]="newNoteText()"
@@ -82,70 +94,87 @@ import { AuthService } from '../services/auth.service';
           ></p-button>
         </div>
 
-        <!-- Existing notes -->
+        <!-- Existing notes as accordion -->
         @if (notes().length > 0) {
-          <div class="notes-list">
+          <div class="notes-section">
             <div class="notes-divider">
               <span>Notițele tale ({{ notes().length }})</span>
             </div>
-            @for (note of notes(); track note.id) {
-              <div class="note-item">
-                @if (editingNoteId() !== note.id) {
-                  <div class="note-view">
-                    <p class="note-text">{{ note.note_text }}</p>
-                    <div class="note-meta">
-                      <span class="note-date">{{ note.created_at | date: 'dd MMM yyyy, HH:mm' }}</span>
-                      <div class="note-actions">
-                        <p-button
-                          icon="pi pi-pencil"
-                          severity="secondary"
-                          [text]="true"
-                          [rounded]="true"
-                          pTooltip="Editează"
-                          (click)="startEdit(note)"
-                          styleClass="note-action-btn"
-                        ></p-button>
-                        <p-button
-                          icon="pi pi-trash"
-                          severity="danger"
-                          [text]="true"
-                          [rounded]="true"
-                          pTooltip="Șterge"
-                          (click)="deleteNote(note.id)"
-                          styleClass="note-action-btn"
-                        ></p-button>
+            <p-accordion [multiple]="true" styleClass="notes-accordion">
+              @for (note of notes(); track note.id) {
+                <p-accordion-panel [value]="note.id.toString()">
+                  <p-accordion-header>
+                    <span class="note-header-content">
+                      <span class="note-header-title">
+                        {{ getNoteDisplayTitle(note) }}
+                      </span>
+                      <span class="note-header-date">{{ note.created_at | date: 'dd MMM yyyy' }}</span>
+                    </span>
+                  </p-accordion-header>
+                  <p-accordion-content>
+                    @if (editingNoteId() !== note.id) {
+                      <div class="note-view">
+                        <p class="note-text">{{ note.note_text }}</p>
+                        <div class="note-actions">
+                          <p-button
+                            icon="pi pi-pencil"
+                            severity="secondary"
+                            [text]="true"
+                            [rounded]="true"
+                            pTooltip="Editează"
+                            (click)="startEdit(note)"
+                            styleClass="note-action-btn"
+                          ></p-button>
+                          <p-button
+                            icon="pi pi-trash"
+                            severity="danger"
+                            [text]="true"
+                            [rounded]="true"
+                            pTooltip="Șterge"
+                            (click)="deleteNote(note.id)"
+                            styleClass="note-action-btn"
+                          ></p-button>
+                        </div>
                       </div>
-                    </div>
-                  </div>
-                } @else {
-                  <div class="note-edit">
-                    <textarea
-                      pTextarea
-                      [ngModel]="editNoteText()"
-                      (ngModelChange)="editNoteText.set($event)"
-                      rows="3"
-                      class="w-full"
-                      [autoResize]="true"
-                    ></textarea>
-                    <div class="edit-actions">
-                      <p-button
-                        label="Salvează"
-                        icon="pi pi-check"
-                        (click)="saveEdit(note.id)"
-                        [loading]="saving()"
-                        [disabled]="!editNoteText().trim()"
-                      ></p-button>
-                      <p-button
-                        label="Anulează"
-                        icon="pi pi-times"
-                        severity="secondary"
-                        (click)="cancelEdit()"
-                      ></p-button>
-                    </div>
-                  </div>
-                }
-              </div>
-            }
+                    } @else {
+                      <div class="note-edit">
+                        <input
+                          pInputText
+                          type="text"
+                          [ngModel]="editNoteTitle()"
+                          (ngModelChange)="editNoteTitle.set($event)"
+                          placeholder="Titlu notiță (opțional)…"
+                          class="w-full note-title-input"
+                        />
+                        <textarea
+                          pTextarea
+                          [ngModel]="editNoteText()"
+                          (ngModelChange)="editNoteText.set($event)"
+                          rows="3"
+                          class="w-full"
+                          [autoResize]="true"
+                        ></textarea>
+                        <div class="edit-actions">
+                          <p-button
+                            label="Salvează"
+                            icon="pi pi-check"
+                            (click)="saveEdit(note.id)"
+                            [loading]="saving()"
+                            [disabled]="!editNoteText().trim()"
+                          ></p-button>
+                          <p-button
+                            label="Anulează"
+                            icon="pi pi-times"
+                            severity="secondary"
+                            (click)="cancelEdit()"
+                          ></p-button>
+                        </div>
+                      </div>
+                    }
+                  </p-accordion-content>
+                </p-accordion-panel>
+              }
+            </p-accordion>
           </div>
         }
 
@@ -187,51 +216,82 @@ import { AuthService } from '../services/auth.service';
         flex-direction: column;
         gap: 8px;
       }
+      .note-title-input {
+        font-size: 0.9rem;
+      }
       :host ::ng-deep .save-note-btn {
         align-self: flex-end;
+      }
+      .notes-section {
+        display: flex;
+        flex-direction: column;
+        gap: 8px;
       }
       .notes-divider {
         border-top: 1px solid rgba(121, 134, 203, 0.2);
         padding-top: 8px;
         font-size: 0.8rem;
         color: var(--text-muted, #90a4ae);
-        margin-top: 4px;
       }
-      .notes-list {
+      .note-header-content {
         display: flex;
-        flex-direction: column;
+        align-items: center;
+        justify-content: space-between;
+        width: 100%;
         gap: 10px;
+        overflow: hidden;
       }
-      .note-item {
-        background: rgba(26, 35, 126, 0.15);
-        border: 1px solid rgba(121, 134, 203, 0.15);
+      .note-header-title {
+        font-size: 0.9rem;
+        font-weight: 500;
+        color: var(--text-light, #eceff1);
+        white-space: nowrap;
+        overflow: hidden;
+        text-overflow: ellipsis;
+        flex: 1;
+      }
+      .note-header-date {
+        font-size: 0.75rem;
+        color: var(--text-muted, #90a4ae);
+        white-space: nowrap;
+        flex-shrink: 0;
+      }
+      :host ::ng-deep .notes-accordion .p-accordionpanel {
+        border: 1px solid rgba(121, 134, 203, 0.2);
         border-radius: 6px;
-        padding: 10px 12px;
+        margin-bottom: 6px;
+        overflow: hidden;
+        background: rgba(10, 10, 30, 0.4);
+      }
+      :host ::ng-deep .notes-accordion .p-accordionheader {
+        background: rgba(26, 35, 126, 0.2);
+        padding: 10px 14px;
+        color: var(--text-light, #eceff1);
+        border: none;
+      }
+      :host ::ng-deep .notes-accordion .p-accordionheader:hover {
+        background: rgba(26, 35, 126, 0.35);
+      }
+      :host ::ng-deep .notes-accordion .p-accordioncontent-content {
+        padding: 10px 14px;
+        background: rgba(10, 10, 30, 0.3);
       }
       .note-view {
         display: flex;
         flex-direction: column;
-        gap: 6px;
+        gap: 8px;
       }
       .note-text {
         margin: 0;
         font-size: 0.9rem;
         color: var(--text-light, #eceff1);
         white-space: pre-wrap;
-        line-height: 1.5;
-      }
-      .note-meta {
-        display: flex;
-        align-items: center;
-        justify-content: space-between;
-      }
-      .note-date {
-        font-size: 0.75rem;
-        color: var(--text-muted, #90a4ae);
+        line-height: 1.6;
       }
       .note-actions {
         display: flex;
         gap: 2px;
+        justify-content: flex-end;
       }
       :host ::ng-deep .note-action-btn .p-button {
         width: 28px;
@@ -274,8 +334,10 @@ export class NotesDialogComponent {
 
   readonly dialogVisible = signal(false);
   readonly notes = signal<UserNote[]>([]);
+  readonly newNoteTitle = signal('');
   readonly newNoteText = signal('');
   readonly editingNoteId = signal<number | null>(null);
+  readonly editNoteTitle = signal('');
   readonly editNoteText = signal('');
   readonly saving = signal(false);
   readonly loadingNotes = signal(false);
@@ -288,6 +350,13 @@ export class NotesDialogComponent {
         this.loadNotes();
       }
     });
+  }
+
+  /** Returns the title to display in the accordion header; falls back to a date-based label. */
+  getNoteDisplayTitle(note: UserNote): string {
+    if (note.note_title?.trim()) return note.note_title.trim();
+    const date = new Date(note.created_at);
+    return `Notiță din ${date.toLocaleDateString('ro-RO', { day: '2-digit', month: 'short', year: 'numeric' })}`;
   }
 
   open(): void {
@@ -320,7 +389,11 @@ export class NotesDialogComponent {
     if (!this.newNoteText().trim()) return;
     this.saving.set(true);
     this.notesService
-      .createNote(this.verseReference(), this.newNoteText().trim())
+      .createNote(
+        this.verseReference(),
+        this.newNoteTitle().trim(),
+        this.newNoteText().trim(),
+      )
       .pipe(
         catchError(() => {
           this.messageService.add({
@@ -337,6 +410,7 @@ export class NotesDialogComponent {
         this.saving.set(false);
         if (note) {
           this.notes.update((ns) => [...ns, note]);
+          this.newNoteTitle.set('');
           this.newNoteText.set('');
           this.messageService.add({
             severity: 'success',
@@ -350,11 +424,13 @@ export class NotesDialogComponent {
 
   startEdit(note: UserNote): void {
     this.editingNoteId.set(note.id);
+    this.editNoteTitle.set(note.note_title);
     this.editNoteText.set(note.note_text);
   }
 
   cancelEdit(): void {
     this.editingNoteId.set(null);
+    this.editNoteTitle.set('');
     this.editNoteText.set('');
   }
 
@@ -362,7 +438,7 @@ export class NotesDialogComponent {
     if (!this.editNoteText().trim()) return;
     this.saving.set(true);
     this.notesService
-      .updateNote(id, this.editNoteText().trim())
+      .updateNote(id, this.editNoteTitle().trim(), this.editNoteText().trim())
       .pipe(
         catchError(() => {
           this.messageService.add({

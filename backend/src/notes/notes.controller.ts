@@ -12,7 +12,7 @@ import {
   Request,
   UseGuards,
 } from '@nestjs/common';
-import { IsString, IsNotEmpty } from 'class-validator';
+import { IsString, IsNotEmpty, IsOptional } from 'class-validator';
 import { JwtAuthGuard } from '../auth/jwt-auth.guard';
 import { NotesService } from './notes.service';
 
@@ -22,11 +22,19 @@ export class CreateNoteDto {
   verse_reference!: string;
 
   @IsString()
+  @IsOptional()
+  note_title?: string;
+
+  @IsString()
   @IsNotEmpty()
   note_text!: string;
 }
 
 export class UpdateNoteDto {
+  @IsString()
+  @IsOptional()
+  note_title?: string;
+
   @IsString()
   @IsNotEmpty()
   note_text!: string;
@@ -46,6 +54,7 @@ export class NotesController {
     return this.notesService.create(
       req.user.id,
       dto.verse_reference,
+      dto.note_title ?? '',
       dto.note_text,
     );
   }
@@ -64,7 +73,12 @@ export class NotesController {
     @Body() dto: UpdateNoteDto,
     @Request() req: AuthRequest,
   ) {
-    const note = await this.notesService.update(id, req.user.id, dto.note_text);
+    const note = await this.notesService.update(
+      id,
+      req.user.id,
+      dto.note_title ?? '',
+      dto.note_text,
+    );
     if (!note) throw new NotFoundException('Note not found');
     return note;
   }

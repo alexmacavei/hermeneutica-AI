@@ -90,10 +90,16 @@ export class DatabaseService implements OnModuleInit {
           id               SERIAL PRIMARY KEY,
           user_id          INT          NOT NULL REFERENCES users(id) ON DELETE CASCADE,
           verse_reference  TEXT         NOT NULL,
+          note_title       TEXT         NOT NULL DEFAULT '',
           note_text        TEXT         NOT NULL,
           created_at       TIMESTAMPTZ  DEFAULT now(),
           updated_at       TIMESTAMPTZ  DEFAULT now()
         )
+      `);
+      // Idempotent migration: add note_title to existing deployments
+      await client.query(`
+        ALTER TABLE user_notes
+        ADD COLUMN IF NOT EXISTS note_title TEXT NOT NULL DEFAULT ''
       `);
       await client.query(`
         CREATE INDEX IF NOT EXISTS idx_user_notes_user_verse

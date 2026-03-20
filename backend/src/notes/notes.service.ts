@@ -5,6 +5,7 @@ export interface UserNote {
   id: number;
   user_id: number;
   verse_reference: string;
+  note_title: string;
   note_text: string;
   created_at: Date;
   updated_at: Date;
@@ -17,15 +18,16 @@ export class NotesService {
   async create(
     userId: number,
     verseReference: string,
+    noteTitle: string,
     noteText: string,
   ): Promise<UserNote> {
     const pool = this.db.getPool();
     if (!pool) throw new Error('Database not available');
     const result = await pool.query<UserNote>(
-      `INSERT INTO user_notes (user_id, verse_reference, note_text)
-       VALUES ($1, $2, $3)
+      `INSERT INTO user_notes (user_id, verse_reference, note_title, note_text)
+       VALUES ($1, $2, $3, $4)
        RETURNING *`,
-      [userId, verseReference, noteText],
+      [userId, verseReference, noteTitle, noteText],
     );
     return result.rows[0];
   }
@@ -48,16 +50,17 @@ export class NotesService {
   async update(
     id: number,
     userId: number,
+    noteTitle: string,
     noteText: string,
   ): Promise<UserNote | null> {
     const pool = this.db.getPool();
     if (!pool) return null;
     const result = await pool.query<UserNote>(
       `UPDATE user_notes
-       SET note_text = $1, updated_at = now()
-       WHERE id = $2 AND user_id = $3
+       SET note_title = $1, note_text = $2, updated_at = now()
+       WHERE id = $3 AND user_id = $4
        RETURNING *`,
-      [noteText, id, userId],
+      [noteTitle, noteText, id, userId],
     );
     return result.rows[0] ?? null;
   }

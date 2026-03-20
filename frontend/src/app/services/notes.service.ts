@@ -7,6 +7,7 @@ export interface UserNote {
   id: number;
   user_id: number;
   verse_reference: string;
+  note_title: string;
   note_text: string;
   created_at: string;
   updated_at: string;
@@ -23,15 +24,25 @@ export class NotesService {
     });
   }
 
-  createNote(verseReference: string, noteText: string): Observable<UserNote> {
+  createNote(
+    verseReference: string,
+    noteTitle: string,
+    noteText: string,
+  ): Observable<UserNote> {
     return this.http.post<UserNote>(`${this.apiUrl}/notes`, {
       verse_reference: verseReference,
+      note_title: noteTitle,
       note_text: noteText,
     });
   }
 
-  updateNote(id: number, noteText: string): Observable<UserNote> {
+  updateNote(
+    id: number,
+    noteTitle: string,
+    noteText: string,
+  ): Observable<UserNote> {
     return this.http.put<UserNote>(`${this.apiUrl}/notes/${id}`, {
+      note_title: noteTitle,
       note_text: noteText,
     });
   }

@@ -1,14 +1,18 @@
 import {
   ChangeDetectionStrategy,
   Component,
+  computed,
   inject,
   signal,
+  viewChild,
 } from '@angular/core';
 import { AvatarModule } from 'primeng/avatar';
 import { ButtonModule } from 'primeng/button';
+import { MenuModule } from 'primeng/menu';
 import { ToastModule } from 'primeng/toast';
 import { TooltipModule } from 'primeng/tooltip';
-import { MessageService } from 'primeng/api';
+import { MenuItem, MessageService } from 'primeng/api';
+import { Menu } from 'primeng/menu';
 import { BibleStore } from './bible.store';
 import { BibleSelectorComponent } from './bible-selector.component';
 import { BibleTextComponent } from './bible-text.component';
@@ -26,6 +30,7 @@ import { SlicePipe } from '@angular/common';
   imports: [
     AvatarModule,
     ButtonModule,
+    MenuModule,
     ToastModule,
     TooltipModule,
     BibleSelectorComponent,
@@ -46,6 +51,9 @@ import { SlicePipe } from '@angular/common';
       [mode]="authDialogMode()"
     ></app-auth-dialog>
 
+    <!-- Auth dropdown menu -->
+    <p-menu #authMenu [model]="authMenuItems()" [popup]="true" appendTo="body"></p-menu>
+
     <div class="viewer-shell">
       <!-- Navbar -->
       <header class="top-bar">
@@ -61,33 +69,30 @@ import { SlicePipe } from '@angular/common';
           (navigateTo)="store.navigateFromSearch($event)"
         ></app-semantic-search>
 
-        <!-- Auth area -->
+        <!-- Auth area – single dropdown button -->
         <div class="auth-area">
           @if (!authService.currentUser()) {
             <p-button
-              label="Login"
+              icon="pi pi-user"
+              label="Cont"
               severity="secondary"
               [text]="true"
-              (click)="openAuth('login')"
-            ></p-button>
-            <p-button
-              label="Înregistrare"
-              severity="secondary"
-              [text]="true"
-              (click)="openAuth('register')"
+              class="auth-menu-btn"
+              (click)="toggleAuthMenu($event)"
             ></p-button>
           } @else {
             <div
               class="user-avatar-area"
-              pTooltip="{{ authService.currentUser()!.email }} — click pentru logout"
-              tooltipPosition="bottom"
-              (click)="logout()"
+              (click)="toggleAuthMenu($event)"
             >
               <p-avatar
                 [label]="authService.currentUser()!.email[0].toUpperCase()"
                 shape="circle"
                 styleClass="user-avatar"
+                pTooltip="{{ authService.currentUser()!.email }}"
+                tooltipPosition="bottom"
               ></p-avatar>
+              <i class="pi pi-angle-down avatar-caret"></i>
             </div>
           }
         </div>
@@ -380,13 +385,27 @@ import { SlicePipe } from '@angular/common';
         padding-right: 16px;
         display: flex;
         align-items: center;
-        gap: 6px;
+      }
+      :host ::ng-deep .auth-menu-btn .p-button {
+        color: var(--text-muted, #90a4ae);
+        font-size: 0.9rem;
+      }
+      :host ::ng-deep .auth-menu-btn .p-button:hover {
+        color: var(--text-light, #eceff1);
       }
       .user-avatar-area {
         cursor: pointer;
         display: flex;
         align-items: center;
         gap: 6px;
+        padding: 4px 8px;
+        border-radius: 20px;
+        border: 1px solid transparent;
+        transition: border-color 0.2s, background 0.2s;
+      }
+      .user-avatar-area:hover {
+        background: rgba(26, 35, 126, 0.3);
+        border-color: rgba(121, 134, 203, 0.4);
       }
       :host ::ng-deep .user-avatar {
         background: rgba(26, 35, 126, 0.8);
@@ -396,10 +415,10 @@ import { SlicePipe } from '@angular/common';
         font-weight: 700;
         width: 34px;
         height: 34px;
-        transition: border-color 0.2s;
       }
-      .user-avatar-area:hover :host ::ng-deep .user-avatar {
-        border-color: var(--gold, #fdd835);
+      .avatar-caret {
+        color: var(--text-muted, #90a4ae);
+        font-size: 0.75rem;
       }
       @media (max-width: 768px) {
         .main-layout {
@@ -426,6 +445,44 @@ export class BibleViewerComponent {
   readonly authDialogVisible = signal(false);
   readonly authDialogMode = signal<'login' | 'register'>('login');
 
+  private readonly authMenu = viewChild.required<Menu>('authMenu');
+
+  /** Menu items are reactive: different items for guest vs. authenticated user. */
+  readonly authMenuItems = computed<MenuItem[]>(() => {
+    if (!this.authService.currentUser()) {
+      return [
+        {
+          label: 'Login',
+          icon: 'pi pi-sign-in',
+          command: () => this.openAuth('login'),
+        },
+        {
+          label: 'Înregistrare',
+          icon: 'pi pi-user-plus',
+          command: () => this.openAuth('register'),
+        },
+      ];
+    }
+    return [
+      {
+        label: this.authService.currentUser()!.email,
+        icon: 'pi pi-user',
+        disabled: true,
+        styleClass: 'auth-menu-email',
+      },
+      { separator: true },
+      {
+        label: 'Deconectare',
+        icon: 'pi pi-sign-out',
+        command: () => this.authService.logout(),
+      },
+    ];
+  });
+
+  toggleAuthMenu(event: Event): void {
+    this.authMenu().toggle(event);
+  }
+
   openAuth(mode: 'login' | 'register'): void {
     this.authDialogMode.set(mode);
     this.authDialogVisible.set(true);
@@ -434,9 +491,5 @@ export class BibleViewerComponent {
   openAuthFromPrompt(event: Event, mode: 'login' | 'register'): void {
     event.preventDefault();
     this.openAuth(mode);
-  }
-
-  logout(): void {
-    this.authService.logout();
   }
 }
