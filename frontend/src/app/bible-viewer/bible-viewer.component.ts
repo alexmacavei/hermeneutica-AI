@@ -170,16 +170,27 @@ import { AuthService, CurrentUser } from '../services/auth.service';
 
       <!-- Big Analyze Button -->
       <div class="analyze-bar">
-        <p-button
-          class="analyze-btn"
-          [class.analyze-btn-pulse]="!!selectedSelection && !analyzing"
-          [disabled]="!selectedSelection || analyzing"
-          [loading]="analyzing"
-          (click)="analyze()"
-          icon="pi pi-search"
-          label="Analizează selecția"
-        >
-        </p-button>
+        <ng-container *ngIf="currentUser; else loginPrompt">
+          <p-button
+            class="analyze-btn"
+            [class.analyze-btn-pulse]="!!selectedSelection && !analyzing"
+            [disabled]="!selectedSelection || analyzing"
+            [loading]="analyzing"
+            (click)="analyze()"
+            icon="pi pi-search"
+            label="Analizează selecția"
+          >
+          </p-button>
+        </ng-container>
+        <ng-template #loginPrompt>
+          <span class="login-prompt">
+            <i class="pi pi-lock"></i>
+            Autentifică-te pentru a analiza versete.
+            <a href="#" (click)="openAuthFromPrompt($event, 'login')">Login</a>
+            sau
+            <a href="#" (click)="openAuthFromPrompt($event, 'register')">Înregistrare</a>
+          </span>
+        </ng-template>
 
         <p-button
           label="Studiu Paralel"
@@ -348,6 +359,23 @@ import { AuthService, CurrentUser } from '../services/auth.service';
         font-size: 0.9rem;
         flex: 1;
       }
+      .login-prompt {
+        color: var(--text-muted, #90a4ae);
+        font-size: 0.9rem;
+        display: flex;
+        align-items: center;
+        gap: 6px;
+      }
+      .login-prompt .pi-lock {
+        color: rgba(198, 40, 40, 0.7);
+      }
+      .login-prompt a {
+        color: var(--gold, #fdd835);
+        text-decoration: none;
+      }
+      .login-prompt a:hover {
+        text-decoration: underline;
+      }
       .auth-area {
         margin-left: auto;
         padding-right: 16px;
@@ -436,6 +464,11 @@ export class BibleViewerComponent implements OnInit {
   openAuth(mode: 'login' | 'register'): void {
     this.authDialogMode = mode;
     this.authDialogVisible = true;
+  }
+
+  openAuthFromPrompt(event: Event, mode: 'login' | 'register'): void {
+    event.preventDefault();
+    this.openAuth(mode);
   }
 
   onAuthSuccess(): void {
