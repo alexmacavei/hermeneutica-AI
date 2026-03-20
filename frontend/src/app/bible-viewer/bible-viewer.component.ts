@@ -1,13 +1,26 @@
-import { ChangeDetectionStrategy, Component, inject } from '@angular/core';
+import {
+  ChangeDetectionStrategy,
+  Component,
+  computed,
+  inject,
+  signal,
+  viewChild,
+} from '@angular/core';
+import { AvatarModule } from 'primeng/avatar';
 import { ButtonModule } from 'primeng/button';
+import { MenuModule } from 'primeng/menu';
 import { ToastModule } from 'primeng/toast';
-import { MessageService } from 'primeng/api';
+import { TooltipModule } from 'primeng/tooltip';
+import { MenuItem, MessageService } from 'primeng/api';
+import { Menu } from 'primeng/menu';
 import { BibleStore } from './bible.store';
 import { BibleSelectorComponent } from './bible-selector.component';
 import { BibleTextComponent } from './bible-text.component';
 import { ResultsViewerComponent } from '../analysis/results-viewer.component';
 import { SemanticSearchComponent } from './semantic-search.component';
 import { ParallelViewerComponent } from './parallel-viewer.component';
+import { AuthDialogComponent } from '../auth/auth-dialog.component';
+import { AuthService } from '../services/auth.service';
 import { SlicePipe } from '@angular/common';
 
 @Component({
@@ -15,18 +28,31 @@ import { SlicePipe } from '@angular/common';
   standalone: true,
   changeDetection: ChangeDetectionStrategy.OnPush,
   imports: [
+    AvatarModule,
     ButtonModule,
+    MenuModule,
     ToastModule,
+    TooltipModule,
     BibleSelectorComponent,
     BibleTextComponent,
     ResultsViewerComponent,
     SemanticSearchComponent,
     ParallelViewerComponent,
+    AuthDialogComponent,
     SlicePipe,
   ],
   providers: [BibleStore, MessageService],
   template: `
     <p-toast position="top-right"></p-toast>
+
+    <!-- Auth Dialog -->
+    <app-auth-dialog
+      [(visible)]="authDialogVisible"
+      [mode]="authDialogMode()"
+    ></app-auth-dialog>
+
+    <!-- Auth dropdown menu -->
+    <p-menu #authMenu [model]="authMenuItems()" [popup]="true" appendTo="body"></p-menu>
 
     <div class="viewer-shell">
       <!-- Navbar -->
@@ -42,6 +68,34 @@ import { SlicePipe } from '@angular/common';
           [translationId]="store.currentNav()?.translationId ?? ''"
           (navigateTo)="store.navigateFromSearch($event)"
         ></app-semantic-search>
+
+        <!-- Auth area – single dropdown button -->
+        <div class="auth-area">
+          @if (!authService.currentUser()) {
+            <p-button
+              icon="pi pi-user"
+              label="Cont"
+              severity="secondary"
+              [text]="true"
+              class="auth-menu-btn"
+              (click)="toggleAuthMenu($event)"
+            ></p-button>
+          } @else {
+            <div
+              class="user-avatar-area"
+              (click)="toggleAuthMenu($event)"
+            >
+              <p-avatar
+                [label]="authService.currentUser()!.email[0].toUpperCase()"
+                shape="circle"
+                styleClass="user-avatar"
+                pTooltip="{{ authService.currentUser()!.email }}"
+                tooltipPosition="bottom"
+              ></p-avatar>
+              <i class="pi pi-angle-down avatar-caret"></i>
+            </div>
+          }
+        </div>
       </header>
 
       <!-- Main Layout -->
@@ -119,16 +173,26 @@ import { SlicePipe } from '@angular/common';
 
       <!-- Big Analyze Button -->
       <div class="analyze-bar">
-        <p-button
-          class="analyze-btn"
-          [class.analyze-btn-pulse]="!!store.selectedSelection() && !store.analyzing()"
-          [disabled]="!store.selectedSelection() || store.analyzing()"
-          [loading]="store.analyzing()"
-          (click)="store.analyze()"
-          icon="pi pi-search"
-          label="Analizează selecția"
-        >
-        </p-button>
+        @if (authService.isLoggedIn()) {
+          <p-button
+            class="analyze-btn"
+            [class.analyze-btn-pulse]="!!store.selectedSelection() && !store.analyzing()"
+            [disabled]="!store.selectedSelection() || store.analyzing()"
+            [loading]="store.analyzing()"
+            (click)="store.analyze()"
+            icon="pi pi-search"
+            label="Analizează selecția"
+          >
+          </p-button>
+        } @else {
+          <span class="login-prompt">
+            <i class="pi pi-lock"></i>
+            Autentifică-te pentru a analiza versete.
+            <a href="#" (click)="openAuthFromPrompt($event, 'login')">Login</a>
+            sau
+            <a href="#" (click)="openAuthFromPrompt($event, 'register')">Înregistrare</a>
+          </span>
+        }
 
         <p-button
           label="Studiu Paralel"
@@ -299,6 +363,63 @@ import { SlicePipe } from '@angular/common';
         font-size: 0.9rem;
         flex: 1;
       }
+      .login-prompt {
+        color: var(--text-muted, #90a4ae);
+        font-size: 0.9rem;
+        display: flex;
+        align-items: center;
+        gap: 6px;
+      }
+      .login-prompt .pi-lock {
+        color: rgba(198, 40, 40, 0.7);
+      }
+      .login-prompt a {
+        color: var(--gold, #fdd835);
+        text-decoration: none;
+      }
+      .login-prompt a:hover {
+        text-decoration: underline;
+      }
+      .auth-area {
+        margin-left: auto;
+        padding-right: 16px;
+        display: flex;
+        align-items: center;
+      }
+      :host ::ng-deep .auth-menu-btn .p-button {
+        color: var(--text-muted, #90a4ae);
+        font-size: 0.9rem;
+      }
+      :host ::ng-deep .auth-menu-btn .p-button:hover {
+        color: var(--text-light, #eceff1);
+      }
+      .user-avatar-area {
+        cursor: pointer;
+        display: flex;
+        align-items: center;
+        gap: 6px;
+        padding: 4px 8px;
+        border-radius: 20px;
+        border: 1px solid transparent;
+        transition: border-color 0.2s, background 0.2s;
+      }
+      .user-avatar-area:hover {
+        background: rgba(26, 35, 126, 0.3);
+        border-color: rgba(121, 134, 203, 0.4);
+      }
+      :host ::ng-deep .user-avatar {
+        background: rgba(26, 35, 126, 0.8);
+        color: var(--gold, #fdd835);
+        border: 1px solid rgba(121, 134, 203, 0.5);
+        font-size: 0.9rem;
+        font-weight: 700;
+        width: 34px;
+        height: 34px;
+      }
+      .avatar-caret {
+        color: var(--text-muted, #90a4ae);
+        font-size: 0.75rem;
+      }
       @media (max-width: 768px) {
         .main-layout {
           flex-direction: column;
@@ -319,4 +440,56 @@ import { SlicePipe } from '@angular/common';
 })
 export class BibleViewerComponent {
   protected readonly store = inject(BibleStore);
+  protected readonly authService = inject(AuthService);
+
+  readonly authDialogVisible = signal(false);
+  readonly authDialogMode = signal<'login' | 'register'>('login');
+
+  private readonly authMenu = viewChild.required<Menu>('authMenu');
+
+  /** Menu items are reactive: different items for guest vs. authenticated user. */
+  readonly authMenuItems = computed<MenuItem[]>(() => {
+    if (!this.authService.currentUser()) {
+      return [
+        {
+          label: 'Login',
+          icon: 'pi pi-sign-in',
+          command: () => this.openAuth('login'),
+        },
+        {
+          label: 'Înregistrare',
+          icon: 'pi pi-user-plus',
+          command: () => this.openAuth('register'),
+        },
+      ];
+    }
+    return [
+      {
+        label: this.authService.currentUser()!.email,
+        icon: 'pi pi-user',
+        disabled: true,
+        styleClass: 'auth-menu-email',
+      },
+      { separator: true },
+      {
+        label: 'Deconectare',
+        icon: 'pi pi-sign-out',
+        command: () => this.authService.logout(),
+      },
+    ];
+  });
+
+  toggleAuthMenu(event: Event): void {
+    this.authMenu().toggle(event);
+  }
+
+  openAuth(mode: 'login' | 'register'): void {
+    this.authDialogMode.set(mode);
+    this.authDialogVisible.set(true);
+  }
+
+  openAuthFromPrompt(event: Event, mode: 'login' | 'register'): void {
+    event.preventDefault();
+    this.openAuth(mode);
+  }
 }

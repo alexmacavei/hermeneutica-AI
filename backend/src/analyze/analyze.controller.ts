@@ -1,7 +1,16 @@
-import { Body, Controller, Post, HttpCode, HttpStatus } from '@nestjs/common';
+import {
+  Body,
+  Controller,
+  Post,
+  HttpCode,
+  HttpStatus,
+  UseGuards,
+} from '@nestjs/common';
 import { AnalyzeService, AnalysisResult } from './analyze.service';
 import { AnalyzeDto } from './dto/analyze.dto';
+import { JwtAuthGuard } from '../auth/jwt-auth.guard';
 
+@UseGuards(JwtAuthGuard)
 @Controller('analyze')
 export class AnalyzeController {
   constructor(private readonly analyzeService: AnalyzeService) {}

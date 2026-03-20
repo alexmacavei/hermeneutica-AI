@@ -3,6 +3,7 @@ import { SlicePipe } from '@angular/common';
 import { CardModule } from 'primeng/card';
 import { ProgressSpinnerModule } from 'primeng/progressspinner';
 import { AnalysisResult } from '../services/analysis.service';
+import { NotesDialogComponent } from './notes-dialog.component';
 
 interface AnalysisCard {
   key: keyof AnalysisResult['cards'];
@@ -15,7 +16,7 @@ interface AnalysisCard {
   selector: 'app-results-viewer',
   standalone: true,
   changeDetection: ChangeDetectionStrategy.OnPush,
-  imports: [CardModule, ProgressSpinnerModule, SlicePipe],
+  imports: [CardModule, ProgressSpinnerModule, SlicePipe, NotesDialogComponent],
   template: `
     @if (result() || loading()) {
       <div class="results-section">
@@ -28,6 +29,7 @@ interface AnalysisCard {
               <p class="reference-text">{{ result()!.text | slice:0:120 }}{{ result()!.text.length > 120 ? '...' : '' }}</p>
             </div>
             <span class="language-badge">{{ result()!.language }}</span>
+            <app-notes-dialog [verseReference]="result()!.reference"></app-notes-dialog>
           </div>
         }
 
