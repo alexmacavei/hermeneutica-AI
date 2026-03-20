@@ -154,6 +154,9 @@ import { SlicePipe } from '@angular/common';
             <app-results-viewer
               [result]="store.analysisResult()"
               [loading]="store.analyzing()"
+              [bookId]="store.currentNav()?.bookId ?? ''"
+              [chapter]="store.currentNav()?.chapter ?? 0"
+              [verseStart]="store.verseRange().start"
             ></app-results-viewer>
           </aside>
         }

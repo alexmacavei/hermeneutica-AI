@@ -1,8 +1,20 @@
-import { ChangeDetectionStrategy, Component, input } from '@angular/core';
+import {
+  ChangeDetectionStrategy,
+  Component,
+  computed,
+  effect,
+  inject,
+  input,
+  signal,
+} from '@angular/core';
 import { SlicePipe } from '@angular/common';
 import { CardModule } from 'primeng/card';
 import { ProgressSpinnerModule } from 'primeng/progressspinner';
 import { AnalysisResult } from '../services/analysis.service';
+import {
+  AnaniaAdnotare,
+  AnaniaNotesService,
+} from '../services/anania-notes.service';
 import { NotesDialogComponent } from './notes-dialog.component';
 
 interface AnalysisCard {
@@ -59,6 +71,34 @@ interface AnalysisCard {
               </p-card>
             }
           </div>
+
+          <!-- Anania Notes Card (conditional) -->
+          @if (ananiaNotes().length > 0) {
+            <div class="anania-notes-section">
+              <p-card
+                class="analysis-card card-anania"
+                [styleClass]="'analysis-card-inner'"
+              >
+                <ng-template pTemplate="header">
+                  <div class="card-header-row">
+                    <span class="card-icon">📝</span>
+                    <span class="card-title">Note Anania</span>
+                  </div>
+                </ng-template>
+                <div class="anania-notes-list">
+                  @for (note of ananiaNotes(); track note.id) {
+                    <div class="anania-note-item">
+                      <sup class="anania-sup">{{ note.note_number }}</sup>
+                      @if (note.metadata?.attached_to_word) {
+                        <span class="anania-word-hint">(la „{{ note.metadata!.attached_to_word }}")</span>
+                      }
+                      <span class="anania-note-text">{{ note.note_text }}</span>
+                    </div>
+                  }
+                </div>
+              </p-card>
+            </div>
+          }
         }
       </div>
     }
@@ -153,6 +193,9 @@ interface AnalysisCard {
     :host ::ng-deep .card-philology .p-card {
       border-left: 4px solid #a5d6a7;
     }
+    :host ::ng-deep .card-anania .p-card {
+      border-left: 4px solid #ce93d8;
+    }
 
     .card-header-row {
       display: flex;
@@ -179,11 +222,92 @@ interface AnalysisCard {
       white-space: pre-line;
       margin: 0;
     }
+
+    .anania-notes-section {
+      margin-top: 16px;
+    }
+
+    .anania-notes-list {
+      display: flex;
+      flex-direction: column;
+      gap: 10px;
+    }
+
+    .anania-note-item {
+      color: #b0bec5;
+      line-height: 1.7;
+      font-size: 0.88rem;
+    }
+
+    .anania-sup {
+      color: #ce93d8;
+      font-size: 0.7em;
+      vertical-align: super;
+      font-weight: 600;
+      margin-right: 2px;
+    }
+
+    .anania-word-hint {
+      color: var(--text-muted);
+      font-size: 0.78rem;
+      font-style: italic;
+      margin-right: 4px;
+    }
+
+    .anania-note-text {
+      color: #b0bec5;
+    }
   `],
 })
 export class ResultsViewerComponent {
   readonly result = input<AnalysisResult | null>(null);
   readonly loading = input(false);
+  /** USFM book code, e.g. 'GEN', 'ACT'. Provided by the parent component. */
+  readonly bookId = input('');
+  /** Chapter number for the current analysis context. */
+  readonly chapter = input(0);
+  /** Start verse number for the current analysis selection. */
+  readonly verseStart = input(0);
+
+  private readonly ananiaNotesService = inject(AnaniaNotesService);
+
+  readonly ananiaNotes = signal<AnaniaAdnotare[]>([]);
+
+  /**
+   * Computed: the verse number to query.
+   * If verseStart is provided as an input, use it.
+   * Otherwise, try parsing the reference string from the result.
+   */
+  private readonly effectiveVerse = computed(() => {
+    if (this.verseStart() > 0) return this.verseStart();
+    const ref = this.result()?.reference ?? '';
+    const m = ref.match(/:(\d+)/);
+    return m ? parseInt(m[1], 10) : 0;
+  });
+
+  private readonly effectiveChapter = computed(() => {
+    if (this.chapter() > 0) return this.chapter();
+    const ref = this.result()?.reference ?? '';
+    const m = ref.match(/\s(\d+):/);
+    return m ? parseInt(m[1], 10) : 0;
+  });
+
+  constructor() {
+    effect(() => {
+      const bookId = this.bookId();
+      const chapter = this.effectiveChapter();
+      const verse = this.effectiveVerse();
+
+      if (bookId && chapter > 0 && verse > 0) {
+        this.ananiaNotesService.findByVerse(bookId, chapter, verse).subscribe({
+          next: (notes) => this.ananiaNotes.set(notes),
+          error: () => this.ananiaNotes.set([]),
+        });
+      } else {
+        this.ananiaNotes.set([]);
+      }
+    });
+  }
 
   readonly cardDefs: AnalysisCard[] = [
     {
