@@ -3,20 +3,29 @@
  *
  * Pipeline:
  *  1) Read the Anania Bible from a local PDF file.
- *     Expected location: data/bibles/anania-source.pdf
- *     (The user must place a legally-obtained copy there.)
+ *     Path is read from ANANIA_PDF_PATH in ../.env, falling back to
+ *     data/bibles/anania-source.pdf.
  *  2) Extract the raw text from every PDF page.
  *  3) Parse book, chapter, and verse boundaries using Romanian heading
  *     patterns and the static booksConfig table.
- *  4) Build a helloao-compatible JSON structure and write to
+ *  4) Detect superscript note markers in verse text, record the word they
+ *     are attached to, then strip them before saving.
+ *  5) Parse footnote blocks that follow the verse text of each chapter.
+ *  6) Build a helloao-compatible JSON structure and write to
  *     data/bibles/ro_anania.json.
+ *  7) Optionally bulk-insert all collected notes into PostgreSQL
+ *     (anania_adnotari table) when DATABASE_URL is set.
  *
  * Run:  npm run anania-pipeline
  */
 
-import * as fs from 'fs/promises';
+import * as dotenv from 'dotenv';
 import * as path from 'path';
+dotenv.config({ path: path.resolve(__dirname, '../.env') });
+
+import * as fs from 'fs/promises';
 import { PDFParse } from 'pdf-parse';
+import { Pool } from 'pg';
 
 import {
   BIBLES_DIR,
@@ -32,11 +41,16 @@ import {
 
 const TRANSLATION_ID = 'ro_anania';
 
+const DOWNLOAD_LINK = 'https://dervent.ro/biblia/Biblia-ANANIA.pdf';
+
 /**
- * Path to the source PDF.  Users place their own legally-obtained copy here.
- * The file is .gitignore'd and never committed.
+ * Path to the source PDF.
+ *  - First checks ANANIA_PDF_PATH env var (loaded from ../.env).
+ *  - Falls back to data/bibles/anania-source.pdf.
  */
-const PDF_SOURCE = path.resolve(BIBLES_DIR, 'anania-source.pdf');
+const PDF_SOURCE = process.env['ANANIA_PDF_PATH']
+  ? path.resolve(process.env['ANANIA_PDF_PATH'])
+  : path.resolve(BIBLES_DIR, 'anania-source.pdf');
 
 // ─── Types ───────────────────────────────────────────────────────────────────
 
@@ -47,6 +61,26 @@ type BookConfig = BaseBookConfig & {
   pdfHeading: string;
   /** Optional alternative heading forms that may appear in some PDF editions. */
   altHeadings?: string[];
+};
+
+/** A single extracted Anania footnote / annotation. */
+type AnaniaNote = {
+  book: string;
+  chapter: number;
+  verse_start: number;
+  verse_end: number | null;
+  note_number: number;
+  note_text: string;
+  metadata: {
+    attached_to_word?: string;
+    original_marker?: string;
+  } | null;
+};
+
+/** Result returned by parseBookText: parsed verses + extracted notes. */
+type ParseResult = {
+  chapters: Map<number, Verse[]>;
+  notes: AnaniaNote[];
 };
 
 // ─── Static books configuration ──────────────────────────────────────────────
@@ -157,6 +191,41 @@ const booksConfig: BookConfig[] = [
 // Startup validation: every usfmCode must have an English name entry
 validateEnglishNames(booksConfig);
 
+// ─── Superscript handling ─────────────────────────────────────────────────────
+
+/**
+ * Unicode superscript digits mapped to their ASCII equivalents:
+ *   ⁰ (U+2070)→0, ¹ (U+00B9)→1, ² (U+00B2)→2, ³ (U+00B3)→3,
+ *   ⁴ (U+2074)→4, ⁵ (U+2075)→5, ⁶ (U+2076)→6, ⁷ (U+2077)→7,
+ *   ⁸ (U+2078)→8, ⁹ (U+2079)→9
+ */
+const SUPERSCRIPT_MAP: Record<string, string> = {
+  '⁰': '0', '¹': '1', '²': '2', '³': '3', '⁴': '4',
+  '⁵': '5', '⁶': '6', '⁷': '7', '⁸': '8', '⁹': '9',
+};
+
+const SUPERSCRIPT_RE = /[⁰¹²³⁴⁵⁶⁷⁸⁹]+/g;
+
+function superscriptToNumber(sup: string): number {
+  const digits = sup.split('').map(c => SUPERSCRIPT_MAP[c]).filter(Boolean).join('');
+  const result = parseInt(digits, 10);
+  return isNaN(result) ? -1 : result;
+}
+
+function stripSuperscripts(text: string): string {
+  return text.replace(SUPERSCRIPT_RE, '').replace(/\s{2,}/g, ' ').trim();
+}
+
+/**
+ * Finds the word immediately preceding a superscript marker in a text string.
+ * Returns undefined if no word is found.
+ */
+function findWordBefore(text: string, matchIndex: number): string | undefined {
+  const before = text.slice(0, matchIndex);
+  const wordMatch = before.match(/(\S+)\s*$/);
+  return wordMatch ? wordMatch[1] : undefined;
+}
+
 // ─── Text normalization ───────────────────────────────────────────────────────
 
 /**
@@ -194,6 +263,9 @@ const CHAPTER_HEADING_RE = /^\s*(?:Capitolul|Cap\.?)\s+(\d+)\s*$/i;
 
 /** Matches verse-number prefixed text: "1. In inceput...", "12 Text..." */
 const VERSE_RE = /^(\d+)[.\s]\s*(.+)/;
+
+/** Matches a footnote line: superscript digits optionally followed by =/:. then text. */
+const NOTE_LINE_RE = /^([⁰¹²³⁴⁵⁶⁷⁸⁹]+)\s*[=:.]?\s*(.+)/;
 
 /**
  * A raw text segment belonging to one book, as extracted from the PDF.
@@ -265,7 +337,33 @@ function splitIntoBookSegments(fullText: string): BookTextSegment[] {
 }
 
 /**
- * Parses a book's raw text into chapters, each containing an array of verses.
+ * Detects all superscript markers in a piece of text and returns an array of
+ * { noteNumber, attachedWord, originalMarker } entries.
+ */
+function detectSuperscripts(
+  text: string,
+  bookCode: string,
+  chapter: number,
+  verseNum: number,
+): { noteNumber: number; attachedWord: string | undefined; originalMarker: string }[] {
+  const results: { noteNumber: number; attachedWord: string | undefined; originalMarker: string }[] = [];
+  let match: RegExpExecArray | null;
+  const re = new RegExp(SUPERSCRIPT_RE.source, 'g');
+  while ((match = re.exec(text)) !== null) {
+    const noteNumber = superscriptToNumber(match[0]);
+    if (noteNumber < 0) continue;
+    const attachedWord = findWordBefore(text, match.index);
+    console.log(
+      `Detected superscript ${noteNumber} attached to word '${attachedWord ?? '?'}' on ${bookCode} ${chapter}:${verseNum}`,
+    );
+    results.push({ noteNumber, attachedWord, originalMarker: match[0] });
+  }
+  return results;
+}
+
+/**
+ * Parses a book's raw text into chapters, each containing an array of verses,
+ * plus any footnote annotations found in the text.
  *
  * Heuristics:
  *  - Lines matching CHAPTER_HEADING_RE start a new chapter.
@@ -273,12 +371,81 @@ function splitIntoBookSegments(fullText: string): BookTextSegment[] {
  *  - Other lines are continuation text appended to the current verse.
  *  - If no explicit "Capitolul" heading is found before the first verse,
  *    chapter 1 is assumed (some single-chapter books omit the heading).
+ *  - Lines matching NOTE_LINE_RE (starting with superscript digits) after
+ *    verse text are treated as footnote lines for the current chapter.
+ *  - Before saving verse text, superscripts are detected (for notes) then stripped.
  */
-function parseBookText(text: string): Map<number, Verse[]> {
+function parseBookText(text: string, bookCode: string): ParseResult {
   const chapters = new Map<number, Verse[]>();
+  const notes: AnaniaNote[] = [];
   let currentChapter = 0; // 0 = not yet inside a chapter
   let currentVerses: Verse[] = [];
   let lastVerse: Verse | null = null;
+
+  // Track superscripts detected per chapter: noteNumber → { verse, attachedWord, originalMarker }
+  type SuperscriptInfo = { verse: number; attachedWord: string | undefined; originalMarker: string };
+  let chapterSuperscripts: Map<number, SuperscriptInfo> = new Map();
+
+  // Accumulate note lines per chapter: noteNumber → noteText
+  let chapterNoteLines: Map<number, string> = new Map();
+
+  /**
+   * Flushes a completed chapter: merges detected superscripts with note lines
+   * and produces AnaniaNote entries.
+   */
+  function flushChapter(): void {
+    if (currentChapter > 0 && currentVerses.length > 0) {
+      chapters.set(currentChapter, currentVerses);
+
+      // Build notes from chapterNoteLines, associating with superscript info
+      for (const [noteNum, noteText] of chapterNoteLines) {
+        const supInfo = chapterSuperscripts.get(noteNum);
+        notes.push({
+          book: bookCode,
+          chapter: currentChapter,
+          verse_start: supInfo?.verse ?? currentVerses[currentVerses.length - 1].number,
+          verse_end: null,
+          note_number: noteNum,
+          note_text: noteText,
+          metadata: supInfo
+            ? { attached_to_word: supInfo.attachedWord, original_marker: supInfo.originalMarker }
+            : null,
+        });
+      }
+
+      // Also create note entries for detected superscripts that have no note-line text
+      for (const [noteNum, supInfo] of chapterSuperscripts) {
+        if (!chapterNoteLines.has(noteNum)) {
+          notes.push({
+            book: bookCode,
+            chapter: currentChapter,
+            verse_start: supInfo.verse,
+            verse_end: null,
+            note_number: noteNum,
+            note_text: '',
+            metadata: { attached_to_word: supInfo.attachedWord, original_marker: supInfo.originalMarker },
+          });
+        }
+      }
+    }
+  }
+
+  /**
+   * Scans a raw verse text for superscript markers, records them, then returns
+   * the text with superscripts stripped.
+   */
+  function processVerseText(rawText: string, chapter: number, verseNum: number): string {
+    const found = detectSuperscripts(rawText, bookCode, chapter, verseNum);
+    for (const f of found) {
+      // Keep the last occurrence if a superscript number appears more than once
+      chapterSuperscripts.set(f.noteNumber, {
+        verse: verseNum,
+        attachedWord: f.attachedWord,
+        originalMarker: f.originalMarker,
+      });
+    }
+    return stripSuperscripts(rawText);
+  }
 
   for (const line of text.split('\n')) {
     const trimmed = line.trim();
@@ -287,21 +454,32 @@ function parseBookText(text: string): Map<number, Verse[]> {
     // Check for chapter heading
     const chapMatch = trimmed.match(CHAPTER_HEADING_RE);
     if (chapMatch) {
-      // Flush current chapter
-      if (currentChapter > 0 && currentVerses.length > 0) {
-        chapters.set(currentChapter, currentVerses);
-      }
+      // Flush current chapter (including notes)
+      flushChapter();
       currentChapter = parseInt(chapMatch[1], 10);
       currentVerses = [];
       lastVerse = null;
+      chapterSuperscripts = new Map();
+      chapterNoteLines = new Map();
       continue;
+    }
+
+    // Check for note line (starts with superscript digits)
+    const noteMatch = trimmed.match(NOTE_LINE_RE);
+    if (noteMatch && currentChapter > 0) {
+      const noteNum = superscriptToNumber(noteMatch[1]);
+      if (noteNum >= 0) {
+        const existing = chapterNoteLines.get(noteNum);
+        chapterNoteLines.set(noteNum, existing ? existing + ' ' + noteMatch[2].trim() : noteMatch[2].trim());
+        continue;
+      }
     }
 
     // Check for verse start
     const verseMatch = trimmed.match(VERSE_RE);
     if (verseMatch) {
       const vnum = parseInt(verseMatch[1], 10);
-      const vtext = verseMatch[2].trim();
+      const rawVtext = verseMatch[2].trim();
 
       // Assume chapter 1 if we encounter verses before any chapter heading
       if (currentChapter === 0) {
@@ -310,6 +488,7 @@ function parseBookText(text: string): Map<number, Verse[]> {
 
       // Accept any positive verse number (PDFs may have non-sequential numbering)
       if (vnum > 0) {
+        const vtext = processVerseText(rawVtext, currentChapter, vnum);
         lastVerse = { number: vnum, text: vtext };
         currentVerses.push(lastVerse);
         continue;
@@ -318,16 +497,79 @@ function parseBookText(text: string): Map<number, Verse[]> {
 
     // Continuation line: append to the last verse of the current chapter
     if (lastVerse) {
-      lastVerse.text += ' ' + trimmed;
+      const cleanedCont = processVerseText(trimmed, currentChapter, lastVerse.number);
+      lastVerse.text += ' ' + cleanedCont;
     }
   }
 
   // Flush the last chapter
-  if (currentChapter > 0 && currentVerses.length > 0) {
-    chapters.set(currentChapter, currentVerses);
+  flushChapter();
+
+  return { chapters, notes };
+}
+
+// ─── Database insertion ───────────────────────────────────────────────────────
+
+async function insertNotesIntoDatabase(notes: AnaniaNote[]): Promise<void> {
+  const databaseUrl = process.env['DATABASE_URL'];
+  if (!databaseUrl) {
+    console.log('\nDATABASE_URL not set – skipping database insertion.');
+    return;
+  }
+  if (notes.length === 0) {
+    console.log('\nNo notes to insert into database.');
+    return;
   }
 
-  return chapters;
+  console.log(`\nInserting ${notes.length} Anania notes into database...`);
+  const pool = new Pool({ connectionString: databaseUrl, max: 2 });
+  const client = await pool.connect();
+
+  try {
+    await client.query('BEGIN');
+    await client.query('DELETE FROM anania_adnotari');
+
+    // Bulk insert using parameterised VALUES
+    const BATCH_SIZE = 500;
+    for (let i = 0; i < notes.length; i += BATCH_SIZE) {
+      const batch = notes.slice(i, i + BATCH_SIZE);
+      const placeholders: string[] = [];
+      const values: unknown[] = [];
+      let idx = 1;
+
+      for (const note of batch) {
+        placeholders.push(
+          `($${idx}, $${idx + 1}, $${idx + 2}, $${idx + 3}, $${idx + 4}, $${idx + 5}, $${idx + 6})`,
+        );
+        values.push(
+          note.book,
+          note.chapter,
+          note.verse_start,
+          note.verse_end,
+          note.note_number,
+          note.note_text,
+          note.metadata ? JSON.stringify(note.metadata) : null,
+        );
+        idx += 7;
+      }
+
+      await client.query(
+        `INSERT INTO anania_adnotari
+           (book, chapter, verse_start, verse_end, note_number, note_text, metadata)
+         VALUES ${placeholders.join(', ')}`,
+        values,
+      );
+    }
+
+    await client.query('COMMIT');
+    console.log(`  ✓ Inserted ${notes.length} notes into anania_adnotari.`);
+  } catch (err) {
+    await client.query('ROLLBACK');
+    throw err;
+  } finally {
+    client.release();
+    await pool.end();
+  }
 }
 
 // ─── Main pipeline ────────────────────────────────────────────────────────────
@@ -344,7 +586,11 @@ async function main(): Promise<void> {
   } catch {
     console.error(
       `\n❌ Cannot read PDF file at:\n   ${PDF_SOURCE}\n\n` +
-      `   Please place a legally-obtained copy of the Anania Bible PDF at that path.\n` +
+      `   Please download the Anania Bible PDF from:\n` +
+      `     ${DOWNLOAD_LINK}\n\n` +
+      `   Then either:\n` +
+      `     • Place it at data/bibles/anania-source.pdf, or\n` +
+      `     • Set ANANIA_PDF_PATH in your .env file to the PDF path.\n` +
       `   The file is .gitignore'd and will not be committed.\n`,
     );
     process.exit(1);
@@ -376,17 +622,19 @@ async function main(): Promise<void> {
     return true;
   });
 
-  // ── Step 3: parse chapters and verses from each book segment ──────────────
+  // ── Step 3: parse chapters, verses, and notes from each book segment ──────
   const sorted = [...uniqueSegments].sort((a, b) => a.book.order - b.book.order);
   let totalChapters = 0;
   let totalVerses = 0;
   const books = [];
+  const allNotes: AnaniaNote[] = [];
 
   for (const segment of sorted) {
     const { book, displayName } = segment;
     console.log(`[${book.usfmCode}] ${displayName}`);
 
-    const chapterMap = parseBookText(segment.text);
+    const { chapters: chapterMap, notes: bookNotes } = parseBookText(segment.text, book.usfmCode);
+    allNotes.push(...bookNotes);
 
     if (chapterMap.size === 0) {
       console.warn(`  [SKIP] No chapters/verses parsed for ${book.usfmCode}`);
@@ -415,7 +663,7 @@ async function main(): Promise<void> {
       totalVerses: bookVerses,
     }));
 
-    console.log(`  ✓ ${chapters.length} chapters, ${bookVerses} verses`);
+    console.log(`  ✓ ${chapters.length} chapters, ${bookVerses} verses, ${bookNotes.length} notes`);
   }
 
   // ── Log books from booksConfig that were not found in the PDF ─────────────
@@ -445,9 +693,15 @@ async function main(): Promise<void> {
     availableFormats: ['json'],
   }, books);
 
-  console.log('\n✅ Pipeline complete.');
+  console.log('\n✅ JSON output complete.');
   console.log(`   Written: ${outputPath}`);
   console.log(`   ${books.length} books, ${totalChapters} chapters, ${totalVerses} verses`);
+  console.log(`   ${allNotes.length} total annotation notes collected.`);
+
+  // ── Step 5: insert notes into database (if DATABASE_URL is set) ────────────
+  await insertNotesIntoDatabase(allNotes);
+
+  console.log('\n✅ Pipeline complete.');
 }
 
 main().catch((err) => {

@@ -105,6 +105,24 @@ export class DatabaseService implements OnModuleInit {
         CREATE INDEX IF NOT EXISTS idx_user_notes_user_verse
         ON user_notes (user_id, verse_reference)
       `);
+      // Anania commentary notes (extracted from the Anania Bible PDF)
+      await client.query(`
+        CREATE TABLE IF NOT EXISTS anania_adnotari (
+          id            SERIAL PRIMARY KEY,
+          book          VARCHAR(10)  NOT NULL,
+          chapter       INT          NOT NULL,
+          verse_start   INT          NOT NULL,
+          verse_end     INT,
+          note_number   INT          NOT NULL,
+          note_text     TEXT         NOT NULL,
+          metadata      JSONB,
+          created_at    TIMESTAMPTZ  DEFAULT now()
+        )
+      `);
+      await client.query(`
+        CREATE INDEX IF NOT EXISTS idx_anania_adnotari_book_chapter_verse
+        ON anania_adnotari (book, chapter, verse_start)
+      `);
     } finally {
       client.release();
     }

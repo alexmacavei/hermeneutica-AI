@@ -9,6 +9,7 @@ import { PatristicModule } from './patristic/patristic.module';
 import { AuthModule } from './auth/auth.module';
 import { UsersModule } from './users/users.module';
 import { NotesModule } from './notes/notes.module';
+import { AnaniaNotesModule } from './anania-notes/anania-notes.module';
 import configuration from './config/configuration';
 
 @Module({
@@ -26,6 +27,7 @@ import configuration from './config/configuration';
     AuthModule,
     UsersModule,
     NotesModule,
+    AnaniaNotesModule,
   ],
 })
 export class AppModule {}
