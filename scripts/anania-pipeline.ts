@@ -2,31 +2,26 @@
  * anania-pipeline.ts
  *
  * Pipeline:
- *  1) Fetch the Old Testament index (https://biblia-online.ro/vechiul-testament)
- *     and the New Testament index (https://biblia-online.ro/noul-testament).
- *     Each page lists books as <a href="/<testament>/<slug>?capitol=1"> links.
- *  2) For each discovered book, determine the number of chapters by reading the
- *     pagination widget (CSS class Pagination_page__link) on the first chapter
- *     page.  Single-chapter books have no pagination and default to 1.
- *  3) Scrape every chapter page at:
- *       https://biblia-online.ro/<testament>/<slug>?capitol=<N>
- *     The site is a Next.js RSC app; verse data is embedded as single-escaped
- *     JSON inside <script> tags (JavaScript string with \" quoting).
- *     Each verse object has the shape:
- *       { \"verseNumber\": N, \"verseText\": \"...\" }
+ *  1) Read the Anania Bible from a local PDF file.
+ *     Expected location: data/bibles/anania-source.pdf
+ *     (The user must place a legally-obtained copy there.)
+ *  2) Extract the raw text from every PDF page.
+ *  3) Parse book, chapter, and verse boundaries using Romanian heading
+ *     patterns and the static booksConfig table.
  *  4) Build a helloao-compatible JSON structure and write to
  *     data/bibles/ro_anania.json.
  *
  * Run:  npm run anania-pipeline
  */
 
-import axios from 'axios';
-import * as cheerio from 'cheerio';
+import * as fs from 'fs/promises';
+import * as path from 'path';
+import { PDFParse } from 'pdf-parse';
 
 import {
+  BIBLES_DIR,
   type Verse,
   type BaseBookConfig,
-  sleep,
   validateEnglishNames,
   buildChapterEntry,
   buildBookEntry,
@@ -35,42 +30,29 @@ import {
 
 // ─── Constants ───────────────────────────────────────────────────────────────
 
-const BASE_URL = 'https://biblia-online.ro';
-const OT_INDEX_URL = `${BASE_URL}/vechiul-testament`;
-const NT_INDEX_URL = `${BASE_URL}/noul-testament`;
-
 const TRANSLATION_ID = 'ro_anania';
 
-/** Delay (ms) between chapter fetches to be polite to the server. */
-const CHAPTER_FETCH_DELAY_MS = 400;
+/**
+ * Path to the source PDF.  Users place their own legally-obtained copy here.
+ * The file is .gitignore'd and never committed.
+ */
+const PDF_SOURCE = path.resolve(BIBLES_DIR, 'anania-source.pdf');
 
 // ─── Types ───────────────────────────────────────────────────────────────────
 
-/** A book entry discovered from the OT/NT index pages. */
-type SiteBook = {
-  /**
-   * URL path to the book, e.g. "/vechiul-testament/facerea".
-   * Chapter URLs are: BASE_URL + bookPath + "?capitol=" + chapterNumber
-   */
-  bookPath: string;
-  /** Display name from the link text, e.g. "Facerea", "Evanghelia după Matei". */
-  displayName: string;
-};
-
-/** Anania-specific book config extends the shared base with the URL path matching key. */
+/** Anania-specific book config extends the shared base with Romanian names. */
 type BookConfig = BaseBookConfig & {
-  /**
-   * Full URL path of the book on biblia-online.ro (without query string),
-   * e.g. "/vechiul-testament/facerea", "/noul-testament/evanghelia-matei".
-   * This is the primary matching key used to link config entries to site books.
-   */
-  bookPath: string;
+  /** Full Romanian book name as it appears in the PDF headings.
+   *  Used as the primary matching key (case-insensitive). */
+  pdfHeading: string;
+  /** Optional alternative heading forms that may appear in some PDF editions. */
+  altHeadings?: string[];
 };
 
 // ─── Static books configuration ──────────────────────────────────────────────
 //
-// bookPath values are the actual URL paths observed on biblia-online.ro.
-// They are verified against the live site book lists at startup.
+// pdfHeading values are the Romanian book headings typically found in Anania
+// Bible PDFs.  They are matched case-insensitively against the extracted text.
 //
 // order values follow the helloao bookOrderMap:
 //   canonical Protestant canon:  GEN=1 … REV=66
@@ -80,347 +62,345 @@ type BookConfig = BaseBookConfig & {
 
 const booksConfig: BookConfig[] = [
   // ── Pentateuch ──────────────────────────────────────────────────────────
-  { order: 1,  usfmCode: 'GEN', bookPath: '/vechiul-testament/facerea',                              nameAbbrev: 'Fac'    },
-  { order: 2,  usfmCode: 'EXO', bookPath: '/vechiul-testament/iesirea',                              nameAbbrev: 'Ieș'    },
-  { order: 3,  usfmCode: 'LEV', bookPath: '/vechiul-testament/leviticul',                            nameAbbrev: 'Lev'    },
-  { order: 4,  usfmCode: 'NUM', bookPath: '/vechiul-testament/numeri',                               nameAbbrev: 'Num'    },
-  { order: 5,  usfmCode: 'DEU', bookPath: '/vechiul-testament/deuteronomul',                         nameAbbrev: 'Deut'   },
+  { order: 1,  usfmCode: 'GEN', pdfHeading: 'Facerea',                                  nameAbbrev: 'Fac'    },
+  { order: 2,  usfmCode: 'EXO', pdfHeading: 'Ieșirea',           altHeadings: ['Iesirea'],                          nameAbbrev: 'Ieș'    },
+  { order: 3,  usfmCode: 'LEV', pdfHeading: 'Leviticul',                                nameAbbrev: 'Lev'    },
+  { order: 4,  usfmCode: 'NUM', pdfHeading: 'Numerii',           altHeadings: ['Numeri'],                           nameAbbrev: 'Num'    },
+  { order: 5,  usfmCode: 'DEU', pdfHeading: 'Deuteronomul',                             nameAbbrev: 'Deut'   },
 
   // ── Historical books ─────────────────────────────────────────────────────
-  { order: 6,  usfmCode: 'JOS', bookPath: '/vechiul-testament/iosua-navi',                           nameAbbrev: 'Ios'    },
-  { order: 7,  usfmCode: 'JDG', bookPath: '/vechiul-testament/judecatori',                           nameAbbrev: 'Jud'    },
-  { order: 8,  usfmCode: 'RUT', bookPath: '/vechiul-testament/rut',                                  nameAbbrev: 'Rut'    },
-  { order: 9,  usfmCode: '1SA', bookPath: '/vechiul-testament/regi-1',                               nameAbbrev: '1Reg'   },
-  { order: 10, usfmCode: '2SA', bookPath: '/vechiul-testament/regi-2',                               nameAbbrev: '2Reg'   },
-  { order: 11, usfmCode: '1KI', bookPath: '/vechiul-testament/regi-3',                               nameAbbrev: '3Reg'   },
-  { order: 12, usfmCode: '2KI', bookPath: '/vechiul-testament/regi-4',                               nameAbbrev: '4Reg'   },
-  { order: 13, usfmCode: '1CH', bookPath: '/vechiul-testament/paralipomena-1',                       nameAbbrev: '1Par'   },
-  { order: 14, usfmCode: '2CH', bookPath: '/vechiul-testament/paralipomena-2',                       nameAbbrev: '2Par'   },
-  // ezdra-1 = canonical Ezra (called "III Ezdra" in sinodala numbering, "I Ezdra" here)
-  { order: 15, usfmCode: 'EZR', bookPath: '/vechiul-testament/ezdra-1',                              nameAbbrev: '2Ezd'   },
-  // ezdra-2 = Nehemiah ("Cartea lui Neemia / a doua a lui Ezdra")
-  { order: 16, usfmCode: 'NEH', bookPath: '/vechiul-testament/ezdra-2',                              nameAbbrev: 'Neem'   },
-  { order: 17, usfmCode: 'EST', bookPath: '/vechiul-testament/estera',                               nameAbbrev: 'Est'    },
-  { order: 67, usfmCode: 'TOB', bookPath: '/vechiul-testament/tobit',                                nameAbbrev: 'Tob'    },
-  { order: 68, usfmCode: 'JDT', bookPath: '/vechiul-testament/iudita',                               nameAbbrev: 'Iudt'   },
-  { order: 77, usfmCode: '1MA', bookPath: '/vechiul-testament/macabei-1',                            nameAbbrev: '1Mac'   },
-  { order: 78, usfmCode: '2MA', bookPath: '/vechiul-testament/macabei-2',                            nameAbbrev: '2Mac'   },
-  { order: 79, usfmCode: '3MA', bookPath: '/vechiul-testament/macabei-3',                            nameAbbrev: '3Mac'   },
+  { order: 6,  usfmCode: 'JOS', pdfHeading: 'Iosua Navi',       altHeadings: ['Iosua'],                            nameAbbrev: 'Ios'    },
+  { order: 7,  usfmCode: 'JDG', pdfHeading: 'Judecătorii',      altHeadings: ['Judecatori', 'Judecători'],          nameAbbrev: 'Jud'    },
+  { order: 8,  usfmCode: 'RUT', pdfHeading: 'Rut',              altHeadings: ['Ruta'],                              nameAbbrev: 'Rut'    },
+  { order: 9,  usfmCode: '1SA', pdfHeading: 'Cartea întâi a Regilor',  altHeadings: ['I Regi', '1 Regi'],           nameAbbrev: '1Reg'   },
+  { order: 10, usfmCode: '2SA', pdfHeading: 'Cartea a doua a Regilor', altHeadings: ['II Regi', '2 Regi'],          nameAbbrev: '2Reg'   },
+  { order: 11, usfmCode: '1KI', pdfHeading: 'Cartea a treia a Regilor', altHeadings: ['III Regi', '3 Regi'],        nameAbbrev: '3Reg'   },
+  { order: 12, usfmCode: '2KI', pdfHeading: 'Cartea a patra a Regilor', altHeadings: ['IV Regi', '4 Regi'],         nameAbbrev: '4Reg'   },
+  { order: 13, usfmCode: '1CH', pdfHeading: 'Cartea întâi a Cronicilor', altHeadings: ['I Paralipomena', '1 Paralipomena', 'I Cronici'], nameAbbrev: '1Par' },
+  { order: 14, usfmCode: '2CH', pdfHeading: 'Cartea a doua a Cronicilor', altHeadings: ['II Paralipomena', '2 Paralipomena', 'II Cronici'], nameAbbrev: '2Par' },
+  { order: 15, usfmCode: 'EZR', pdfHeading: 'Cartea lui Ezdra', altHeadings: ['Ezdra', 'I Ezdra'],                 nameAbbrev: '2Ezd'   },
+  { order: 16, usfmCode: 'NEH', pdfHeading: 'Cartea lui Neemia', altHeadings: ['Neemia'],                           nameAbbrev: 'Neem'   },
+  { order: 17, usfmCode: 'EST', pdfHeading: 'Cartea Esterei',   altHeadings: ['Estera'],                            nameAbbrev: 'Est'    },
+  { order: 67, usfmCode: 'TOB', pdfHeading: 'Cartea lui Tobit', altHeadings: ['Tobit'],                             nameAbbrev: 'Tob'    },
+  { order: 68, usfmCode: 'JDT', pdfHeading: 'Cartea Iuditei',  altHeadings: ['Iudita'],                            nameAbbrev: 'Iudt'   },
+  { order: 77, usfmCode: '1MA', pdfHeading: 'Cartea întâi a Macabeilor', altHeadings: ['I Macabei', '1 Macabei'],   nameAbbrev: '1Mac'   },
+  { order: 78, usfmCode: '2MA', pdfHeading: 'Cartea a doua a Macabeilor', altHeadings: ['II Macabei', '2 Macabei'], nameAbbrev: '2Mac'   },
+  { order: 79, usfmCode: '3MA', pdfHeading: 'Cartea a treia a Macabeilor', altHeadings: ['III Macabei', '3 Macabei'], nameAbbrev: '3Mac' },
 
   // ── Poetic / Wisdom books ────────────────────────────────────────────────
-  { order: 18, usfmCode: 'JOB', bookPath: '/vechiul-testament/iov',                                  nameAbbrev: 'Iov'    },
-  { order: 19, usfmCode: 'PSA', bookPath: '/vechiul-testament/psalmi',                               nameAbbrev: 'Ps'     },
-  { order: 83, usfmCode: 'MAN', bookPath: '/vechiul-testament/manase-rugaciune',                     nameAbbrev: 'RgMan'  },
-  { order: 20, usfmCode: 'PRO', bookPath: '/vechiul-testament/solomon-pilde',                        nameAbbrev: 'Pild'   },
-  { order: 21, usfmCode: 'ECC', bookPath: '/vechiul-testament/ecclesiastul',                         nameAbbrev: 'Eccl'   },
-  { order: 22, usfmCode: 'SNG', bookPath: '/vechiul-testament/cantarea-cantarilor',                  nameAbbrev: 'Cânt'   },
-  { order: 70, usfmCode: 'WIS', bookPath: '/vechiul-testament/solomon-intelepciunea',                nameAbbrev: 'ÎnțSol' },
-  { order: 71, usfmCode: 'SIR', bookPath: '/vechiul-testament/intelepciunea-lui-isus-fiul-lui-sirah', nameAbbrev: 'Sir'   },
-  // ezdra-3 = 1 Esdras (apocryphal; site places it among deuterocanonicals)
-  { order: 81, usfmCode: '1ES', bookPath: '/vechiul-testament/ezdra-3',                              nameAbbrev: '1Ezd'   },
+  { order: 18, usfmCode: 'JOB', pdfHeading: 'Cartea lui Iov',  altHeadings: ['Iov'],                               nameAbbrev: 'Iov'    },
+  { order: 19, usfmCode: 'PSA', pdfHeading: 'Psalmii',         altHeadings: ['Psalmi', 'Cartea Psalmilor'],         nameAbbrev: 'Ps'     },
+  { order: 83, usfmCode: 'MAN', pdfHeading: 'Rugăciunea lui Manase', altHeadings: ['Manase'],                       nameAbbrev: 'RgMan'  },
+  { order: 20, usfmCode: 'PRO', pdfHeading: 'Proverbele lui Solomon', altHeadings: ['Pildele lui Solomon', 'Pilde', 'Proverbele'], nameAbbrev: 'Pild' },
+  { order: 21, usfmCode: 'ECC', pdfHeading: 'Ecclesiastul',                                                         nameAbbrev: 'Eccl'   },
+  { order: 22, usfmCode: 'SNG', pdfHeading: 'Cântarea Cântărilor', altHeadings: ['Cântări', 'Cantarea Cantarilor'], nameAbbrev: 'Cânt'   },
+  { order: 70, usfmCode: 'WIS', pdfHeading: 'Înțelepciunea lui Solomon', altHeadings: ['Solomon'],                  nameAbbrev: 'ÎnțSol' },
+  { order: 71, usfmCode: 'SIR', pdfHeading: 'Înțelepciunea lui Isus, fiul lui Sirah', altHeadings: ['Ecclesiasticul', 'Sirah'], nameAbbrev: 'Sir' },
+  { order: 81, usfmCode: '1ES', pdfHeading: 'Cartea a treia a lui Ezdra', altHeadings: ['III Ezdra', '3 Ezdra'],   nameAbbrev: '1Ezd'   },
 
   // ── Major prophets ───────────────────────────────────────────────────────
-  { order: 23, usfmCode: 'ISA', bookPath: '/vechiul-testament/isaia',                                nameAbbrev: 'Is'     },
-  { order: 24, usfmCode: 'JER', bookPath: '/vechiul-testament/ieremia',                              nameAbbrev: 'Ier'    },
-  { order: 25, usfmCode: 'LAM', bookPath: '/vechiul-testament/ieremia-plangeri',                     nameAbbrev: 'Plâng'  },
-  { order: 72, usfmCode: 'BAR', bookPath: '/vechiul-testament/baruh',                                nameAbbrev: 'Bar'    },
-  { order: 73, usfmCode: 'LJE', bookPath: '/vechiul-testament/ieremia-epistola',                     nameAbbrev: 'EpIer'  },
-  { order: 26, usfmCode: 'EZK', bookPath: '/vechiul-testament/iezechiel',                            nameAbbrev: 'Iez'    },
-  { order: 27, usfmCode: 'DAN', bookPath: '/vechiul-testament/daniel',                               nameAbbrev: 'Dan'    },
-  { order: 74, usfmCode: 'S3Y', bookPath: '/vechiul-testament/cantarea-celor-trei-tineri',           nameAbbrev: 'S3Y'    },
-  { order: 75, usfmCode: 'SUS', bookPath: '/vechiul-testament/susana',                               nameAbbrev: 'Sus'    },
-  { order: 76, usfmCode: 'BEL', bookPath: '/vechiul-testament/bel-si-balaurul',                      nameAbbrev: 'Bel'    },
+  { order: 23, usfmCode: 'ISA', pdfHeading: 'Isaia',            altHeadings: ['Cartea lui Isaia'],                  nameAbbrev: 'Is'     },
+  { order: 24, usfmCode: 'JER', pdfHeading: 'Ieremia',          altHeadings: ['Cartea lui Ieremia'],                nameAbbrev: 'Ier'    },
+  { order: 25, usfmCode: 'LAM', pdfHeading: 'Plângerile lui Ieremia', altHeadings: ['Plângeri', 'Plangeri'],        nameAbbrev: 'Plâng'  },
+  { order: 72, usfmCode: 'BAR', pdfHeading: 'Baruh',            altHeadings: ['Cartea lui Baruh'],                  nameAbbrev: 'Bar'    },
+  { order: 73, usfmCode: 'LJE', pdfHeading: 'Epistola lui Ieremia', altHeadings: ['Scrisoarea lui Ieremia'],        nameAbbrev: 'EpIer'  },
+  { order: 26, usfmCode: 'EZK', pdfHeading: 'Iezechiel',       altHeadings: ['Cartea lui Iezechiel'],               nameAbbrev: 'Iez'    },
+  { order: 27, usfmCode: 'DAN', pdfHeading: 'Daniel',           altHeadings: ['Cartea lui Daniel'],                 nameAbbrev: 'Dan'    },
+  { order: 74, usfmCode: 'S3Y', pdfHeading: 'Cântarea celor trei tineri', altHeadings: ['3 tineri'],                nameAbbrev: 'S3Y'    },
+  { order: 75, usfmCode: 'SUS', pdfHeading: 'Istoria Susanei',  altHeadings: ['Susana'],                            nameAbbrev: 'Sus'    },
+  { order: 76, usfmCode: 'BEL', pdfHeading: 'Bel și balaurul',  altHeadings: ['Bel si balaurul', 'Balaurul și Bel'], nameAbbrev: 'Bel'   },
 
   // ── Minor prophets ───────────────────────────────────────────────────────
-  { order: 28, usfmCode: 'HOS', bookPath: '/vechiul-testament/osea',                                 nameAbbrev: 'Os'     },
-  { order: 29, usfmCode: 'JOL', bookPath: '/vechiul-testament/ioil',                                 nameAbbrev: 'Ioel'   },
-  { order: 30, usfmCode: 'AMO', bookPath: '/vechiul-testament/amos',                                 nameAbbrev: 'Amos'   },
-  { order: 31, usfmCode: 'OBA', bookPath: '/vechiul-testament/avdia',                                nameAbbrev: 'Obad'   },
-  { order: 32, usfmCode: 'JON', bookPath: '/vechiul-testament/iona',                                 nameAbbrev: 'Ion'    },
-  { order: 33, usfmCode: 'MIC', bookPath: '/vechiul-testament/miheia',                               nameAbbrev: 'Mica'   },
-  { order: 34, usfmCode: 'NAM', bookPath: '/vechiul-testament/naum',                                 nameAbbrev: 'Naum'   },
-  { order: 35, usfmCode: 'HAB', bookPath: '/vechiul-testament/avacum',                               nameAbbrev: 'Hab'    },
-  { order: 36, usfmCode: 'ZEP', bookPath: '/vechiul-testament/sofonie',                              nameAbbrev: 'Sof'    },
-  { order: 37, usfmCode: 'HAG', bookPath: '/vechiul-testament/agheu',                                nameAbbrev: 'Ag'     },
-  { order: 38, usfmCode: 'ZEC', bookPath: '/vechiul-testament/zaharia',                              nameAbbrev: 'Zah'    },
-  { order: 39, usfmCode: 'MAL', bookPath: '/vechiul-testament/maleahi',                              nameAbbrev: 'Mal'    },
+  { order: 28, usfmCode: 'HOS', pdfHeading: 'Osea',             altHeadings: ['Cartea lui Osea'],                   nameAbbrev: 'Os'     },
+  { order: 29, usfmCode: 'JOL', pdfHeading: 'Ioil',             altHeadings: ['Cartea lui Ioil'],                   nameAbbrev: 'Ioel'   },
+  { order: 30, usfmCode: 'AMO', pdfHeading: 'Amos',             altHeadings: ['Cartea lui Amos'],                   nameAbbrev: 'Amos'   },
+  { order: 31, usfmCode: 'OBA', pdfHeading: 'Avdia',            altHeadings: ['Obadia'],                            nameAbbrev: 'Obad'   },
+  { order: 32, usfmCode: 'JON', pdfHeading: 'Iona',             altHeadings: ['Cartea lui Iona'],                   nameAbbrev: 'Ion'    },
+  { order: 33, usfmCode: 'MIC', pdfHeading: 'Miheia',           altHeadings: ['Cartea lui Miheia', 'Mica'],         nameAbbrev: 'Mica'   },
+  { order: 34, usfmCode: 'NAM', pdfHeading: 'Naum',             altHeadings: ['Cartea lui Naum'],                   nameAbbrev: 'Naum'   },
+  { order: 35, usfmCode: 'HAB', pdfHeading: 'Avacum',           altHeadings: ['Cartea lui Avacum', 'Habacuc'],      nameAbbrev: 'Hab'    },
+  { order: 36, usfmCode: 'ZEP', pdfHeading: 'Sofonie',          altHeadings: ['Cartea lui Sofonie'],                nameAbbrev: 'Sof'    },
+  { order: 37, usfmCode: 'HAG', pdfHeading: 'Agheu',            altHeadings: ['Cartea lui Agheu', 'Hagai'],         nameAbbrev: 'Ag'     },
+  { order: 38, usfmCode: 'ZEC', pdfHeading: 'Zaharia',          altHeadings: ['Cartea lui Zaharia'],                nameAbbrev: 'Zah'    },
+  { order: 39, usfmCode: 'MAL', pdfHeading: 'Maleahi',          altHeadings: ['Cartea lui Maleahi'],                nameAbbrev: 'Mal'    },
 
   // ── New Testament ────────────────────────────────────────────────────────
-  { order: 40, usfmCode: 'MAT', bookPath: '/noul-testament/evanghelia-matei',                        nameAbbrev: 'Mat'    },
-  { order: 41, usfmCode: 'MRK', bookPath: '/noul-testament/evanghelia-marcu',                        nameAbbrev: 'Mc'     },
-  { order: 42, usfmCode: 'LUK', bookPath: '/noul-testament/evanghelia-luca',                         nameAbbrev: 'Lc'     },
-  { order: 43, usfmCode: 'JHN', bookPath: '/noul-testament/evanghelia-ioan',                         nameAbbrev: 'In'     },
-  { order: 44, usfmCode: 'ACT', bookPath: '/noul-testament/faptele-apostolilor',                     nameAbbrev: 'FA'     },
-  { order: 45, usfmCode: 'ROM', bookPath: '/noul-testament/epistola-romani',                         nameAbbrev: 'Rom'    },
-  { order: 46, usfmCode: '1CO', bookPath: '/noul-testament/epistola-corinteni-1',                    nameAbbrev: '1Cor'   },
-  { order: 47, usfmCode: '2CO', bookPath: '/noul-testament/epistola-corinteni-2',                    nameAbbrev: '2Cor'   },
-  { order: 48, usfmCode: 'GAL', bookPath: '/noul-testament/epistola-galateni',                       nameAbbrev: 'Gal'    },
-  { order: 49, usfmCode: 'EPH', bookPath: '/noul-testament/epistola-efeseni',                        nameAbbrev: 'Ef'     },
-  { order: 50, usfmCode: 'PHP', bookPath: '/noul-testament/epistola-filipeni',                       nameAbbrev: 'Flp'    },
-  { order: 51, usfmCode: 'COL', bookPath: '/noul-testament/epistola-coloseni',                       nameAbbrev: 'Col'    },
-  { order: 52, usfmCode: '1TH', bookPath: '/noul-testament/epistola-tesaloniceni-1',                 nameAbbrev: '1Tes'   },
-  { order: 53, usfmCode: '2TH', bookPath: '/noul-testament/epistola-tesaloniceni-2',                 nameAbbrev: '2Tes'   },
-  { order: 54, usfmCode: '1TI', bookPath: '/noul-testament/epistola-timotei-1',                      nameAbbrev: '1Tim'   },
-  { order: 55, usfmCode: '2TI', bookPath: '/noul-testament/epistola-timotei-2',                      nameAbbrev: '2Tim'   },
-  { order: 56, usfmCode: 'TIT', bookPath: '/noul-testament/epistola-tit',                            nameAbbrev: 'Tit'    },
-  { order: 57, usfmCode: 'PHM', bookPath: '/noul-testament/epistola-filimon',                        nameAbbrev: 'Flm'    },
-  { order: 58, usfmCode: 'HEB', bookPath: '/noul-testament/epistola-evrei',                          nameAbbrev: 'Evr'    },
-  { order: 59, usfmCode: 'JAS', bookPath: '/noul-testament/epistola-iacob',                          nameAbbrev: 'Iac'    },
-  { order: 60, usfmCode: '1PE', bookPath: '/noul-testament/epistola-petru-1',                        nameAbbrev: '1Pet'   },
-  { order: 61, usfmCode: '2PE', bookPath: '/noul-testament/epistola-petru-2',                        nameAbbrev: '2Pet'   },
-  { order: 62, usfmCode: '1JN', bookPath: '/noul-testament/epistola-ioan-1',                         nameAbbrev: '1In'    },
-  { order: 63, usfmCode: '2JN', bookPath: '/noul-testament/epistola-ioan-2',                         nameAbbrev: '2In'    },
-  { order: 64, usfmCode: '3JN', bookPath: '/noul-testament/epistola-ioan-3',                         nameAbbrev: '3In'    },
-  { order: 65, usfmCode: 'JUD', bookPath: '/noul-testament/epistola-iuda',                           nameAbbrev: 'Iud'    },
-  { order: 66, usfmCode: 'REV', bookPath: '/noul-testament/apocalipsa',                              nameAbbrev: 'Apoc'   },
+  { order: 40, usfmCode: 'MAT', pdfHeading: 'Evanghelia după Matei',       altHeadings: ['Sfânta Evanghelie după Matei', 'Matei'],  nameAbbrev: 'Mat'  },
+  { order: 41, usfmCode: 'MRK', pdfHeading: 'Evanghelia după Marcu',       altHeadings: ['Sfânta Evanghelie după Marcu', 'Marcu'],  nameAbbrev: 'Mc'   },
+  { order: 42, usfmCode: 'LUK', pdfHeading: 'Evanghelia după Luca',        altHeadings: ['Sfânta Evanghelie după Luca', 'Luca'],    nameAbbrev: 'Lc'   },
+  { order: 43, usfmCode: 'JHN', pdfHeading: 'Evanghelia după Ioan',        altHeadings: ['Sfânta Evanghelie după Ioan', 'Ioan'],    nameAbbrev: 'In'   },
+  { order: 44, usfmCode: 'ACT', pdfHeading: 'Faptele Apostolilor',         altHeadings: ['Faptele Sfinților Apostoli'],             nameAbbrev: 'FA'   },
+  { order: 45, usfmCode: 'ROM', pdfHeading: 'Epistola către Romani',       altHeadings: ['Romani'],                                 nameAbbrev: 'Rom'  },
+  { order: 46, usfmCode: '1CO', pdfHeading: 'Epistola întâi către Corinteni', altHeadings: ['I Corinteni', '1 Corinteni'],          nameAbbrev: '1Cor' },
+  { order: 47, usfmCode: '2CO', pdfHeading: 'Epistola a doua către Corinteni', altHeadings: ['II Corinteni', '2 Corinteni'],        nameAbbrev: '2Cor' },
+  { order: 48, usfmCode: 'GAL', pdfHeading: 'Epistola către Galateni',     altHeadings: ['Galateni'],                               nameAbbrev: 'Gal'  },
+  { order: 49, usfmCode: 'EPH', pdfHeading: 'Epistola către Efeseni',      altHeadings: ['Efeseni'],                                nameAbbrev: 'Ef'   },
+  { order: 50, usfmCode: 'PHP', pdfHeading: 'Epistola către Filipeni',     altHeadings: ['Filipeni'],                               nameAbbrev: 'Flp'  },
+  { order: 51, usfmCode: 'COL', pdfHeading: 'Epistola către Coloseni',     altHeadings: ['Coloseni'],                               nameAbbrev: 'Col'  },
+  { order: 52, usfmCode: '1TH', pdfHeading: 'Epistola întâi către Tesaloniceni', altHeadings: ['I Tesaloniceni', '1 Tesaloniceni'], nameAbbrev: '1Tes' },
+  { order: 53, usfmCode: '2TH', pdfHeading: 'Epistola a doua către Tesaloniceni', altHeadings: ['II Tesaloniceni', '2 Tesaloniceni'], nameAbbrev: '2Tes' },
+  { order: 54, usfmCode: '1TI', pdfHeading: 'Epistola întâi către Timotei', altHeadings: ['I Timotei', '1 Timotei'],                nameAbbrev: '1Tim' },
+  { order: 55, usfmCode: '2TI', pdfHeading: 'Epistola a doua către Timotei', altHeadings: ['II Timotei', '2 Timotei'],              nameAbbrev: '2Tim' },
+  { order: 56, usfmCode: 'TIT', pdfHeading: 'Epistola către Tit',          altHeadings: ['Tit'],                                    nameAbbrev: 'Tit'  },
+  { order: 57, usfmCode: 'PHM', pdfHeading: 'Epistola către Filimon',      altHeadings: ['Filimon'],                                nameAbbrev: 'Flm'  },
+  { order: 58, usfmCode: 'HEB', pdfHeading: 'Epistola către Evrei',        altHeadings: ['Evrei'],                                  nameAbbrev: 'Evr'  },
+  { order: 59, usfmCode: 'JAS', pdfHeading: 'Epistola lui Iacob',          altHeadings: ['Iacob', 'Epistola Sobornicească a lui Iacob'],  nameAbbrev: 'Iac' },
+  { order: 60, usfmCode: '1PE', pdfHeading: 'Epistola întâi a lui Petru',  altHeadings: ['I Petru', '1 Petru'],                     nameAbbrev: '1Pet' },
+  { order: 61, usfmCode: '2PE', pdfHeading: 'Epistola a doua a lui Petru', altHeadings: ['II Petru', '2 Petru'],                    nameAbbrev: '2Pet' },
+  { order: 62, usfmCode: '1JN', pdfHeading: 'Epistola întâi a lui Ioan',   altHeadings: ['I Ioan', '1 Ioan'],                       nameAbbrev: '1In'  },
+  { order: 63, usfmCode: '2JN', pdfHeading: 'Epistola a doua a lui Ioan',  altHeadings: ['II Ioan', '2 Ioan'],                      nameAbbrev: '2In'  },
+  { order: 64, usfmCode: '3JN', pdfHeading: 'Epistola a treia a lui Ioan', altHeadings: ['III Ioan', '3 Ioan'],                     nameAbbrev: '3In'  },
+  { order: 65, usfmCode: 'JUD', pdfHeading: 'Epistola lui Iuda',           altHeadings: ['Iuda'],                                   nameAbbrev: 'Iud'  },
+  { order: 66, usfmCode: 'REV', pdfHeading: 'Apocalipsa',                  altHeadings: ['Apocalipsa lui Ioan'],                    nameAbbrev: 'Apoc' },
 ];
 
 // Startup validation: every usfmCode must have an English name entry
 validateEnglishNames(booksConfig);
 
-// ─── HTTP helper ─────────────────────────────────────────────────────────────
-
-/** Fetches a page and returns its HTML text; throws on failure. */
-async function fetchHtml(url: string): Promise<string> {
-  const response = await axios.get<string>(url, {
-    timeout: 15_000,
-    headers: { 'User-Agent': 'BibliaScraper/1.0 (personal-use)' },
-    responseType: 'text',
-  });
-  return response.data;
-}
-
-// ─── Book discovery ───────────────────────────────────────────────────────────
+// ─── Text normalization ───────────────────────────────────────────────────────
 
 /**
- * Fetches one testament index page (/vechiul-testament or /noul-testament)
- * and returns all book links as SiteBook entries.
- *
- * Book links on the index pages follow the pattern:
- *   href="/<testament>/<slug>?capitol=1"
+ * Normalizes a string for comparison: lowercases, strips diacritics,
+ * collapses whitespace.
  */
-async function discoverBooksFromIndex(indexUrl: string): Promise<SiteBook[]> {
-  let html: string;
-  try {
-    html = await fetchHtml(indexUrl);
-  } catch (err) {
-    throw new Error(
-      `Failed to fetch index page ${indexUrl}: ${(err as Error).message}`,
-    );
-  }
-
-  const $ = cheerio.load(html);
-  const books: SiteBook[] = [];
-  const seenPaths = new Set<string>();
-
-  $('a[href]').each((_i, el) => {
-    const href = $(el).attr('href') ?? '';
-    // Match /<testament>/<slug>?capitol=1 (the first chapter link for each book)
-    const match = href.match(/^(\/(vechiul|noul)-testament\/[^?/]+)\?capitol=1$/);
-    if (!match) return;
-
-    const bookPath = match[1];
-    if (seenPaths.has(bookPath)) return;
-
-    const displayName = $(el).text().trim();
-    if (!displayName) return;
-
-    seenPaths.add(bookPath);
-    books.push({ bookPath, displayName });
-  });
-
-  return books;
+function normalizeForMatch(s: string): string {
+  return s
+    .toLowerCase()
+    .normalize('NFD')
+    .replace(/[\u0300-\u036f]/g, '')
+    .replace(/\s+/g, ' ')
+    .trim();
 }
 
-/**
- * Discovers all books from both testament index pages.
- * Deduplicates by bookPath (first occurrence wins).
- */
-async function discoverAllBooks(): Promise<SiteBook[]> {
-  const [otBooks, ntBooks] = await Promise.all([
-    discoverBooksFromIndex(OT_INDEX_URL),
-    discoverBooksFromIndex(NT_INDEX_URL),
-  ]);
+// ─── PDF parsing helpers ──────────────────────────────────────────────────────
 
-  const seen = new Set<string>();
-  const all: SiteBook[] = [];
-  for (const b of [...otBooks, ...ntBooks]) {
-    if (!seen.has(b.bookPath)) {
-      seen.add(b.bookPath);
-      all.push(b);
+/**
+ * Builds a lookup map: normalizedHeading → BookConfig.
+ * Includes both pdfHeading and all altHeadings.
+ */
+function buildHeadingMap(): Map<string, BookConfig> {
+  const map = new Map<string, BookConfig>();
+  for (const book of booksConfig) {
+    const headings = [book.pdfHeading, ...(book.altHeadings ?? [])];
+    for (const h of headings) {
+      map.set(normalizeForMatch(h), book);
     }
   }
-  return all;
+  return map;
 }
 
-// ─── Chapter-count detection ─────────────────────────────────────────────────
+/** Matches chapter headings like "Capitolul 3", "Cap. 12". */
+const CHAPTER_HEADING_RE = /^\s*(?:Capitolul|Cap\.?)\s+(\d+)\s*$/i;
+
+/** Matches verse-number prefixed text: "1. In inceput...", "12 Text..." */
+const VERSE_RE = /^(\d+)[.\s]\s*(.+)/;
 
 /**
- * Reads the pagination widget on a chapter page to determine the total number
- * of chapters.  The site renders pagination links with the CSS class
- * "Pagination_page__link" and hrefs like "?capitol=N".
- *
- * For single-chapter books the pagination widget is absent; returns 1 in
- * that case.
+ * A raw text segment belonging to one book, as extracted from the PDF.
  */
-function extractMaxChapter(html: string): number {
-  const $ = cheerio.load(html);
-  let max = 1;
+type BookTextSegment = {
+  book: BookConfig;
+  displayName: string;
+  text: string;
+};
 
-  $('a[class*="Pagination_page__link"]').each((_i, el) => {
-    const href = $(el).attr('href') ?? '';
-    const m = href.match(/capitol=(\d+)/);
-    if (m) {
-      const n = parseInt(m[1], 10);
-      if (!isNaN(n) && n > max) max = n;
+/**
+ * Splits the full PDF text into per-book segments by searching for book
+ * heading lines.
+ *
+ * Strategy: scan every line; when a line matches a known book heading,
+ * start a new segment.  Lines before the first heading are discarded
+ * (front matter, table of contents, etc.).
+ */
+function splitIntoBookSegments(fullText: string): BookTextSegment[] {
+  const headingMap = buildHeadingMap();
+  const lines = fullText.split('\n');
+
+  const segments: BookTextSegment[] = [];
+  let currentBook: BookConfig | null = null;
+  let currentName = '';
+  let currentLines: string[] = [];
+
+  for (const line of lines) {
+    const trimmed = line.trim();
+    if (!trimmed) {
+      if (currentBook) currentLines.push('');
+      continue;
     }
-  });
 
-  return max;
+    // Check if this line is a book heading
+    const normalized = normalizeForMatch(trimmed);
+    const matchedBook = headingMap.get(normalized);
+
+    if (matchedBook) {
+      // Flush the previous book segment
+      if (currentBook && currentLines.length > 0) {
+        segments.push({
+          book: currentBook,
+          displayName: currentName,
+          text: currentLines.join('\n'),
+        });
+      }
+      currentBook = matchedBook;
+      currentName = trimmed; // keep the original casing from the PDF
+      currentLines = [];
+      continue;
+    }
+
+    if (currentBook) {
+      currentLines.push(trimmed);
+    }
+  }
+
+  // Flush the last segment
+  if (currentBook && currentLines.length > 0) {
+    segments.push({
+      book: currentBook,
+      displayName: currentName,
+      text: currentLines.join('\n'),
+    });
+  }
+
+  return segments;
 }
 
-// ─── Verse extraction ─────────────────────────────────────────────────────────
-
 /**
- * Parses verse content from a chapter page served by the Next.js RSC app.
+ * Parses a book's raw text into chapters, each containing an array of verses.
  *
- * The site embeds verse data as JSON-escaped strings inside <script> tags
- * (Next.js server component flight payload).  Inside those JavaScript strings
- * all quote characters are escaped with a backslash, producing:
- *
- *   \"verseNumber\":1,\"verseText\":\"La început a făcut Dumnezeu...\"
- *
- * Strategy:
- *  1. Use Cheerio to iterate over all <script> elements and find the one
- *     containing the "Book_verses" / "verseNumber" marker.
- *  2. Unescape the \" sequences to " (replace /\\"/g → ").
- *  3. Extract all { verseNumber, verseText } pairs with a regex.
+ * Heuristics:
+ *  - Lines matching CHAPTER_HEADING_RE start a new chapter.
+ *  - Lines matching VERSE_RE (starting with a number) start a new verse.
+ *  - Other lines are continuation text appended to the current verse.
+ *  - If no explicit "Capitolul" heading is found before the first verse,
+ *    chapter 1 is assumed (some single-chapter books omit the heading).
  */
-function parseChapterVerses(html: string): Verse[] {
-  const $ = cheerio.load(html);
+function parseBookText(text: string): Map<number, Verse[]> {
+  const chapters = new Map<number, Verse[]>();
+  let currentChapter = 0; // 0 = not yet inside a chapter
+  let currentVerses: Verse[] = [];
+  let lastVerse: Verse | null = null;
 
-  let verses: Verse[] = [];
+  for (const line of text.split('\n')) {
+    const trimmed = line.trim();
+    if (!trimmed) continue;
 
-  $('script').each((_i, el) => {
-    if (verses.length > 0) return; // already found
-
-    const scriptContent = $(el).html() ?? '';
-
-    // Only process the script that carries verse data
-    if (!scriptContent.includes('Book_verses') && !scriptContent.includes('verseNumber')) {
-      return;
+    // Check for chapter heading
+    const chapMatch = trimmed.match(CHAPTER_HEADING_RE);
+    if (chapMatch) {
+      // Flush current chapter
+      if (currentChapter > 0 && currentVerses.length > 0) {
+        chapters.set(currentChapter, currentVerses);
+      }
+      currentChapter = parseInt(chapMatch[1], 10);
+      currentVerses = [];
+      lastVerse = null;
+      continue;
     }
 
-    // Unescape the backslash-escaped JSON string (\" → ")
-    const unescaped = scriptContent.replace(/\\"/g, '"');
+    // Check for verse start
+    const verseMatch = trimmed.match(VERSE_RE);
+    if (verseMatch) {
+      const vnum = parseInt(verseMatch[1], 10);
+      const vtext = verseMatch[2].trim();
 
-    // Extract verse pairs.
-    // The text pattern captures plain characters or backslash-escape sequences
-    // to handle any remaining escapes within the verse text.
-    const versePattern = /"verseNumber":(\d+),"verseText":"([^"\\]*(?:\\.[^"\\]*)*)"(?=[,}])/g;
-    let vm: RegExpExecArray | null;
+      // Assume chapter 1 if we encounter verses before any chapter heading
+      if (currentChapter === 0) {
+        currentChapter = 1;
+      }
 
-    while ((vm = versePattern.exec(unescaped)) !== null) {
-      const vnum = parseInt(vm[1], 10);
-      const text = vm[2].trim();
-      if (!isNaN(vnum) && vnum >= 1 && text.length > 0) {
-        verses.push({ number: vnum, text });
+      // Only treat as a new verse if the number is plausible (sequential or 1)
+      if (vnum === 1 || (lastVerse && vnum === lastVerse.number + 1) || vnum > 0) {
+        lastVerse = { number: vnum, text: vtext };
+        currentVerses.push(lastVerse);
+        continue;
       }
     }
-  });
 
-  return verses;
+    // Continuation line: append to the last verse of the current chapter
+    if (lastVerse) {
+      lastVerse.text += ' ' + trimmed;
+    }
+  }
+
+  // Flush the last chapter
+  if (currentChapter > 0 && currentVerses.length > 0) {
+    chapters.set(currentChapter, currentVerses);
+  }
+
+  return chapters;
 }
 
 // ─── Main pipeline ────────────────────────────────────────────────────────────
 
 async function main(): Promise<void> {
-  console.log('=== Biblia Anania Pipeline ===\n');
+  console.log('=== Biblia Anania Pipeline (PDF source) ===\n');
 
-  // ── Step 1: discover book paths and display names from OT + NT index pages ──
-  console.log('Discovering books from OT and NT index pages…');
-  const siteBooks = await discoverAllBooks();
-  console.log(`Found ${siteBooks.length} book link(s) across OT and NT index pages.\n`);
+  // ── Step 1: read and parse the PDF ────────────────────────────────────────
+  console.log(`Reading PDF from: ${PDF_SOURCE}`);
 
-  // Build lookup: bookPath → SiteBook
-  const siteLookup = new Map<string, SiteBook>(
-    siteBooks.map((sb) => [sb.bookPath, sb]),
-  );
-
-  // Log any site books that are not mapped in booksConfig (informational)
-  const configPaths = new Set(booksConfig.map((b) => b.bookPath));
-  const unmappedSite = siteBooks.filter((sb) => !configPaths.has(sb.bookPath));
-  if (unmappedSite.length > 0) {
-    console.log(
-      `  [INFO] ${unmappedSite.length} site book(s) not in booksConfig:\n` +
-      unmappedSite.map((sb) => `    "${sb.bookPath}" — ${sb.displayName}`).join('\n'),
+  let pdfBuffer: Buffer;
+  try {
+    pdfBuffer = await fs.readFile(PDF_SOURCE) as Buffer;
+  } catch {
+    console.error(
+      `\n❌ Cannot read PDF file at:\n   ${PDF_SOURCE}\n\n` +
+      `   Please place a legally-obtained copy of the Anania Bible PDF at that path.\n` +
+      `   The file is .gitignore'd and will not be committed.\n`,
     );
+    process.exit(1);
   }
 
-  // ── Step 2: process each configured book in canonical order ───────────────
-  const sorted = [...booksConfig].sort((a, b) => a.order - b.order);
+  console.log(`PDF file size: ${(pdfBuffer.length / (1024 * 1024)).toFixed(1)} MB`);
+
+  const parser = new PDFParse({ data: new Uint8Array(pdfBuffer) });
+  const pdfData = await parser.getText();
+  console.log(`Extracted ${pdfData.total} pages, ${pdfData.text.length} characters of text.\n`);
+
+  // ── Step 2: split text into per-book segments ─────────────────────────────
+  const segments = splitIntoBookSegments(pdfData.text);
+  console.log(`Identified ${segments.length} book segment(s) in the PDF.\n`);
+
+  if (segments.length === 0) {
+    console.error(
+      '❌ No book headings were detected in the PDF text.\n' +
+      '   Ensure the PDF contains the Anania Bible with standard Romanian book headings.\n',
+    );
+    process.exit(1);
+  }
+
+  // Deduplicate: if the same book appears more than once, keep only the first
+  const seenCodes = new Set<string>();
+  const uniqueSegments = segments.filter((s) => {
+    if (seenCodes.has(s.book.usfmCode)) return false;
+    seenCodes.add(s.book.usfmCode);
+    return true;
+  });
+
+  // ── Step 3: parse chapters and verses from each book segment ──────────────
+  const sorted = [...uniqueSegments].sort((a, b) => a.book.order - b.book.order);
   let totalChapters = 0;
   let totalVerses = 0;
   const books = [];
-  const unmatchedConfigs: string[] = [];
 
-  for (const book of sorted) {
-    const siteBook = siteLookup.get(book.bookPath);
+  for (const segment of sorted) {
+    const { book, displayName } = segment;
+    console.log(`[${book.usfmCode}] ${displayName}`);
 
-    if (!siteBook) {
-      unmatchedConfigs.push(`"${book.bookPath}" (${book.usfmCode})`);
-      console.warn(`  [SKIP] bookPath "${book.bookPath}" not found on site (${book.usfmCode})`);
+    const chapterMap = parseBookText(segment.text);
+
+    if (chapterMap.size === 0) {
+      console.warn(`  [SKIP] No chapters/verses parsed for ${book.usfmCode}`);
       continue;
     }
 
-    const { bookPath, displayName } = siteBook;
-    console.log(`[${book.usfmCode}] ${bookPath} — ${displayName}`);
-
-    // ── Step 3: fetch chapter 1 to read total chapter count ──────────────────
-    const ch1Url = `${BASE_URL}${bookPath}?capitol=1`;
-    let ch1Html: string;
-    try {
-      ch1Html = await fetchHtml(ch1Url);
-    } catch (err) {
-      console.warn(`  [SKIP] Cannot fetch chapter 1 for ${book.usfmCode}: ${(err as Error).message}`);
-      continue;
-    }
-
-    const maxChapters = extractMaxChapter(ch1Html);
-    console.log(`  Chapters: ${maxChapters}`);
-
+    const chapterNums = [...chapterMap.keys()].sort((a, b) => a - b);
     const chapters = [];
     let bookVerses = 0;
 
-    // Parse chapter 1 from the already-fetched HTML
-    for (let cap = 1; cap <= maxChapters; cap++) {
-      let html: string;
-
-      if (cap === 1) {
-        html = ch1Html;
-      } else {
-        await sleep(CHAPTER_FETCH_DELAY_MS);
-        try {
-          html = await fetchHtml(`${BASE_URL}${bookPath}?capitol=${cap}`);
-        } catch (err) {
-          console.warn(`  [WARN] Failed to fetch chapter ${cap}: ${(err as Error).message}`);
-          break;
-        }
-      }
-
-      const verses = parseChapterVerses(html);
-      if (verses.length === 0) {
-        console.warn(`  [WARN] No verses parsed for ${book.usfmCode} chapter ${cap}`);
-        continue;
-      }
-
-      chapters.push(buildChapterEntry(cap, displayName, verses));
+    for (const chapNum of chapterNums) {
+      const verses = chapterMap.get(chapNum)!;
+      chapters.push(buildChapterEntry(chapNum, displayName, verses));
       bookVerses += verses.length;
-    }
-
-    if (chapters.length === 0) {
-      console.warn(`  [SKIP] No chapters scraped for ${book.usfmCode}`);
-      continue;
     }
 
     totalChapters += chapters.length;
@@ -438,11 +418,14 @@ async function main(): Promise<void> {
     console.log(`  ✓ ${chapters.length} chapters, ${bookVerses} verses`);
   }
 
-  if (unmatchedConfigs.length > 0) {
+  // ── Log books from booksConfig that were not found in the PDF ─────────────
+  const foundCodes = new Set(books.map((b) => b.id));
+  const missingBooks = booksConfig.filter((b) => !foundCodes.has(b.usfmCode));
+  if (missingBooks.length > 0) {
     console.warn(
-      `\n[WARN] ${unmatchedConfigs.length} book(s) in booksConfig had no match on the site:\n` +
-      unmatchedConfigs.map((s) => `  ${s}`).join('\n') +
-      '\nUpdate the bookPath values in booksConfig to match the live site URLs.',
+      `\n[WARN] ${missingBooks.length} book(s) in booksConfig were not found in the PDF:\n` +
+      missingBooks.map((b) => `  "${b.pdfHeading}" (${b.usfmCode})`).join('\n') +
+      '\n  Check that the PDF contains these books with matching headings.',
     );
   }
 
@@ -454,8 +437,8 @@ async function main(): Promise<void> {
     shortName: 'Anania',
     textDirection: 'ltr',
     language: 'ro',
-    website: 'https://biblia-online.ro',
-    licenseUrl: 'https://biblia-online.ro',
+    website: '',
+    licenseUrl: '',
     numberOfBooks: books.length,
     totalNumberOfChapters: totalChapters,
     totalNumberOfVerses: totalVerses,
