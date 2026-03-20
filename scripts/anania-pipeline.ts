@@ -43,6 +43,12 @@ const TRANSLATION_ID = 'ro_anania';
 
 const DOWNLOAD_LINK = 'https://dervent.ro/biblia/Biblia-ANANIA.pdf';
 
+/** Maximum chapter number per book (Psalms has 150, the highest in the Bible). */
+const MAX_CHAPTER_NUMBER = 150;
+
+/** Maximum footnote/note number we accept (Anania notes can go up to ~15 per chapter). */
+const MAX_NOTE_NUMBER = 20;
+
 /**
  * Path to the source PDF.
  *  - First checks ANANIA_PDF_PATH env var (loaded from ../.env).
@@ -246,13 +252,16 @@ function findWordBefore(text: string, matchIndex: number): string | undefined {
 
 /**
  * Normalizes a string for comparison: lowercases, unifies the Romanian
- * î/â pair (same phoneme, different letters depending on position /
+ * î/â pair (same phoneme /ɨ/, different letters depending on position /
  * orthographic era), strips diacritics, and collapses whitespace.
+ *
+ * Both î and â are replaced with 'x' as a neutral placeholder before
+ * NFD processing, avoiding collisions with real 'a' or 'i' in names.
  */
 function normalizeForMatch(s: string): string {
   return s
     .toLowerCase()
-    .replace(/[îâ]/g, 'a')   // î and â represent the same sound in Romanian
+    .replace(/[îâ]/g, 'x')   // unify î/â (same phoneme) with a neutral char
     .normalize('NFD')
     .replace(/[\u0300-\u036f]/g, '')
     .replace(/\s+/g, ' ')
@@ -439,7 +448,7 @@ function detectSuperscripts(
   const inlineRe = new RegExp(INLINE_SUPERSCRIPT_RE.source, 'gu');
   while ((match = inlineRe.exec(text)) !== null) {
     const noteNumber = parseInt(match[1], 10);
-    if (noteNumber <= 0 || noteNumber > 20) continue; // reasonable range for footnotes
+    if (noteNumber <= 0 || noteNumber > MAX_NOTE_NUMBER) continue;
     const attachedWord = findWordBefore(text, match.index);
     // Avoid duplicates if Unicode detection already found this number
     if (!results.some(r => r.noteNumber === noteNumber)) {
@@ -549,8 +558,8 @@ function parseBookText(text: string, bookCode: string): ParseResult {
     const chapMatch = trimmed.match(CHAPTER_HEADING_RE);
     if (chapMatch) {
       const chapNum = parseInt(chapMatch[1], 10);
-      // Only accept reasonable chapter numbers (1–150; max is Psalms with 150)
-      if (chapNum >= 1 && chapNum <= 150) {
+      // Only accept reasonable chapter numbers (1–MAX_CHAPTER_NUMBER)
+      if (chapNum >= 1 && chapNum <= MAX_CHAPTER_NUMBER) {
         // Flush current chapter (including notes)
         flushChapter();
         currentChapter = chapNum;
@@ -578,7 +587,7 @@ function parseBookText(text: string, bookCode: string): ParseResult {
     const digitNoteMatch = trimmed.match(DIGIT_NOTE_LINE_RE);
     if (digitNoteMatch && currentChapter > 0) {
       const noteNum = parseInt(digitNoteMatch[1], 10);
-      if (noteNum > 0 && noteNum <= 20) {
+      if (noteNum > 0 && noteNum <= MAX_NOTE_NUMBER) {
         const existing = chapterNoteLines.get(noteNum);
         chapterNoteLines.set(noteNum, existing ? existing + ' ' + digitNoteMatch[2].trim() : digitNoteMatch[2].trim());
         continue;
