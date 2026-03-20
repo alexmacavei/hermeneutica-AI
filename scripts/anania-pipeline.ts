@@ -207,7 +207,7 @@ const SUPERSCRIPT_MAP: Record<string, string> = {
 const SUPERSCRIPT_RE = /[⁰¹²³⁴⁵⁶⁷⁸⁹]+/g;
 
 function superscriptToNumber(sup: string): number {
-  const digits = sup.split('').map(c => SUPERSCRIPT_MAP[c]).filter(Boolean).join('');
+  const digits = sup.split('').map(c => SUPERSCRIPT_MAP[c]).filter(d => d !== undefined).join('');
   const result = parseInt(digits, 10);
   return isNaN(result) ? -1 : result;
 }

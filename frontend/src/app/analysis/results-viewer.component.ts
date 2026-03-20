@@ -90,7 +90,7 @@ interface AnalysisCard {
                     <div class="anania-note-item">
                       <sup class="anania-sup">{{ note.note_number }}</sup>
                       @if (note.metadata?.attached_to_word) {
-                        <span class="anania-word-hint">(la „{{ note.metadata!.attached_to_word }}")</span>
+                        <span class="anania-word-hint">(la „{{ note.metadata?.attached_to_word }}")</span>
                       }
                       <span class="anania-note-text">{{ note.note_text }}</span>
                     </div>
