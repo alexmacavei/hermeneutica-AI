@@ -33,6 +33,7 @@ Analiza unui verset generează 4 carduri:
 | 🧠 **Influențe Filozofice** | Platonism creștin, Neoplatonism, Stoicism patristic | OpenAI (LLM) |
 | ⛪ **Comentarii Patristice** | Citații din Părinții Bisericii (ex. Sf. Ioan Gură de Aur, Vasile cel Mare etc.) extrase din corpus **New Advent** prin căutare semantică RAG | New Advent + OpenAI Embeddings |
 | 🔤 **Analiză Filologică** | Greacă/Ebraică biblică, Strong's, LXX, morfologie | OpenAI (LLM) |
+| 📝 **Note Anania** *(condițional)* | Notele/comentariile Bartolomeu Anania – afișat doar dacă există note pentru versetul selectat | PDF local → PostgreSQL |
 | 📚 **Studiu Paralel** | Versetul selectat afișat simultan în toate traducerile disponibile (N/A pentru traduceri cu canon diferit) | bible.helloao.org |
 
 **EN:** AI Hermeneutica Orthodoxa is a full-stack web application for navigating Biblical text (via helloao.org API), receiving AI-powered orthodox hermeneutic analysis using OpenAI models, and comparing selected verses side-by-side across all available translations.
@@ -128,7 +129,7 @@ Utilizator selectează: "Fiindcă Dumnezeu aşa a iubit lumea, că pe Fiul Său 
 - Podman & Podman Compose
 - Cheie API OpenAI (pentru analiza AI)
 - **Biblia Sinodală Română** – generată local din scriptul `scripts/biblia-pipeline.ts` (vezi [Date Biblice](#-date-biblice--biblical-data))
-- **Biblia Anania** – generată local din scriptul `scripts/anania-pipeline.ts` dintr-un PDF local (opțional; vezi [Date Biblice](#-date-biblice--biblical-data))
+- **Biblia Anania** – generată local din scriptul `scripts/anania-pipeline.ts` dintr-un PDF local (opțional; vezi [Ghid extracție Anania](docs/anania-pdf-extraction-guide.md))
 - **Corpus patristic New Advent** *(opțional, pentru cardul Comentarii Patristice)* – vezi [docs/patristic-setup.md](docs/patristic-setup.md)
 
 ### Quick Start cu Podman
@@ -147,7 +148,9 @@ cd scripts && npm install && npm run biblia-pipeline
 cd ..
 
 # 3b. (Opțional) Populează Biblia Anania locală (necesită PDF sursă)
-# Plasează un PDF cu Biblia Anania în data/bibles/anania-source.pdf
+# Descarcă PDF-ul de la: https://dervent.ro/biblia/Biblia-ANANIA.pdf
+# Setează ANANIA_PDF_PATH în .env sau plasează-l în data/bibles/anania-source.pdf
+# Vezi ghidul detaliat: docs/anania-pdf-extraction-guide.md
 cd scripts && npm run anania-pipeline
 cd ..
 
@@ -293,6 +296,37 @@ GET /api/bible/parallel/JHN/3?verseStart=16&exclude=ro_sinodala
 
 > **Notă:** Traducerile cu un canon diferit (ex. `hbo_wlc` – doar VT, `grc_byz` – doar NT) vor returna `available: false` și `verses: []` pentru versetele din afara canonului lor.
 
+### `GET /api/anania-notes`
+
+Returnează notele/comentariile Anania pentru un verset specific.
+
+**Query params:**
+- `book` – cod USFM al cărții (ex: `GEN`, `ACT`)
+- `chapter` – număr capitol
+- `verse` – număr verset
+
+```bash
+GET /api/anania-notes?book=ACT&chapter=2&verse=1
+```
+
+**Response:**
+```json
+[
+  {
+    "id": 42,
+    "book": "ACT",
+    "chapter": 2,
+    "verse_start": 1,
+    "verse_end": null,
+    "note_number": 1,
+    "note_text": "Cincizecimea – sărbătoarea ...",
+    "metadata": { "attached_to_word": "Cincizecimii", "original_marker": "¹" }
+  }
+]
+```
+
+> **Notă:** Necesită rularea prealabilă a pipeline-ului `npm run anania-pipeline` cu `DATABASE_URL` setat.
+
 ### `GET /api/bible/translations`
 
 Listează traducerile biblice disponibile.
@@ -340,7 +374,7 @@ GET /api/bible/grc_byz/JHN/3
 | **Frontend** | Angular 19.2, PrimeNG 19.1 |
 | **Styling** | SCSS, PrimeIcons |
 | **Database** | PostgreSQL 16 + pgvector (căutare semantică vectorială) |
-| **Data Source** | bible.helloao.org (External API) + `ro_sinodala.json` (local) + `ro_anania.json` (local, opțional) + New Advent corpus (local, opțional) |
+| **Data Source** | bible.helloao.org (External API) + `ro_sinodala.json` (local) + `ro_anania.json` + Anania notes/`anania_adnotari` (local, opțional) + New Advent corpus (local, opțional) |
 | **DevOps** | Podman, Podman Compose |
 | **CI/CD** | GitHub Actions |
 | **PWA** | Service Worker, Web Manifest |
@@ -398,7 +432,7 @@ Aplicația utilizează atât API-ul extern furnizat de [bible.helloao.org](https
 Caracteristici:
 - **Acces dinamic:** Navigare prin toate cărțile și capitolele disponibile în traducerile suportate.
 - **Traduceri remote:** `hbo_wlc` (Ebraică Masoretică), `grc_bre` (Septuaginta Brenton), `grc_byz` (Greacă Byzantină NT), `eng_kja` (KJV cu Apocrife) – servite live via bible.helloao.org.
-- **Traduceri locale:** `ro_sinodala` (Biblia Sinodală Română) – populată cu scriptul `scripts/biblia-pipeline.ts` și stocată în `data/bibles/ro_sinodala.json`; `ro_anania` (Biblia Anania) – populată cu scriptul `scripts/anania-pipeline.ts` dintr-un PDF local și stocată în `data/bibles/ro_anania.json`.
+- **Traduceri locale:** `ro_sinodala` (Biblia Sinodală Română) – populată cu scriptul `scripts/biblia-pipeline.ts` și stocată în `data/bibles/ro_sinodala.json`; `ro_anania` (Biblia Anania) – populată cu scriptul `scripts/anania-pipeline.ts` dintr-un PDF local și stocată în `data/bibles/ro_anania.json`. Vezi [Ghid extracție Anania](docs/anania-pdf-extraction-guide.md).
 - **Interfață simplificată:** Backend-ul NestJS acționează ca un proxy/adaptor, asigurând stabilitate și maparea corectă a versetelor pentru procesarea AI.
 
 ### Script Date / Data Pipeline Script
@@ -411,9 +445,11 @@ npm run biblia-pipeline
 # Generează: data/bibles/ro_sinodala.json
 
 # Procesează Biblia Anania locală din PDF (opțional)
-# Plasează mai întâi PDF-ul în data/bibles/anania-source.pdf
+# Descarcă PDF-ul de la: https://dervent.ro/biblia/Biblia-ANANIA.pdf
+# Setează ANANIA_PDF_PATH în .env sau plasează-l în data/bibles/anania-source.pdf
+# Ghid detaliat: docs/anania-pdf-extraction-guide.md
 npm run anania-pipeline
-# Generează: data/bibles/ro_anania.json
+# Generează: data/bibles/ro_anania.json + inserează note în DB
 ```
 
 ---
