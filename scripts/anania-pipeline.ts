@@ -206,6 +206,18 @@ const SUPERSCRIPT_MAP: Record<string, string> = {
 
 const SUPERSCRIPT_RE = /[⁰¹²³⁴⁵⁶⁷⁸⁹]+/g;
 
+/**
+ * Matches 1–2 digits that appear directly after a Unicode letter with no
+ * intervening space, followed by punctuation / whitespace / end-of-string.
+ *
+ * This catches superscript markers that pdf-parse renders as regular digits,
+ * e.g. "Dumnezeu6:" → the "6" is a note marker, not part of the word.
+ *
+ * Uses a lookbehind for \p{L} (any Unicode letter) so the letter itself is
+ * not consumed by the match.
+ */
+const INLINE_SUPERSCRIPT_RE = /(?<=\p{L})(\d{1,2})(?=[\s:;,.\-"'!?„""—–\)\]\/>]|$)/gu;
+
 function superscriptToNumber(sup: string): number {
   const digits = sup.split('').map(c => SUPERSCRIPT_MAP[c]).filter(d => d !== undefined).join('');
   const result = parseInt(digits, 10);
@@ -213,7 +225,11 @@ function superscriptToNumber(sup: string): number {
 }
 
 function stripSuperscripts(text: string): string {
-  return text.replace(SUPERSCRIPT_RE, '').replace(/\s{2,}/g, ' ').trim();
+  // Strip Unicode superscript digits (¹²³ etc.)
+  let result = text.replace(SUPERSCRIPT_RE, '');
+  // Strip inline digit superscripts rendered as regular digits by pdf-parse
+  result = result.replace(/(?<=\p{L})\d{1,2}(?=[\s:;,.\-"'!?„""—–\)\]\/>]|$)/gu, '');
+  return result.replace(/\s{2,}/g, ' ').trim();
 }
 
 /**
@@ -229,12 +245,14 @@ function findWordBefore(text: string, matchIndex: number): string | undefined {
 // ─── Text normalization ───────────────────────────────────────────────────────
 
 /**
- * Normalizes a string for comparison: lowercases, strips diacritics,
- * collapses whitespace.
+ * Normalizes a string for comparison: lowercases, unifies the Romanian
+ * î/â pair (same phoneme, different letters depending on position /
+ * orthographic era), strips diacritics, and collapses whitespace.
  */
 function normalizeForMatch(s: string): string {
   return s
     .toLowerCase()
+    .replace(/[îâ]/g, 'a')   // î and â represent the same sound in Romanian
     .normalize('NFD')
     .replace(/[\u0300-\u036f]/g, '')
     .replace(/\s+/g, ' ')
@@ -258,14 +276,27 @@ function buildHeadingMap(): Map<string, BookConfig> {
   return map;
 }
 
-/** Matches chapter headings like "Capitolul 3", "Cap. 12". */
-const CHAPTER_HEADING_RE = /^\s*(?:Capitolul|Cap\.?)\s+(\d+)\s*$/i;
+/**
+ * Matches chapter headings:
+ *  - "Capitolul 3", "Cap. 12" (explicit keyword)
+ *  - "Psalmul 23", "Ps. 119" (Psalms)
+ *  - "3", "12" (standalone 1–3 digit number on its own line — common in
+ *    many Romanian Bible PDF editions where chapter numbers appear alone)
+ */
+const CHAPTER_HEADING_RE = /^\s*(?:(?:Capitolul|Cap\.?|Psalmul|Ps\.?)\s+)?(\d{1,3})\s*$/i;
 
 /** Matches verse-number prefixed text: "1. In inceput...", "12 Text..." */
 const VERSE_RE = /^(\d+)[.\s]\s*(.+)/;
 
 /** Matches a footnote line: superscript digits optionally followed by =/:. then text. */
 const NOTE_LINE_RE = /^([⁰¹²³⁴⁵⁶⁷⁸⁹]+)\s*[=:.]?\s*(.+)/;
+
+/**
+ * Matches a footnote line using regular digits with a required separator
+ * (= or :), to distinguish from verse-number lines.
+ * Examples: "6 = Aceasta este nota", "12: Nota explicativă"
+ */
+const DIGIT_NOTE_LINE_RE = /^(\d{1,2})\s*[=:]\s*(.+)/;
 
 /**
  * A raw text segment belonging to one book, as extracted from the PDF.
@@ -283,6 +314,14 @@ type BookTextSegment = {
  * Strategy: scan every line; when a line matches a known book heading,
  * start a new segment.  Lines before the first heading are discarded
  * (front matter, table of contents, etc.).
+ *
+ * Heading matching is attempted in two passes:
+ *  1) Exact match (after normalization) against headingMap.
+ *  2) If no exact match, strip a trailing number (handles PDF formats like
+ *     "FACEREA 1" where the chapter number is on the same line as the book
+ *     title).  When this matches, the extracted chapter number is prepended
+ *     as a synthetic "Capitolul N" line to the segment text so the chapter
+ *     parser picks it up automatically.
  */
 function splitIntoBookSegments(fullText: string): BookTextSegment[] {
   const headingMap = buildHeadingMap();
@@ -293,6 +332,8 @@ function splitIntoBookSegments(fullText: string): BookTextSegment[] {
   let currentName = '';
   let currentLines: string[] = [];
 
+  const unmatchedCandidates: string[] = [];   // for debug logging
+
   for (const line of lines) {
     const trimmed = line.trim();
     if (!trimmed) {
@@ -300,9 +341,22 @@ function splitIntoBookSegments(fullText: string): BookTextSegment[] {
       continue;
     }
 
-    // Check if this line is a book heading
+    // ── Heading detection ─────────────────────────────────────────────────
     const normalized = normalizeForMatch(trimmed);
-    const matchedBook = headingMap.get(normalized);
+    let matchedBook = headingMap.get(normalized);
+    let headingChapter: number | undefined;
+
+    // Pass 2: try stripping a trailing chapter number
+    // (handles "FACEREA 1", "IESIREA 2", etc.)
+    if (!matchedBook) {
+      const trailingMatch = normalized.match(/^(.+?)\s+(\d{1,3})$/);
+      if (trailingMatch) {
+        matchedBook = headingMap.get(trailingMatch[1]);
+        if (matchedBook) {
+          headingChapter = parseInt(trailingMatch[2], 10);
+        }
+      }
+    }
 
     if (matchedBook) {
       // Flush the previous book segment
@@ -316,7 +370,16 @@ function splitIntoBookSegments(fullText: string): BookTextSegment[] {
       currentBook = matchedBook;
       currentName = trimmed; // keep the original casing from the PDF
       currentLines = [];
+      // If the heading included a chapter number, inject a synthetic heading
+      if (headingChapter) {
+        currentLines.push(`Capitolul ${headingChapter}`);
+      }
       continue;
+    }
+
+    // Collect short non-numeric lines as potential unmatched headings (for debug)
+    if (!currentBook && trimmed.length < 80 && !/^\d/.test(trimmed)) {
+      unmatchedCandidates.push(trimmed);
     }
 
     if (currentBook) {
@@ -333,12 +396,26 @@ function splitIntoBookSegments(fullText: string): BookTextSegment[] {
     });
   }
 
+  // Debug: show potential unmatched headings to help diagnose missing books
+  if (unmatchedCandidates.length > 0) {
+    const unique = [...new Set(unmatchedCandidates)].slice(0, 30);
+    console.log('\n[DEBUG] Sample lines before the first matched heading (potential unrecognized headings):');
+    for (const h of unique) {
+      console.log(`  "${h}"`);
+    }
+  }
+
   return segments;
 }
 
 /**
  * Detects all superscript markers in a piece of text and returns an array of
  * { noteNumber, attachedWord, originalMarker } entries.
+ *
+ * Handles both:
+ *  - Unicode superscript digits (¹²³ etc.) — some PDF editions preserve them
+ *  - Regular digits rendered inline after a letter (e.g. "Dumnezeu6:") — the
+ *    common case when pdf-parse converts superscripts to plain digits
  */
 function detectSuperscripts(
   text: string,
@@ -348,15 +425,32 @@ function detectSuperscripts(
 ): { noteNumber: number; attachedWord: string | undefined; originalMarker: string }[] {
   const results: { noteNumber: number; attachedWord: string | undefined; originalMarker: string }[] = [];
   let match: RegExpExecArray | null;
-  const re = new RegExp(SUPERSCRIPT_RE.source, 'g');
-  while ((match = re.exec(text)) !== null) {
+
+  // 1) Unicode superscript digits
+  const unicodeRe = new RegExp(SUPERSCRIPT_RE.source, 'g');
+  while ((match = unicodeRe.exec(text)) !== null) {
     const noteNumber = superscriptToNumber(match[0]);
     if (noteNumber < 0) continue;
     const attachedWord = findWordBefore(text, match.index);
-    console.log(
-      `Detected superscript ${noteNumber} attached to word '${attachedWord ?? '?'}' on ${bookCode} ${chapter}:${verseNum}`,
-    );
     results.push({ noteNumber, attachedWord, originalMarker: match[0] });
+  }
+
+  // 2) Inline regular digits directly after a letter (pdf-parse artefact)
+  const inlineRe = new RegExp(INLINE_SUPERSCRIPT_RE.source, 'gu');
+  while ((match = inlineRe.exec(text)) !== null) {
+    const noteNumber = parseInt(match[1], 10);
+    if (noteNumber <= 0 || noteNumber > 20) continue; // reasonable range for footnotes
+    const attachedWord = findWordBefore(text, match.index);
+    // Avoid duplicates if Unicode detection already found this number
+    if (!results.some(r => r.noteNumber === noteNumber)) {
+      results.push({ noteNumber, attachedWord, originalMarker: match[1] });
+    }
+  }
+
+  for (const r of results) {
+    console.log(
+      `Detected superscript ${r.noteNumber} attached to word '${r.attachedWord ?? '?'}' on ${bookCode} ${chapter}:${verseNum}`,
+    );
   }
   return results;
 }
@@ -454,23 +548,39 @@ function parseBookText(text: string, bookCode: string): ParseResult {
     // Check for chapter heading
     const chapMatch = trimmed.match(CHAPTER_HEADING_RE);
     if (chapMatch) {
-      // Flush current chapter (including notes)
-      flushChapter();
-      currentChapter = parseInt(chapMatch[1], 10);
-      currentVerses = [];
-      lastVerse = null;
-      chapterSuperscripts = new Map();
-      chapterNoteLines = new Map();
-      continue;
+      const chapNum = parseInt(chapMatch[1], 10);
+      // Only accept reasonable chapter numbers (1–150; max is Psalms with 150)
+      if (chapNum >= 1 && chapNum <= 150) {
+        // Flush current chapter (including notes)
+        flushChapter();
+        currentChapter = chapNum;
+        currentVerses = [];
+        lastVerse = null;
+        chapterSuperscripts = new Map();
+        chapterNoteLines = new Map();
+        continue;
+      }
     }
 
-    // Check for note line (starts with superscript digits)
+    // Check for note line (Unicode superscript format: ⁶ = text)
     const noteMatch = trimmed.match(NOTE_LINE_RE);
     if (noteMatch && currentChapter > 0) {
       const noteNum = superscriptToNumber(noteMatch[1]);
       if (noteNum >= 0) {
         const existing = chapterNoteLines.get(noteNum);
         chapterNoteLines.set(noteNum, existing ? existing + ' ' + noteMatch[2].trim() : noteMatch[2].trim());
+        continue;
+      }
+    }
+
+    // Check for note line (regular digit format: "6 = text", "12: text")
+    // Must be checked BEFORE verse regex to avoid misinterpreting "6 = note" as verse 6
+    const digitNoteMatch = trimmed.match(DIGIT_NOTE_LINE_RE);
+    if (digitNoteMatch && currentChapter > 0) {
+      const noteNum = parseInt(digitNoteMatch[1], 10);
+      if (noteNum > 0 && noteNum <= 20) {
+        const existing = chapterNoteLines.get(noteNum);
+        chapterNoteLines.set(noteNum, existing ? existing + ' ' + digitNoteMatch[2].trim() : digitNoteMatch[2].trim());
         continue;
       }
     }
@@ -614,13 +724,17 @@ async function main(): Promise<void> {
     process.exit(1);
   }
 
-  // Deduplicate: if the same book appears more than once, keep only the first
-  const seenCodes = new Set<string>();
-  const uniqueSegments = segments.filter((s) => {
-    if (seenCodes.has(s.book.usfmCode)) return false;
-    seenCodes.add(s.book.usfmCode);
-    return true;
-  });
+  // Deduplicate: if the same book appears more than once, keep the segment
+  // with the most text content (avoids false-positive short matches from
+  // cross-references that happen to be standalone lines matching a heading).
+  const segmentMap = new Map<string, BookTextSegment>();
+  for (const seg of segments) {
+    const existing = segmentMap.get(seg.book.usfmCode);
+    if (!existing || seg.text.length > existing.text.length) {
+      segmentMap.set(seg.book.usfmCode, seg);
+    }
+  }
+  const uniqueSegments = [...segmentMap.values()];
 
   // ── Step 3: parse chapters, verses, and notes from each book segment ──────
   const sorted = [...uniqueSegments].sort((a, b) => a.book.order - b.book.order);
