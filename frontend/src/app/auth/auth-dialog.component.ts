@@ -1,5 +1,13 @@
-import { Component, EventEmitter, Input, Output } from '@angular/core';
-import { CommonModule } from '@angular/common';
+import {
+  ChangeDetectionStrategy,
+  Component,
+  effect,
+  inject,
+  input,
+  model,
+  output,
+  signal,
+} from '@angular/core';
 import { FormsModule } from '@angular/forms';
 import { ButtonModule } from 'primeng/button';
 import { DialogModule } from 'primeng/dialog';
@@ -12,8 +20,8 @@ import { AuthService } from '../services/auth.service';
 @Component({
   selector: 'app-auth-dialog',
   standalone: true,
+  changeDetection: ChangeDetectionStrategy.OnPush,
   imports: [
-    CommonModule,
     FormsModule,
     ButtonModule,
     DialogModule,
@@ -23,14 +31,14 @@ import { AuthService } from '../services/auth.service';
   ],
   template: `
     <p-dialog
-      [visible]="visible"
-      (visibleChange)="visibleChange.emit($event)"
+      [visible]="visible()"
+      (visibleChange)="visible.set($event)"
       [modal]="true"
       [closable]="true"
       [draggable]="false"
       [resizable]="false"
       [style]="{ width: '380px' }"
-      [header]="mode === 'login' ? 'Autentificare' : 'Creare cont'"
+      [header]="currentMode() === 'login' ? 'Autentificare' : 'Creare cont'"
     >
       <div class="auth-form">
         <div class="field">
@@ -38,7 +46,8 @@ import { AuthService } from '../services/auth.service';
           <input
             pInputText
             type="email"
-            [(ngModel)]="email"
+            [ngModel]="email()"
+            (ngModelChange)="email.set($event)"
             placeholder="adresa@email.com"
             class="w-full"
             autocomplete="email"
@@ -48,40 +57,45 @@ import { AuthService } from '../services/auth.service';
         <div class="field">
           <label class="field-label">Parolă</label>
           <p-password
-            [(ngModel)]="password"
-            [feedback]="mode === 'register'"
+            [ngModel]="password()"
+            (ngModelChange)="password.set($event)"
+            [feedback]="currentMode() === 'register'"
             [toggleMask]="true"
             placeholder="Parolă (min. 6 caractere)"
             styleClass="w-full"
             inputStyleClass="w-full"
-            [autocomplete]="mode === 'login' ? 'current-password' : 'new-password'"
+            [autocomplete]="currentMode() === 'login' ? 'current-password' : 'new-password'"
           ></p-password>
         </div>
 
-        <p-message
-          *ngIf="errorMsg"
-          severity="error"
-          [text]="errorMsg"
-          styleClass="w-full mb-2"
-        ></p-message>
+        @if (errorMsg()) {
+          <p-message
+            severity="error"
+            [text]="errorMsg()"
+            styleClass="w-full mb-2"
+          ></p-message>
+        }
 
         <p-button
-          [label]="mode === 'login' ? 'Intră în cont' : 'Creează cont'"
-          [loading]="loading"
+          [label]="currentMode() === 'login' ? 'Intră în cont' : 'Creează cont'"
+          [loading]="loading()"
           (click)="submit()"
           styleClass="w-full"
           [style]="{ marginTop: '8px' }"
         ></p-button>
 
         <div class="switch-mode">
-          <span *ngIf="mode === 'login'">
-            Nu ai cont?
-            <a href="#" (click)="switchMode($event)">Înregistrează-te</a>
-          </span>
-          <span *ngIf="mode === 'register'">
-            Ai deja cont?
-            <a href="#" (click)="switchMode($event)">Autentifică-te</a>
-          </span>
+          @if (currentMode() === 'login') {
+            <span>
+              Nu ai cont?
+              <a href="#" (click)="switchMode($event)">Înregistrează-te</a>
+            </span>
+          } @else {
+            <span>
+              Ai deja cont?
+              <a href="#" (click)="switchMode($event)">Autentifică-te</a>
+            </span>
+          }
         </div>
       </div>
     </p-dialog>
@@ -122,55 +136,62 @@ import { AuthService } from '../services/auth.service';
   ],
 })
 export class AuthDialogComponent {
-  @Input() visible = false;
-  @Input() mode: 'login' | 'register' = 'login';
-  @Output() visibleChange = new EventEmitter<boolean>();
-  @Output() success = new EventEmitter<void>();
+  readonly visible = model(false);
+  readonly initialMode = input<'login' | 'register'>('login', { alias: 'mode' });
+  readonly success = output<void>();
 
-  email = '';
-  password = '';
-  loading = false;
-  errorMsg = '';
+  private readonly authService = inject(AuthService);
 
-  constructor(private readonly authService: AuthService) {}
+  readonly currentMode = signal<'login' | 'register'>('login');
+  readonly email = signal('');
+  readonly password = signal('');
+  readonly loading = signal(false);
+  readonly errorMsg = signal('');
+
+  constructor() {
+    // Sync local currentMode when the input changes (e.g. parent opens login vs register)
+    effect(() => {
+      this.currentMode.set(this.initialMode());
+    });
+  }
 
   switchMode(event: Event): void {
     event.preventDefault();
-    this.errorMsg = '';
-    this.mode = this.mode === 'login' ? 'register' : 'login';
+    this.errorMsg.set('');
+    this.currentMode.update((m) => (m === 'login' ? 'register' : 'login'));
   }
 
   submit(): void {
-    this.errorMsg = '';
-    if (!this.email || !this.password) {
-      this.errorMsg = 'Completează email și parolă.';
+    this.errorMsg.set('');
+    if (!this.email() || !this.password()) {
+      this.errorMsg.set('Completează email și parolă.');
       return;
     }
-    this.loading = true;
+    this.loading.set(true);
     const obs =
-      this.mode === 'login'
-        ? this.authService.login(this.email, this.password)
-        : this.authService.register(this.email, this.password);
+      this.currentMode() === 'login'
+        ? this.authService.login(this.email(), this.password())
+        : this.authService.register(this.email(), this.password());
 
     obs
       .pipe(
         catchError((err) => {
           const msg =
             err?.error?.message ??
-            (this.mode === 'login'
+            (this.currentMode() === 'login'
               ? 'Date incorecte. Verifică email și parolă.'
               : 'Înregistrare eșuată. Email-ul poate fi deja folosit.');
-          this.errorMsg = Array.isArray(msg) ? msg.join(', ') : String(msg);
-          this.loading = false;
+          this.errorMsg.set(Array.isArray(msg) ? msg.join(', ') : String(msg));
+          this.loading.set(false);
           return of(null);
         }),
       )
       .subscribe((res) => {
-        this.loading = false;
+        this.loading.set(false);
         if (res) {
-          this.email = '';
-          this.password = '';
-          this.visibleChange.emit(false);
+          this.email.set('');
+          this.password.set('');
+          this.visible.set(false);
           this.success.emit();
         }
       });

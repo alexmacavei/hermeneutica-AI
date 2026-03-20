@@ -1,11 +1,11 @@
 import {
   Directive,
   ElementRef,
-  EventEmitter,
   HostListener,
-  Input,
-  Output,
   Renderer2,
+  inject,
+  input,
+  output,
 } from '@angular/core';
 
 export interface VerseSelection {
@@ -18,16 +18,14 @@ export interface VerseSelection {
   standalone: true,
 })
 export class VerseHighlightDirective {
-  @Input() bookName = '';
-  @Input() chapterNumber = '';
-  @Output() verseSelected = new EventEmitter<VerseSelection>();
+  readonly bookName = input('');
+  readonly chapterNumber = input('');
+  readonly verseSelected = output<VerseSelection>();
 
   private clickedVerseEl: HTMLElement | null = null;
 
-  constructor(
-    private readonly el: ElementRef<HTMLElement>,
-    private readonly renderer: Renderer2,
-  ) {}
+  private readonly el = inject<ElementRef<HTMLElement>>(ElementRef);
+  private readonly renderer = inject(Renderer2);
 
   @HostListener('click', ['$event'])
   onClick(event: MouseEvent): void {
@@ -47,12 +45,12 @@ export class VerseHighlightDirective {
     const verseText = verseEl.textContent?.trim() ?? '';
 
     const cleanText = verseText.replace(/^\d+\s*/, '');
-    const reference = `${this.bookName} ${this.chapterNumber}:${verseNumber}`;
+    const reference = `${this.bookName()} ${this.chapterNumber()}:${verseNumber}`;
 
     this.verseSelected.emit({ text: cleanText, range: reference });
   }
 
-  @HostListener('mouseup', ['$event'])
+  @HostListener('mouseup')
   onMouseup(): void {
     const selection = window.getSelection();
     if (!selection || selection.isCollapsed) return;
@@ -85,10 +83,10 @@ export class VerseHighlightDirective {
     const endVerseNum = Math.max(anchorNum, focusNum);
 
     if (startVerseNum === endVerseNum) {
-      return `${this.bookName} ${this.chapterNumber}:${startVerseNum}`;
+      return `${this.bookName()} ${this.chapterNumber()}:${startVerseNum}`;
     }
 
-    return `${this.bookName} ${this.chapterNumber}:${startVerseNum}-${endVerseNum}`;
+    return `${this.bookName()} ${this.chapterNumber()}:${startVerseNum}-${endVerseNum}`;
   }
 
   private findVerseEl(node: Node): HTMLElement | null {

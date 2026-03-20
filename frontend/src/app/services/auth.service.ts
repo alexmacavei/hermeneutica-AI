@@ -1,6 +1,6 @@
-import { inject, Injectable } from '@angular/core';
+import { computed, inject, Injectable, signal } from '@angular/core';
 import { HttpClient } from '@angular/common/http';
-import { BehaviorSubject, Observable, tap } from 'rxjs';
+import { Observable, tap } from 'rxjs';
 import { environment } from '../../environments/environment';
 
 export interface CurrentUser {
@@ -13,19 +13,12 @@ export class AuthService {
   private readonly apiUrl = environment.apiUrl;
   private readonly http = inject(HttpClient);
 
-  private readonly _currentUser = new BehaviorSubject<CurrentUser | null>(
+  private readonly _currentUser = signal<CurrentUser | null>(
     this.loadFromStorage(),
   );
 
-  readonly currentUser$ = this._currentUser.asObservable();
-
-  get currentUser(): CurrentUser | null {
-    return this._currentUser.value;
-  }
-
-  get isLoggedIn(): boolean {
-    return this._currentUser.value !== null;
-  }
+  readonly currentUser = this._currentUser.asReadonly();
+  readonly isLoggedIn = computed(() => this._currentUser() !== null);
 
   register(email: string, password: string): Observable<{ token: string }> {
     return this.http
@@ -48,13 +41,13 @@ export class AuthService {
   logout(): void {
     localStorage.removeItem('auth_token');
     localStorage.removeItem('auth_email');
-    this._currentUser.next(null);
+    this._currentUser.set(null);
   }
 
   private saveSession(email: string, token: string): void {
     localStorage.setItem('auth_token', token);
     localStorage.setItem('auth_email', email);
-    this._currentUser.next({ email, token });
+    this._currentUser.set({ email, token });
   }
 
   private loadFromStorage(): CurrentUser | null {

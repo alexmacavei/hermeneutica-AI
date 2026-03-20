@@ -1,41 +1,32 @@
-import { Component, OnInit } from '@angular/core';
-import { CommonModule } from '@angular/common';
+import {
+  ChangeDetectionStrategy,
+  Component,
+  inject,
+  signal,
+} from '@angular/core';
+import { AvatarModule } from 'primeng/avatar';
 import { ButtonModule } from 'primeng/button';
 import { ToastModule } from 'primeng/toast';
-import { AvatarModule } from 'primeng/avatar';
 import { TooltipModule } from 'primeng/tooltip';
 import { MessageService } from 'primeng/api';
-import { catchError, finalize, of } from 'rxjs';
-import {
-  BibleSelectorComponent,
-  BibleNavigation,
-} from './bible-selector.component';
+import { BibleStore } from './bible.store';
+import { BibleSelectorComponent } from './bible-selector.component';
 import { BibleTextComponent } from './bible-text.component';
 import { ResultsViewerComponent } from '../analysis/results-viewer.component';
-import {
-  SemanticSearchComponent,
-  SearchNavigateEvent,
-} from './semantic-search.component';
-import { AnalysisService, AnalysisResult } from '../services/analysis.service';
-import {
-  BibleApiService,
-  BibleVerse,
-  ParallelTranslation,
-} from '../services/bible-api.service';
-import { SearchService } from '../services/search.service';
+import { SemanticSearchComponent } from './semantic-search.component';
 import { ParallelViewerComponent } from './parallel-viewer.component';
-import { VerseSelection } from './verse-highlighter.directive';
 import { AuthDialogComponent } from '../auth/auth-dialog.component';
-import { AuthService, CurrentUser } from '../services/auth.service';
+import { AuthService } from '../services/auth.service';
+import { SlicePipe } from '@angular/common';
 
 @Component({
   selector: 'app-bible-viewer',
   standalone: true,
+  changeDetection: ChangeDetectionStrategy.OnPush,
   imports: [
-    CommonModule,
+    AvatarModule,
     ButtonModule,
     ToastModule,
-    AvatarModule,
     TooltipModule,
     BibleSelectorComponent,
     BibleTextComponent,
@@ -43,16 +34,16 @@ import { AuthService, CurrentUser } from '../services/auth.service';
     SemanticSearchComponent,
     ParallelViewerComponent,
     AuthDialogComponent,
+    SlicePipe,
   ],
-  providers: [MessageService],
+  providers: [BibleStore, MessageService],
   template: `
     <p-toast position="top-right"></p-toast>
 
     <!-- Auth Dialog -->
     <app-auth-dialog
       [(visible)]="authDialogVisible"
-      [mode]="authDialogMode"
-      (success)="onAuthSuccess()"
+      [mode]="authDialogMode()"
     ></app-auth-dialog>
 
     <div class="viewer-shell">
@@ -63,45 +54,42 @@ import { AuthService, CurrentUser } from '../services/auth.service';
           <span class="brand-title">AI Hermeneutica Orthodoxa</span>
         </div>
         <app-bible-selector
-          (navigate)="onNavigate($event)"
+          (navigate)="store.navigate($event)"
         ></app-bible-selector>
         <app-semantic-search
-          [translationId]="currentNav?.translationId ?? ''"
-          (navigateTo)="onSearchNavigate($event)"
+          [translationId]="store.currentNav()?.translationId ?? ''"
+          (navigateTo)="store.navigateFromSearch($event)"
         ></app-semantic-search>
 
         <!-- Auth area -->
         <div class="auth-area">
-          <ng-container *ngIf="!currentUser; else loggedIn">
+          @if (!authService.currentUser()) {
             <p-button
               label="Login"
               severity="secondary"
               [text]="true"
               (click)="openAuth('login')"
-              styleClass="auth-btn"
             ></p-button>
             <p-button
-              label="Register"
+              label="Înregistrare"
               severity="secondary"
-              [outlined]="true"
+              [text]="true"
               (click)="openAuth('register')"
-              styleClass="auth-btn"
             ></p-button>
-          </ng-container>
-          <ng-template #loggedIn>
+          } @else {
             <div
               class="user-avatar-area"
-              [pTooltip]="currentUser!.email + ' – click pentru delogare'"
+              pTooltip="{{ authService.currentUser()!.email }} — click pentru logout"
               tooltipPosition="bottom"
               (click)="logout()"
             >
               <p-avatar
-                [label]="currentUser!.email.charAt(0).toUpperCase()"
+                [label]="authService.currentUser()!.email[0].toUpperCase()"
                 shape="circle"
                 styleClass="user-avatar"
               ></p-avatar>
             </div>
-          </ng-template>
+          }
         </div>
       </header>
 
@@ -109,18 +97,21 @@ import { AuthService, CurrentUser } from '../services/auth.service';
       <main class="main-layout">
         <!-- Bible Text Panel -->
         <section class="bible-panel">
-          <div class="loading-chapter" *ngIf="loadingChapter">
-            <i class="pi pi-spin pi-spinner"></i> Se încarcă...
-          </div>
+          @if (store.loadingChapter()) {
+            <div class="loading-chapter">
+              <i class="pi pi-spin pi-spinner"></i> Se încarcă...
+            </div>
+          }
 
-          <app-bible-text
-            *ngIf="!loadingChapter"
-            [bookName]="currentNav?.bookName ?? ''"
-            [chapterNumber]="currentNav?.chapter?.toString() ?? ''"
-            [verses]="currentVerses"
-            [selectedVerses]="selectedVerseNumbers"
-            (verseSelected)="onVerseSelected($event)"
-          ></app-bible-text>
+          @if (!store.loadingChapter()) {
+            <app-bible-text
+              [bookName]="store.currentNav()?.bookName ?? ''"
+              [chapterNumber]="store.currentNav()?.chapter?.toString() ?? ''"
+              [verses]="store.currentVerses()"
+              [selectedVerses]="store.selectedVerseNumbers()"
+              (verseSelected)="store.selectVerse($event)"
+            ></app-bible-text>
+          }
 
           <!-- Footer navigation -->
           <footer class="verse-footer">
@@ -128,61 +119,67 @@ import { AuthService, CurrentUser } from '../services/auth.service';
               icon="pi pi-chevron-left"
               variant="text"
               class="nav-btn"
-              (click)="prevChapter()"
-              [disabled]="!hasPrevChapter()"
+              (click)="store.prevChapter()"
+              [disabled]="!store.hasPrevChapter()"
               [rounded]="true"
             ></p-button>
-            <span class="footer-ref" *ngIf="selectedSelection">
-              &#128204; {{ selectedSelection.range }}
-            </span>
-            <span class="footer-ref no-selection" *ngIf="!selectedSelection">
-              Selectează un verset pentru analiză
-            </span>
+            @if (store.selectedSelection()) {
+              <span class="footer-ref">
+                &#128204; {{ store.selectedSelection()!.range }}
+              </span>
+            } @else {
+              <span class="footer-ref no-selection">
+                Selectează un verset pentru analiză
+              </span>
+            }
             <p-button
               icon="pi pi-chevron-right"
               variant="text"
               class="nav-btn"
-              (click)="nextChapter()"
-              [disabled]="!hasNextChapter()"
+              (click)="store.nextChapter()"
+              [disabled]="!store.hasNextChapter()"
               [rounded]="true"
             ></p-button>
           </footer>
         </section>
 
         <!-- Analysis Panel -->
-        <aside class="analysis-panel" *ngIf="analysisResult || analyzing">
-          <app-results-viewer
-            [result]="analysisResult"
-            [loading]="analyzing"
-          ></app-results-viewer>
-        </aside>
+        @if (store.analysisResult() || store.analyzing()) {
+          <aside class="analysis-panel">
+            <app-results-viewer
+              [result]="store.analysisResult()"
+              [loading]="store.analyzing()"
+            ></app-results-viewer>
+          </aside>
+        }
 
         <!-- Parallel Study Panel -->
-        <aside class="parallel-panel" *ngIf="showParallelView">
-          <app-parallel-viewer
-            [translations]="parallelVerses"
-            [loading]="loadingParallel"
-            [reference]="selectedSelection?.range ?? ''"
-            (close)="closeParallelView()"
-          ></app-parallel-viewer>
-        </aside>
+        @if (store.showParallelView()) {
+          <aside class="parallel-panel">
+            <app-parallel-viewer
+              [translations]="store.parallelVerses()"
+              [loading]="store.loadingParallel()"
+              [reference]="store.selectedSelection()?.range ?? ''"
+              (close)="store.closeParallelView()"
+            ></app-parallel-viewer>
+          </aside>
+        }
       </main>
 
       <!-- Big Analyze Button -->
       <div class="analyze-bar">
-        <ng-container *ngIf="currentUser; else loginPrompt">
+        @if (authService.isLoggedIn()) {
           <p-button
             class="analyze-btn"
-            [class.analyze-btn-pulse]="!!selectedSelection && !analyzing"
-            [disabled]="!selectedSelection || analyzing"
-            [loading]="analyzing"
-            (click)="analyze()"
+            [class.analyze-btn-pulse]="!!store.selectedSelection() && !store.analyzing()"
+            [disabled]="!store.selectedSelection() || store.analyzing()"
+            [loading]="store.analyzing()"
+            (click)="store.analyze()"
             icon="pi pi-search"
             label="Analizează selecția"
           >
           </p-button>
-        </ng-container>
-        <ng-template #loginPrompt>
+        } @else {
           <span class="login-prompt">
             <i class="pi pi-lock"></i>
             Autentifică-te pentru a analiza versete.
@@ -190,24 +187,26 @@ import { AuthService, CurrentUser } from '../services/auth.service';
             sau
             <a href="#" (click)="openAuthFromPrompt($event, 'register')">Înregistrare</a>
           </span>
-        </ng-template>
+        }
 
         <p-button
           label="Studiu Paralel"
           icon="pi pi-book"
           iconPos="left"
           class="parallel-btn"
-          [class.parallel-btn-active]="showParallelView"
-          [disabled]="!selectedSelection"
-          [loading]="loadingParallel"
-          (click)="toggleParallelView()"
+          [class.parallel-btn-active]="store.showParallelView()"
+          [disabled]="!store.selectedSelection()"
+          [loading]="store.loadingParallel()"
+          (click)="store.toggleParallelView()"
         ></p-button>
 
-        <span class="selection-preview" *ngIf="selectedSelection">
-          "{{ selectedSelection.text | slice: 0 : 60
-          }}{{ selectedSelection.text.length > 60 ? '…' : '' }}" —
-          <em>{{ selectedSelection.range }}</em>
-        </span>
+        @if (store.selectedSelection()) {
+          <span class="selection-preview">
+            "{{ store.selectedSelection()!.text | slice: 0 : 60
+            }}{{ store.selectedSelection()!.text.length > 60 ? '…' : '' }}" —
+            <em>{{ store.selectedSelection()!.range }}</em>
+          </span>
+        }
       </div>
     </div>
   `,
@@ -381,16 +380,7 @@ import { AuthService, CurrentUser } from '../services/auth.service';
         padding-right: 16px;
         display: flex;
         align-items: center;
-        gap: 8px;
-      }
-      :host ::ng-deep .auth-btn .p-button {
-        color: var(--text-muted, #90a4ae);
-        font-size: 0.88rem;
-        padding: 6px 14px;
-        height: 34px;
-      }
-      :host ::ng-deep .auth-btn .p-button:hover {
-        color: var(--text-light, #eceff1);
+        gap: 6px;
       }
       .user-avatar-area {
         cursor: pointer;
@@ -429,41 +419,16 @@ import { AuthService, CurrentUser } from '../services/auth.service';
     `,
   ],
 })
-export class BibleViewerComponent implements OnInit {
-  currentNav: BibleNavigation | null = null;
-  currentVerses: BibleVerse[] = [];
-  selectedVerseNumbers: string[] = [];
-  selectedSelection: VerseSelection | null = null;
+export class BibleViewerComponent {
+  protected readonly store = inject(BibleStore);
+  protected readonly authService = inject(AuthService);
 
-  analysisResult: AnalysisResult | null = null;
-  analyzing = false;
-  loadingChapter = false;
-
-  showParallelView = false;
-  parallelVerses: ParallelTranslation[] = [];
-  loadingParallel = false;
-
-  authDialogVisible = false;
-  authDialogMode: 'login' | 'register' = 'login';
-  currentUser: CurrentUser | null = null;
-
-  constructor(
-    private readonly bibleApi: BibleApiService,
-    private readonly analysisService: AnalysisService,
-    private readonly searchService: SearchService,
-    private readonly messageService: MessageService,
-    private readonly authService: AuthService,
-  ) {}
-
-  ngOnInit(): void {
-    this.authService.currentUser$.subscribe((user) => {
-      this.currentUser = user;
-    });
-  }
+  readonly authDialogVisible = signal(false);
+  readonly authDialogMode = signal<'login' | 'register'>('login');
 
   openAuth(mode: 'login' | 'register'): void {
-    this.authDialogMode = mode;
-    this.authDialogVisible = true;
+    this.authDialogMode.set(mode);
+    this.authDialogVisible.set(true);
   }
 
   openAuthFromPrompt(event: Event, mode: 'login' | 'register'): void {
@@ -471,214 +436,7 @@ export class BibleViewerComponent implements OnInit {
     this.openAuth(mode);
   }
 
-  onAuthSuccess(): void {
-    const user = this.authService.currentUser;
-    this.messageService.add({
-      severity: 'success',
-      summary: 'Bun venit!',
-      detail: user ? `Autentificat ca ${user.email}` : 'Autentificare reușită.',
-      life: 3000,
-    });
-  }
-
   logout(): void {
     this.authService.logout();
-    this.messageService.add({
-      severity: 'info',
-      summary: 'Delogat',
-      detail: 'Ai ieșit din cont.',
-      life: 3000,
-    });
-  }
-
-  onNavigate(nav: BibleNavigation): void {
-    this.currentNav = nav;
-    this.selectedSelection = null;
-    this.selectedVerseNumbers = [];
-    this.loadingChapter = true;
-
-    this.bibleApi
-      .getChapter(nav.translationId, nav.bookId, nav.chapter)
-      .pipe(
-        catchError(() => {
-          this.messageService.add({
-            severity: 'error',
-            summary: 'Eroare',
-            detail: 'Eroare la încărcarea capitolului.',
-            life: 4000,
-          });
-          return of([] as BibleVerse[]);
-        }),
-        finalize(() => (this.loadingChapter = false)),
-      )
-      .subscribe((verses) => {
-        this.currentVerses = verses;
-        // Lazily ingest embeddings for this chapter in the background
-        if (verses.length > 0) {
-          this.searchService.ingestChapter(
-            nav.translationId,
-            nav.bookId,
-            nav.bookName,
-            nav.chapter,
-            verses,
-          );
-        }
-      });
-  }
-
-  /**
-   * Handles navigation events from the semantic search component.
-   * Loads books for the current translation to get numChapters, then navigates.
-   */
-  onSearchNavigate(event: SearchNavigateEvent): void {
-    if (!this.currentNav) return;
-    const { translationId, translationName } = this.currentNav;
-
-    this.bibleApi
-      .getBooks(translationId)
-      .pipe(catchError(() => of([])))
-      .subscribe((books) => {
-        const book = books.find((b) => b.id === event.bookId);
-        if (!book) return;
-        const nav: BibleNavigation = {
-          translationId,
-          translationName,
-          bookId: event.bookId,
-          bookName: event.bookName,
-          chapter: event.chapter,
-          numChapters: book.numChapters,
-        };
-        this.onNavigate(nav);
-        // Highlight the specific verse after the chapter loads
-        this.selectedVerseNumbers = [String(event.verseNumber)];
-      });
-  }
-
-  onVerseSelected(selection: VerseSelection): void {
-    this.selectedSelection = selection;
-    // Clear stale parallel data; if panel is already open, auto-fetch for the new verse
-    this.parallelVerses = [];
-
-    const match = /(\d+)(?:-(\d+))?$/.exec(selection.range);
-    if (match) {
-      const start = parseInt(match[1], 10);
-      const end = match[2] ? parseInt(match[2], 10) : start;
-      this.selectedVerseNumbers = Array.from(
-        { length: end - start + 1 },
-        (_, i) => String(start + i),
-      );
-    }
-
-    if (this.showParallelView) {
-      this.openParallelView();
-    }
-  }
-
-  analyze(): void {
-    if (!this.selectedSelection || this.analyzing || !this.currentNav) return;
-
-    this.analyzing = true;
-    this.analysisResult = null;
-
-    this.analysisService
-      .analyze({
-        text: this.selectedSelection.text,
-        range: this.selectedSelection.range,
-        language: this.currentNav.translationName,
-        translationId: this.currentNav.translationId,
-      })
-      .pipe(
-        catchError((err) => {
-          console.error('Analysis error', err);
-          this.messageService.add({
-            severity: 'error',
-            summary: 'Eroare analiză',
-            detail: 'Verificaţi conexiunea şi configurarea API.',
-            life: 5000,
-          });
-          return of(null);
-        }),
-        finalize(() => (this.analyzing = false)),
-      )
-      .subscribe((result) => {
-        if (result) this.analysisResult = result;
-      });
-  }
-
-  toggleParallelView(): void {
-    if (this.showParallelView) {
-      this.closeParallelView();
-      return;
-    }
-    this.openParallelView();
-  }
-
-  openParallelView(): void {
-    if (!this.selectedSelection || !this.currentNav) return;
-
-    this.showParallelView = true;
-    this.loadingParallel = true;
-    this.parallelVerses = [];
-
-    const verseNums = this.selectedVerseNumbers
-      .map((n) => parseInt(n, 10))
-      .filter((n) => !isNaN(n));
-    const verseStart = verseNums.length > 0 ? Math.min(...verseNums) : 1;
-    const verseEnd = verseNums.length > 0 ? Math.max(...verseNums) : verseStart;
-
-    this.bibleApi
-      .getParallelVerses(
-        this.currentNav.bookId,
-        this.currentNav.chapter,
-        verseStart,
-        verseEnd,
-        this.currentNav.translationId,
-      )
-      .pipe(
-        catchError(() => {
-          this.messageService.add({
-            severity: 'error',
-            summary: 'Eroare',
-            detail: 'Eroare la încărcarea traducerilor paralele.',
-            life: 4000,
-          });
-          return of([] as ParallelTranslation[]);
-        }),
-        finalize(() => (this.loadingParallel = false)),
-      )
-      .subscribe((result) => {
-        this.parallelVerses = result;
-      });
-  }
-
-  closeParallelView(): void {
-    this.showParallelView = false;
-  }
-
-  prevChapter(): void {
-    if (!this.currentNav || !this.hasPrevChapter()) return;
-    this.currentNav = {
-      ...this.currentNav,
-      chapter: this.currentNav.chapter - 1,
-    };
-    this.onNavigate(this.currentNav);
-  }
-
-  nextChapter(): void {
-    if (!this.currentNav || !this.hasNextChapter()) return;
-    this.currentNav = {
-      ...this.currentNav,
-      chapter: this.currentNav.chapter + 1,
-    };
-    this.onNavigate(this.currentNav);
-  }
-
-  hasPrevChapter(): boolean {
-    return (this.currentNav?.chapter ?? 1) > 1;
-  }
-
-  hasNextChapter(): boolean {
-    if (!this.currentNav) return false;
-    return this.currentNav.chapter < this.currentNav.numChapters;
   }
 }

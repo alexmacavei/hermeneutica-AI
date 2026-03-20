@@ -1,5 +1,12 @@
-import { Component, Input, OnChanges, SimpleChanges } from '@angular/core';
-import { CommonModule } from '@angular/common';
+import {
+  ChangeDetectionStrategy,
+  Component,
+  effect,
+  inject,
+  input,
+  signal,
+} from '@angular/core';
+import { DatePipe } from '@angular/common';
 import { FormsModule } from '@angular/forms';
 import { ButtonModule } from 'primeng/button';
 import { DialogModule } from 'primeng/dialog';
@@ -13,8 +20,9 @@ import { AuthService } from '../services/auth.service';
 @Component({
   selector: 'app-notes-dialog',
   standalone: true,
+  changeDetection: ChangeDetectionStrategy.OnPush,
   imports: [
-    CommonModule,
+    DatePipe,
     FormsModule,
     ButtonModule,
     DialogModule,
@@ -31,13 +39,14 @@ import { AuthService } from '../services/auth.service';
       pTooltip="Notițe personale pentru acest verset"
       tooltipPosition="left"
       (click)="open()"
-      [disabled]="!verseReference"
+      [disabled]="!verseReference()"
       styleClass="notes-trigger-btn"
     ></p-button>
 
     <!-- Notes dialog -->
     <p-dialog
-      [(visible)]="dialogVisible"
+      [visible]="dialogVisible()"
+      (visibleChange)="dialogVisible.set($event)"
       [modal]="true"
       [closable]="true"
       [draggable]="false"
@@ -46,15 +55,18 @@ import { AuthService } from '../services/auth.service';
       header="Notițe personale"
     >
       <div class="notes-dialog-content">
-        <p class="verse-ref-label" *ngIf="verseReference">
-          <i class="pi pi-map-marker"></i> {{ verseReference }}
-        </p>
+        @if (verseReference()) {
+          <p class="verse-ref-label">
+            <i class="pi pi-map-marker"></i> {{ verseReference() }}
+          </p>
+        }
 
         <!-- Add new note -->
         <div class="add-note-section">
           <textarea
             pTextarea
-            [(ngModel)]="newNoteText"
+            [ngModel]="newNoteText()"
+            (ngModelChange)="newNoteText.set($event)"
             placeholder="Scrie o notiță pentru acest verset…"
             rows="3"
             class="w-full"
@@ -64,75 +76,85 @@ import { AuthService } from '../services/auth.service';
             label="Salvează"
             icon="pi pi-save"
             (click)="saveNote()"
-            [loading]="saving"
-            [disabled]="!newNoteText.trim()"
+            [loading]="saving()"
+            [disabled]="!newNoteText().trim()"
             styleClass="save-note-btn"
           ></p-button>
         </div>
 
         <!-- Existing notes -->
-        <div class="notes-list" *ngIf="notes.length > 0">
-          <div class="notes-divider">
-            <span>Notițele tale ({{ notes.length }})</span>
-          </div>
-          <div *ngFor="let note of notes" class="note-item">
-            <div *ngIf="editingNoteId !== note.id" class="note-view">
-              <p class="note-text">{{ note.note_text }}</p>
-              <div class="note-meta">
-                <span class="note-date">{{ note.created_at | date: 'dd MMM yyyy, HH:mm' }}</span>
-                <div class="note-actions">
-                  <p-button
-                    icon="pi pi-pencil"
-                    severity="secondary"
-                    [text]="true"
-                    [rounded]="true"
-                    pTooltip="Editează"
-                    (click)="startEdit(note)"
-                    styleClass="note-action-btn"
-                  ></p-button>
-                  <p-button
-                    icon="pi pi-trash"
-                    severity="danger"
-                    [text]="true"
-                    [rounded]="true"
-                    pTooltip="Șterge"
-                    (click)="deleteNote(note.id)"
-                    styleClass="note-action-btn"
-                  ></p-button>
-                </div>
-              </div>
+        @if (notes().length > 0) {
+          <div class="notes-list">
+            <div class="notes-divider">
+              <span>Notițele tale ({{ notes().length }})</span>
             </div>
-            <div *ngIf="editingNoteId === note.id" class="note-edit">
-              <textarea
-                pTextarea
-                [(ngModel)]="editNoteText"
-                rows="3"
-                class="w-full"
-                [autoResize]="true"
-              ></textarea>
-              <div class="edit-actions">
-                <p-button
-                  label="Salvează"
-                  icon="pi pi-check"
-                  (click)="saveEdit(note.id)"
-                  [loading]="saving"
-                  [disabled]="!editNoteText.trim()"
-                ></p-button>
-                <p-button
-                  label="Anulează"
-                  icon="pi pi-times"
-                  severity="secondary"
-                  (click)="cancelEdit()"
-                ></p-button>
+            @for (note of notes(); track note.id) {
+              <div class="note-item">
+                @if (editingNoteId() !== note.id) {
+                  <div class="note-view">
+                    <p class="note-text">{{ note.note_text }}</p>
+                    <div class="note-meta">
+                      <span class="note-date">{{ note.created_at | date: 'dd MMM yyyy, HH:mm' }}</span>
+                      <div class="note-actions">
+                        <p-button
+                          icon="pi pi-pencil"
+                          severity="secondary"
+                          [text]="true"
+                          [rounded]="true"
+                          pTooltip="Editează"
+                          (click)="startEdit(note)"
+                          styleClass="note-action-btn"
+                        ></p-button>
+                        <p-button
+                          icon="pi pi-trash"
+                          severity="danger"
+                          [text]="true"
+                          [rounded]="true"
+                          pTooltip="Șterge"
+                          (click)="deleteNote(note.id)"
+                          styleClass="note-action-btn"
+                        ></p-button>
+                      </div>
+                    </div>
+                  </div>
+                } @else {
+                  <div class="note-edit">
+                    <textarea
+                      pTextarea
+                      [ngModel]="editNoteText()"
+                      (ngModelChange)="editNoteText.set($event)"
+                      rows="3"
+                      class="w-full"
+                      [autoResize]="true"
+                    ></textarea>
+                    <div class="edit-actions">
+                      <p-button
+                        label="Salvează"
+                        icon="pi pi-check"
+                        (click)="saveEdit(note.id)"
+                        [loading]="saving()"
+                        [disabled]="!editNoteText().trim()"
+                      ></p-button>
+                      <p-button
+                        label="Anulează"
+                        icon="pi pi-times"
+                        severity="secondary"
+                        (click)="cancelEdit()"
+                      ></p-button>
+                    </div>
+                  </div>
+                }
               </div>
-            </div>
+            }
           </div>
-        </div>
+        }
 
-        <div class="empty-notes" *ngIf="notes.length === 0 && !loadingNotes">
-          <i class="pi pi-inbox"></i>
-          <span>Nicio notiță pentru acest verset.</span>
-        </div>
+        @if (notes().length === 0 && !loadingNotes()) {
+          <div class="empty-notes">
+            <i class="pi pi-inbox"></i>
+            <span>Nicio notiță pentru acest verset.</span>
+          </div>
+        }
       </div>
     </p-dialog>
   `,
@@ -243,31 +265,33 @@ import { AuthService } from '../services/auth.service';
     `,
   ],
 })
-export class NotesDialogComponent implements OnChanges {
-  @Input() verseReference = '';
+export class NotesDialogComponent {
+  readonly verseReference = input('');
 
-  dialogVisible = false;
-  notes: UserNote[] = [];
-  newNoteText = '';
-  editingNoteId: number | null = null;
-  editNoteText = '';
-  saving = false;
-  loadingNotes = false;
+  private readonly notesService = inject(NotesService);
+  private readonly authService = inject(AuthService);
+  private readonly messageService = inject(MessageService);
 
-  constructor(
-    private readonly notesService: NotesService,
-    private readonly authService: AuthService,
-    private readonly messageService: MessageService,
-  ) {}
+  readonly dialogVisible = signal(false);
+  readonly notes = signal<UserNote[]>([]);
+  readonly newNoteText = signal('');
+  readonly editingNoteId = signal<number | null>(null);
+  readonly editNoteText = signal('');
+  readonly saving = signal(false);
+  readonly loadingNotes = signal(false);
 
-  ngOnChanges(changes: SimpleChanges): void {
-    if (changes['verseReference'] && this.dialogVisible) {
-      this.loadNotes();
-    }
+  constructor() {
+    // Reload notes when verseReference changes while dialog is open
+    effect(() => {
+      const ref = this.verseReference();
+      if (ref && this.dialogVisible()) {
+        this.loadNotes();
+      }
+    });
   }
 
   open(): void {
-    if (!this.authService.isLoggedIn) {
+    if (!this.authService.isLoggedIn()) {
       this.messageService.add({
         severity: 'warn',
         summary: 'Autentificare necesară',
@@ -276,27 +300,27 @@ export class NotesDialogComponent implements OnChanges {
       });
       return;
     }
-    this.dialogVisible = true;
+    this.dialogVisible.set(true);
     this.loadNotes();
   }
 
   loadNotes(): void {
-    if (!this.verseReference) return;
-    this.loadingNotes = true;
+    if (!this.verseReference()) return;
+    this.loadingNotes.set(true);
     this.notesService
-      .getNotesForVerse(this.verseReference)
+      .getNotesForVerse(this.verseReference())
       .pipe(catchError(() => of([])))
       .subscribe((notes) => {
-        this.notes = notes;
-        this.loadingNotes = false;
+        this.notes.set(notes);
+        this.loadingNotes.set(false);
       });
   }
 
   saveNote(): void {
-    if (!this.newNoteText.trim()) return;
-    this.saving = true;
+    if (!this.newNoteText().trim()) return;
+    this.saving.set(true);
     this.notesService
-      .createNote(this.verseReference, this.newNoteText.trim())
+      .createNote(this.verseReference(), this.newNoteText().trim())
       .pipe(
         catchError(() => {
           this.messageService.add({
@@ -305,15 +329,15 @@ export class NotesDialogComponent implements OnChanges {
             detail: 'Notița nu a putut fi salvată.',
             life: 3000,
           });
-          this.saving = false;
+          this.saving.set(false);
           return of(null);
         }),
       )
       .subscribe((note) => {
-        this.saving = false;
+        this.saving.set(false);
         if (note) {
-          this.notes.push(note);
-          this.newNoteText = '';
+          this.notes.update((ns) => [...ns, note]);
+          this.newNoteText.set('');
           this.messageService.add({
             severity: 'success',
             summary: 'Salvat',
@@ -325,20 +349,20 @@ export class NotesDialogComponent implements OnChanges {
   }
 
   startEdit(note: UserNote): void {
-    this.editingNoteId = note.id;
-    this.editNoteText = note.note_text;
+    this.editingNoteId.set(note.id);
+    this.editNoteText.set(note.note_text);
   }
 
   cancelEdit(): void {
-    this.editingNoteId = null;
-    this.editNoteText = '';
+    this.editingNoteId.set(null);
+    this.editNoteText.set('');
   }
 
   saveEdit(id: number): void {
-    if (!this.editNoteText.trim()) return;
-    this.saving = true;
+    if (!this.editNoteText().trim()) return;
+    this.saving.set(true);
     this.notesService
-      .updateNote(id, this.editNoteText.trim())
+      .updateNote(id, this.editNoteText().trim())
       .pipe(
         catchError(() => {
           this.messageService.add({
@@ -347,15 +371,14 @@ export class NotesDialogComponent implements OnChanges {
             detail: 'Notița nu a putut fi actualizată.',
             life: 3000,
           });
-          this.saving = false;
+          this.saving.set(false);
           return of(null);
         }),
       )
       .subscribe((updated) => {
-        this.saving = false;
+        this.saving.set(false);
         if (updated) {
-          const idx = this.notes.findIndex((n) => n.id === id);
-          if (idx !== -1) this.notes[idx] = updated;
+          this.notes.update((ns) => ns.map((n) => (n.id === id ? updated : n)));
           this.cancelEdit();
         }
       });
@@ -367,7 +390,7 @@ export class NotesDialogComponent implements OnChanges {
       .pipe(catchError(() => of(null)))
       .subscribe((res) => {
         if (res) {
-          this.notes = this.notes.filter((n) => n.id !== id);
+          this.notes.update((ns) => ns.filter((n) => n.id !== id));
           this.messageService.add({
             severity: 'success',
             summary: 'Șters',

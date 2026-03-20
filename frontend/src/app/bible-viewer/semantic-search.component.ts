@@ -1,17 +1,18 @@
 import {
+  ChangeDetectionStrategy,
   Component,
-  EventEmitter,
-  Input,
-  OnChanges,
-  OnDestroy,
-  Output,
-  SimpleChanges,
+  effect,
+  inject,
+  input,
+  output,
+  signal,
 } from '@angular/core';
-import { CommonModule } from '@angular/common';
+import { SlicePipe } from '@angular/common';
 import { FormsModule } from '@angular/forms';
 import { ButtonModule } from 'primeng/button';
-import { Subject } from 'rxjs';
-import { debounceTime, distinctUntilChanged, switchMap, takeUntil } from 'rxjs/operators';
+import { EMPTY, Subject } from 'rxjs';
+import { debounceTime, distinctUntilChanged, switchMap } from 'rxjs/operators';
+import { takeUntilDestroyed } from '@angular/core/rxjs-interop';
 import { SearchService, SearchResult } from '../services/search.service';
 
 export interface SearchNavigateEvent {
@@ -24,7 +25,8 @@ export interface SearchNavigateEvent {
 @Component({
   selector: 'app-semantic-search',
   standalone: true,
-  imports: [CommonModule, FormsModule, ButtonModule],
+  changeDetection: ChangeDetectionStrategy.OnPush,
+  imports: [FormsModule, ButtonModule, SlicePipe],
   template: `
     <div class="search-wrapper">
       <div class="search-input-row">
@@ -32,48 +34,58 @@ export interface SearchNavigateEvent {
         <input
           class="search-input"
           type="text"
-          [(ngModel)]="query"
+          [ngModel]="query()"
           (ngModelChange)="onQueryChange($event)"
           placeholder="Căutare semantică (ex: iubire, pocăință...)"
-          [disabled]="!translationId"
+          [disabled]="!translationId()"
           (keydown.enter)="search()"
         />
-        <p-button
-          icon="pi pi-times"
-          variant="text"
-          class="clear-btn"
-          *ngIf="query"
-          (click)="clearSearch()"
-          [rounded]="true"
-        ></p-button>
+        @if (query()) {
+          <p-button
+            icon="pi pi-times"
+            variant="text"
+            class="clear-btn"
+            (click)="clearSearch()"
+            [rounded]="true"
+          ></p-button>
+        }
       </div>
 
       <!-- Results panel -->
-      <div class="search-results" *ngIf="results.length > 0 || (searched && results.length === 0)">
-        <div class="results-empty" *ngIf="searched && results.length === 0 && !loading">
-          <i class="pi pi-info-circle"></i>
-          Niciun rezultat. Parcurgeți mai multe capitole pentru a construi indexul semantic.
-        </div>
+      @if (results().length > 0 || (searched() && results().length === 0)) {
+        <div class="search-results">
+          @if (searched() && results().length === 0 && !loading()) {
+            <div class="results-empty">
+              <i class="pi pi-info-circle"></i>
+              Niciun rezultat. Parcurgeți mai multe capitole pentru a construi indexul semantic.
+            </div>
+          }
 
-        <div class="results-loading" *ngIf="loading">
-          <i class="pi pi-spin pi-spinner"></i> Se caută...
-        </div>
+          @if (loading()) {
+            <div class="results-loading">
+              <i class="pi pi-spin pi-spinner"></i> Se caută...
+            </div>
+          }
 
-        <ul class="results-list" *ngIf="results.length > 0 && !loading">
-          <li
-            *ngFor="let r of results"
-            class="result-item"
-            (click)="onResultClick(r)"
-            title="{{ r.reference }}"
-          >
-            <span class="result-ref">{{ r.reference }}</span>
-            <span class="result-text">{{ r.verseText | slice:0:90 }}{{ r.verseText.length > 90 ? '…' : '' }}</span>
-            <span class="result-score" title="Relevanță semantică">
-              {{ (r.similarity * 100).toFixed(0) }}%
-            </span>
-          </li>
-        </ul>
-      </div>
+          @if (results().length > 0 && !loading()) {
+            <ul class="results-list">
+              @for (r of results(); track r.reference) {
+                <li
+                  class="result-item"
+                  (click)="onResultClick(r)"
+                  [title]="r.reference"
+                >
+                  <span class="result-ref">{{ r.reference }}</span>
+                  <span class="result-text">{{ r.verseText | slice:0:90 }}{{ r.verseText.length > 90 ? '…' : '' }}</span>
+                  <span class="result-score" title="Relevanță semantică">
+                    {{ (r.similarity * 100).toFixed(0) }}%
+                  </span>
+                </li>
+              }
+            </ul>
+          }
+        </div>
+      }
     </div>
   `,
   styles: [`
@@ -176,76 +188,71 @@ export interface SearchNavigateEvent {
     }
   `],
 })
-export class SemanticSearchComponent implements OnChanges, OnDestroy {
+export class SemanticSearchComponent {
   /** The currently selected translation ID – search is scoped to this. */
-  @Input() translationId = '';
+  readonly translationId = input('');
 
   /** Emitted when the user clicks a result to navigate to that verse. */
-  @Output() navigateTo = new EventEmitter<SearchNavigateEvent>();
+  readonly navigateTo = output<SearchNavigateEvent>();
 
-  query = '';
-  results: SearchResult[] = [];
-  loading = false;
-  searched = false;
+  protected readonly query = signal('');
+  protected readonly results = signal<SearchResult[]>([]);
+  protected readonly loading = signal(false);
+  protected readonly searched = signal(false);
 
   private readonly querySubject = new Subject<string>();
-  private readonly destroy$ = new Subject<void>();
+  private readonly searchService = inject(SearchService);
 
-  constructor(private readonly searchService: SearchService) {
+  constructor() {
+    // Clear search when the translation changes; skip the initial empty state
+    effect(() => {
+      if (!this.translationId()) return;
+      this.clearSearch();
+    });
+
+    // Debounced search pipeline
     this.querySubject
       .pipe(
         debounceTime(500),
         distinctUntilChanged(),
         switchMap((q) => {
-          if (!q.trim() || !this.translationId) {
-            this.results = [];
-            this.searched = false;
-            this.loading = false;
-            return [];
+          if (!q.trim() || !this.translationId()) {
+            this.results.set([]);
+            this.searched.set(false);
+            this.loading.set(false);
+            return EMPTY;
           }
-          this.loading = true;
-          return this.searchService.searchVerses(q.trim(), this.translationId);
+          this.loading.set(true);
+          return this.searchService.searchVerses(q.trim(), this.translationId());
         }),
-        takeUntil(this.destroy$),
+        takeUntilDestroyed(),
       )
       .subscribe((response) => {
-        this.loading = false;
-        if (response) {
-          this.results = response.results;
-          this.searched = true;
-        }
+        this.loading.set(false);
+        this.results.set(response.results);
+        this.searched.set(true);
       });
   }
 
-  ngOnChanges(changes: SimpleChanges): void {
-    if (changes['translationId']) {
-      this.clearSearch();
-    }
-  }
-
-  ngOnDestroy(): void {
-    this.destroy$.next();
-    this.destroy$.complete();
-  }
-
-  onQueryChange(q: string): void {
+  protected onQueryChange(q: string): void {
+    this.query.set(q);
     this.querySubject.next(q);
   }
 
-  search(): void {
-    if (this.query.trim()) {
-      this.querySubject.next(this.query);
+  protected search(): void {
+    if (this.query().trim()) {
+      this.querySubject.next(this.query());
     }
   }
 
-  clearSearch(): void {
-    this.query = '';
-    this.results = [];
-    this.searched = false;
-    this.loading = false;
+  protected clearSearch(): void {
+    this.query.set('');
+    this.results.set([]);
+    this.searched.set(false);
+    this.loading.set(false);
   }
 
-  onResultClick(result: SearchResult): void {
+  protected onResultClick(result: SearchResult): void {
     this.navigateTo.emit({
       bookId: result.bookId,
       bookName: result.bookName,

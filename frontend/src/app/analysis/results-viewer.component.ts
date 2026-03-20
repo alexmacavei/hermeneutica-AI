@@ -1,5 +1,5 @@
-import { Component, Input } from '@angular/core';
-import { CommonModule } from '@angular/common';
+import { ChangeDetectionStrategy, Component, input } from '@angular/core';
+import { SlicePipe } from '@angular/common';
 import { CardModule } from 'primeng/card';
 import { ProgressSpinnerModule } from 'primeng/progressspinner';
 import { AnalysisResult } from '../services/analysis.service';
@@ -15,43 +15,53 @@ interface AnalysisCard {
 @Component({
   selector: 'app-results-viewer',
   standalone: true,
-  imports: [CommonModule, CardModule, ProgressSpinnerModule, NotesDialogComponent],
+  changeDetection: ChangeDetectionStrategy.OnPush,
+  imports: [CardModule, ProgressSpinnerModule, SlicePipe, NotesDialogComponent],
   template: `
-    <div class="results-section" *ngIf="result || loading">
-      <!-- Header -->
-      <div class="results-header" *ngIf="result">
-        <i class="pi pi-book reference-icon"></i>
-        <div class="reference-info">
-          <h3 class="reference-title">{{ result.reference }}</h3>
-          <p class="reference-text">{{ result.text | slice:0:120 }}{{ result.text.length > 120 ? '...' : '' }}</p>
-        </div>
-        <span class="language-badge">{{ result.language }}</span>
-        <app-notes-dialog [verseReference]="result.reference"></app-notes-dialog>
-      </div>
-
-      <!-- Loading spinner -->
-      <div class="loading-state" *ngIf="loading">
-        <p-progressSpinner strokeWidth="4" animationDuration=".8s"></p-progressSpinner>
-        <p>Analiza hermeneutică în curs… 🎓</p>
-      </div>
-
-      <!-- 4 Cards Grid -->
-      <div class="cards-grid" *ngIf="result && !loading">
-        <p-card
-          *ngFor="let card of cardDefs"
-          class="analysis-card {{ card.cssClass }}"
-          [styleClass]="'analysis-card-inner'"
-        >
-          <ng-template pTemplate="header">
-            <div class="card-header-row">
-              <span class="card-icon">{{ card.icon }}</span>
-              <span class="card-title">{{ card.title }}</span>
+    @if (result() || loading()) {
+      <div class="results-section">
+        <!-- Header -->
+        @if (result()) {
+          <div class="results-header">
+            <i class="pi pi-book reference-icon"></i>
+            <div class="reference-info">
+              <h3 class="reference-title">{{ result()!.reference }}</h3>
+              <p class="reference-text">{{ result()!.text | slice:0:120 }}{{ result()!.text.length > 120 ? '...' : '' }}</p>
             </div>
-          </ng-template>
-          <p class="card-content-text">{{ result.cards[card.key] }}</p>
-        </p-card>
+            <span class="language-badge">{{ result()!.language }}</span>
+            <app-notes-dialog [verseReference]="result()!.reference"></app-notes-dialog>
+          </div>
+        }
+
+        <!-- Loading spinner -->
+        @if (loading()) {
+          <div class="loading-state">
+            <p-progressSpinner strokeWidth="4" animationDuration=".8s"></p-progressSpinner>
+            <p>Analiza hermeneutică în curs… 🎓</p>
+          </div>
+        }
+
+        <!-- 4 Cards Grid -->
+        @if (result() && !loading()) {
+          <div class="cards-grid">
+            @for (card of cardDefs; track card.key) {
+              <p-card
+                class="analysis-card {{ card.cssClass }}"
+                [styleClass]="'analysis-card-inner'"
+              >
+                <ng-template pTemplate="header">
+                  <div class="card-header-row">
+                    <span class="card-icon">{{ card.icon }}</span>
+                    <span class="card-title">{{ card.title }}</span>
+                  </div>
+                </ng-template>
+                <p class="card-content-text">{{ result()!.cards[card.key] }}</p>
+              </p-card>
+            }
+          </div>
+        }
       </div>
-    </div>
+    }
   `,
   styles: [`
     .results-section {
@@ -172,8 +182,8 @@ interface AnalysisCard {
   `],
 })
 export class ResultsViewerComponent {
-  @Input() result: AnalysisResult | null = null;
-  @Input() loading = false;
+  readonly result = input<AnalysisResult | null>(null);
+  readonly loading = input(false);
 
   readonly cardDefs: AnalysisCard[] = [
     {
