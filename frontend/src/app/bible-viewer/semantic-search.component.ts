@@ -204,9 +204,9 @@ export class SemanticSearchComponent {
   private readonly searchService = inject(SearchService);
 
   constructor() {
-    // Clear search when the translation changes
+    // Clear search when the translation changes; skip the initial empty state
     effect(() => {
-      this.translationId(); // tracked dependency
+      if (!this.translationId()) return;
       this.clearSearch();
     });
 

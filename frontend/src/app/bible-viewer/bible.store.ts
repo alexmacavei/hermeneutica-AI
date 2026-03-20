@@ -46,11 +46,20 @@ const initialState: BibleState = {
 export const BibleStore = signalStore(
   withState(initialState),
 
-  withComputed(({ currentNav }) => ({
+  withComputed(({ currentNav, selectedVerseNumbers }) => ({
     hasPrevChapter: computed(() => (currentNav()?.chapter ?? 1) > 1),
     hasNextChapter: computed(() => {
       const nav = currentNav();
       return nav ? nav.chapter < nav.numChapters : false;
+    }),
+    /** Start/end verse numbers derived from the current selection array. */
+    verseRange: computed(() => {
+      const nums = selectedVerseNumbers()
+        .map((n) => parseInt(n, 10))
+        .filter((n) => !isNaN(n));
+      const start = nums.length > 0 ? Math.min(...nums) : 1;
+      const end = nums.length > 0 ? Math.max(...nums) : start;
+      return { start, end };
     }),
   })),
 
@@ -145,12 +154,8 @@ export const BibleStore = signalStore(
         ),
         switchMap(() => {
           const nav = store.currentNav()!;
-          const verseNums = store
-            .selectedVerseNumbers()
-            .map((n) => parseInt(n, 10))
-            .filter((n) => !isNaN(n));
-          const verseStart = verseNums.length > 0 ? Math.min(...verseNums) : 1;
-          const verseEnd = verseNums.length > 0 ? Math.max(...verseNums) : verseStart;
+          // verseRange is a computed signal derived from selectedVerseNumbers
+          const { start: verseStart, end: verseEnd } = store.verseRange();
 
           return bibleApi
             .getParallelVerses(nav.bookId, nav.chapter, verseStart, verseEnd, nav.translationId)
@@ -197,8 +202,11 @@ export const BibleStore = signalStore(
                   chapter: event.chapter,
                   numChapters: book.numChapters,
                 };
-                // loadChapter synchronously clears selectedVerseNumbers in its
-                // leading tap; we immediately override it with the target verse.
+                // rxMethod's leading tap runs synchronously before the first
+                // async operator, so loadChapter synchronously clears
+                // selectedVerseNumbers.  The patchState below then immediately
+                // overrides it with the target verse before the chapter HTTP
+                // call completes.
                 loadChapter(newNav);
                 patchState(store, { selectedVerseNumbers: [String(event.verseNumber)] });
               }),
