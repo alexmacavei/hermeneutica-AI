@@ -1,10 +1,10 @@
 import {
+  ChangeDetectionStrategy,
   Component,
-  EventEmitter,
   OnInit,
-  Output,
+  inject,
+  output,
 } from '@angular/core';
-import { CommonModule } from '@angular/common';
 import { FormsModule } from '@angular/forms';
 import { SelectModule } from 'primeng/select';
 import { BibleApiService, Translation, Book } from '../services/bible-api.service';
@@ -26,7 +26,8 @@ interface SelectOption<T = string> {
 @Component({
   selector: 'app-bible-selector',
   standalone: true,
-  imports: [CommonModule, FormsModule, SelectModule],
+  changeDetection: ChangeDetectionStrategy.OnPush,
+  imports: [FormsModule, SelectModule],
   template: `
     <div class="selector-bar">
       <!-- Translation -->
@@ -114,7 +115,7 @@ interface SelectOption<T = string> {
   `],
 })
 export class BibleSelectorComponent implements OnInit {
-  @Output() navigate = new EventEmitter<BibleNavigation>();
+  readonly navigate = output<BibleNavigation>();
 
   selectedTranslationId = '';
   selectedBookId = '';
@@ -127,7 +128,7 @@ export class BibleSelectorComponent implements OnInit {
   private books: Book[] = [];
   private translations: Translation[] = [];
 
-  constructor(private readonly bibleApi: BibleApiService) {}
+  private readonly bibleApi = inject(BibleApiService);
 
   ngOnInit(): void {
     this.bibleApi.getTranslations().subscribe((translations) => {

@@ -1,45 +1,48 @@
 import {
+  ChangeDetectionStrategy,
   Component,
-  EventEmitter,
-  Input,
-  Output,
+  input,
+  output,
 } from '@angular/core';
-import { CommonModule } from '@angular/common';
 import { VerseHighlightDirective, VerseSelection } from './verse-highlighter.directive';
 
 @Component({
   selector: 'app-bible-text',
   standalone: true,
-  imports: [CommonModule, VerseHighlightDirective],
+  changeDetection: ChangeDetectionStrategy.OnPush,
+  imports: [VerseHighlightDirective],
   template: `
     <div
       class="bible-text-container"
       verseHighlight
-      [bookName]="bookName"
-      [chapterNumber]="chapterNumber"
-      (verseSelected)="onVerseSelected($event)"
+      [bookName]="bookName()"
+      [chapterNumber]="chapterNumber()"
+      (verseSelected)="verseSelected.emit($event)"
     >
       <h2 class="chapter-heading">
-        <span class="book-name">{{ bookName }}</span>
-        <span class="chapter-num"> {{ chapterNumber }}</span>
+        <span class="book-name">{{ bookName() }}</span>
+        <span class="chapter-num"> {{ chapterNumber() }}</span>
       </h2>
 
       <div class="verses-wrapper">
-        <div
-          *ngFor="let verse of verses"
-          class="verse verse-highlight"
-          [class.selected]="selectedVerses.includes(verse.number)"
-          [attr.data-verse]="verse.number"
-        >
-          <span class="verse-number">{{ verse.number }}</span>
-          <span class="verse-text">{{ verse.text }}</span>
-        </div>
+        @for (verse of verses(); track verse.number) {
+          <div
+            class="verse verse-highlight"
+            [class.selected]="selectedVerses().includes(verse.number)"
+            [attr.data-verse]="verse.number"
+          >
+            <span class="verse-number">{{ verse.number }}</span>
+            <span class="verse-text">{{ verse.text }}</span>
+          </div>
+        }
       </div>
 
-      <div *ngIf="verses.length === 0" class="empty-state">
-        <span class="material-icons">menu_book</span>
-        <p>Selectează un capitol pentru a vedea textul biblic.</p>
-      </div>
+      @if (verses().length === 0) {
+        <div class="empty-state">
+          <span class="material-icons">menu_book</span>
+          <p>Selectează un capitol pentru a vedea textul biblic.</p>
+        </div>
+      }
     </div>
   `,
   styles: [`
@@ -119,13 +122,9 @@ import { VerseHighlightDirective, VerseSelection } from './verse-highlighter.dir
   `],
 })
 export class BibleTextComponent {
-  @Input() bookName = '';
-  @Input() chapterNumber = '';
-  @Input() verses: { number: string; text: string }[] = [];
-  @Input() selectedVerses: string[] = [];
-  @Output() verseSelected = new EventEmitter<VerseSelection>();
-
-  onVerseSelected(selection: VerseSelection): void {
-    this.verseSelected.emit(selection);
-  }
+  readonly bookName = input('');
+  readonly chapterNumber = input('');
+  readonly verses = input<{ number: string; text: string }[]>([]);
+  readonly selectedVerses = input<string[]>([]);
+  readonly verseSelected = output<VerseSelection>();
 }

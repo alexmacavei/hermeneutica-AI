@@ -1,5 +1,4 @@
-import { Component, EventEmitter, Input, Output } from '@angular/core';
-import { CommonModule } from '@angular/common';
+import { ChangeDetectionStrategy, Component, input, output } from '@angular/core';
 import { ProgressSpinnerModule } from 'primeng/progressspinner';
 import { ButtonModule } from 'primeng/button';
 import { ParallelTranslation } from '../services/bible-api.service';
@@ -7,7 +6,8 @@ import { ParallelTranslation } from '../services/bible-api.service';
 @Component({
   selector: 'app-parallel-viewer',
   standalone: true,
-  imports: [CommonModule, ProgressSpinnerModule, ButtonModule],
+  changeDetection: ChangeDetectionStrategy.OnPush,
+  imports: [ProgressSpinnerModule, ButtonModule],
   template: `
     <div class="parallel-section">
       <!-- Header -->
@@ -16,7 +16,9 @@ import { ParallelTranslation } from '../services/bible-api.service';
           <i class="pi pi-book reference-icon"></i>
           <div class="header-text">
             <h3 class="panel-title">Studiu Paralel</h3>
-            <span class="reference-badge" *ngIf="reference">{{ reference }}</span>
+            @if (reference()) {
+              <span class="reference-badge">{{ reference() }}</span>
+            }
           </div>
         </div>
         <p-button
@@ -30,49 +32,61 @@ import { ParallelTranslation } from '../services/bible-api.service';
       </div>
 
       <!-- Loading state -->
-      <div class="loading-state" *ngIf="loading">
-        <p-progressSpinner strokeWidth="4" animationDuration=".8s"></p-progressSpinner>
-        <p>Se încarcă traducerile paralele…</p>
-      </div>
+      @if (loading()) {
+        <div class="loading-state">
+          <p-progressSpinner strokeWidth="4" animationDuration=".8s"></p-progressSpinner>
+          <p>Se încarcă traducerile paralele…</p>
+        </div>
+      }
 
       <!-- Translations list -->
-      <div class="translations-list" *ngIf="!loading && translations.length > 0">
-        <div
-          *ngFor="let t of translations"
-          class="translation-card"
-          [class.unavailable]="!t.available"
-        >
-          <div class="translation-header">
-            <div class="translation-meta">
-              <span class="translation-name">{{ t.translationName }}</span>
-              <span class="translation-lang">{{ t.language }}</span>
-            </div>
-            <span *ngIf="t.textDirection === 'rtl'" class="dir-badge rtl">RTL</span>
-          </div>
+      @if (!loading() && translations().length > 0) {
+        <div class="translations-list">
+          @for (t of translations(); track t.translationId) {
+            <div
+              class="translation-card"
+              [class.unavailable]="!t.available"
+            >
+              <div class="translation-header">
+                <div class="translation-meta">
+                  <span class="translation-name">{{ t.translationName }}</span>
+                  <span class="translation-lang">{{ t.language }}</span>
+                </div>
+                @if (t.textDirection === 'rtl') {
+                  <span class="dir-badge rtl">RTL</span>
+                }
+              </div>
 
-          <div
-            *ngIf="t.available"
-            class="translation-verses"
-            [attr.dir]="t.textDirection"
-          >
-            <div *ngFor="let verse of t.verses" class="verse-row">
-              <span class="verse-num">{{ verse.number }}</span>
-              <span class="verse-text">{{ verse.text }}</span>
+              @if (t.available) {
+                <div
+                  class="translation-verses"
+                  [attr.dir]="t.textDirection"
+                >
+                  @for (verse of t.verses; track verse.number) {
+                    <div class="verse-row">
+                      <span class="verse-num">{{ verse.number }}</span>
+                      <span class="verse-text">{{ verse.text }}</span>
+                    </div>
+                  }
+                </div>
+              } @else {
+                <div class="not-available">
+                  <i class="pi pi-ban"></i>
+                  <span>N/A — verset indisponibil în această traducere</span>
+                </div>
+              }
             </div>
-          </div>
-
-          <div *ngIf="!t.available" class="not-available">
-            <i class="pi pi-ban"></i>
-            <span>N/A — verset indisponibil în această traducere</span>
-          </div>
+          }
         </div>
-      </div>
+      }
 
       <!-- Empty state (no verse selected yet) -->
-      <div class="empty-state" *ngIf="!loading && translations.length === 0">
-        <i class="pi pi-info-circle"></i>
-        <p>Selectați un verset pentru a vedea traducerile paralele.</p>
-      </div>
+      @if (!loading() && translations().length === 0) {
+        <div class="empty-state">
+          <i class="pi pi-info-circle"></i>
+          <p>Selectați un verset pentru a vedea traducerile paralele.</p>
+        </div>
+      }
     </div>
   `,
   styles: [`
@@ -271,9 +285,8 @@ import { ParallelTranslation } from '../services/bible-api.service';
   `],
 })
 export class ParallelViewerComponent {
-  @Input() translations: ParallelTranslation[] = [];
-  @Input() loading = false;
-  @Input() reference = '';
-
-  @Output() close = new EventEmitter<void>();
+  readonly translations = input<ParallelTranslation[]>([]);
+  readonly loading = input(false);
+  readonly reference = input('');
+  readonly close = output<void>();
 }
