@@ -308,8 +308,8 @@ function parseBookText(text: string): Map<number, Verse[]> {
         currentChapter = 1;
       }
 
-      // Only treat as a new verse if the number is plausible (sequential or 1)
-      if (vnum === 1 || (lastVerse && vnum === lastVerse.number + 1) || vnum > 0) {
+      // Accept any positive verse number (PDFs may have non-sequential numbering)
+      if (vnum > 0) {
         lastVerse = { number: vnum, text: vtext };
         currentVerses.push(lastVerse);
         continue;
