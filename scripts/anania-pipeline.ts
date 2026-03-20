@@ -22,8 +22,16 @@
 
 import axios from 'axios';
 import * as cheerio from 'cheerio';
-import * as fs from 'fs/promises';
-import * as path from 'path';
+
+import {
+  type Verse,
+  type BaseBookConfig,
+  sleep,
+  validateEnglishNames,
+  buildChapterEntry,
+  buildBookEntry,
+  writeOutput,
+} from './shared';
 
 // ─── Constants ───────────────────────────────────────────────────────────────
 
@@ -32,8 +40,6 @@ const OT_INDEX_URL = `${BASE_URL}/vechiul-testament`;
 const NT_INDEX_URL = `${BASE_URL}/noul-testament`;
 
 const TRANSLATION_ID = 'ro_anania';
-const BIBLES_DIR = path.resolve(__dirname, '../data/bibles');
-const FINAL_OUTPUT = path.join(BIBLES_DIR, `${TRANSLATION_ID}.json`);
 
 /** Delay (ms) between chapter fetches to be polite to the server. */
 const CHAPTER_FETCH_DELAY_MS = 400;
@@ -51,22 +57,14 @@ type SiteBook = {
   displayName: string;
 };
 
-type Verse = { number: number; text: string };
-
-/** Static per-book metadata used for helloao JSON fields. */
-type BookConfig = {
-  /** Canonical helloao order (1-based). */
-  order: number;
-  /** USFM book code, e.g. "GEN", "MAT". */
-  usfmCode: string;
+/** Anania-specific book config extends the shared base with the URL path matching key. */
+type BookConfig = BaseBookConfig & {
   /**
    * Full URL path of the book on biblia-online.ro (without query string),
    * e.g. "/vechiul-testament/facerea", "/noul-testament/evanghelia-matei".
    * This is the primary matching key used to link config entries to site books.
    */
   bookPath: string;
-  /** Romanian abbreviation. */
-  nameAbbrev: string;
 };
 
 // ─── Static books configuration ──────────────────────────────────────────────
@@ -177,45 +175,8 @@ const booksConfig: BookConfig[] = [
   { order: 66, usfmCode: 'REV', bookPath: '/noul-testament/apocalipsa',                              nameAbbrev: 'Apoc'   },
 ];
 
-// English common names (for the commonName field in helloao JSON)
-const ENGLISH_BOOK_NAMES: Record<string, string> = {
-  GEN: 'Genesis',       EXO: 'Exodus',          LEV: 'Leviticus',       NUM: 'Numbers',
-  DEU: 'Deuteronomy',   JOS: 'Joshua',          JDG: 'Judges',          RUT: 'Ruth',
-  '1SA': '1 Samuel',   '2SA': '2 Samuel',       '1KI': '1 Kings',       '2KI': '2 Kings',
-  '1CH': '1 Chronicles', '2CH': '2 Chronicles', '1ES': '1 Esdras',      EZR: 'Ezra',
-  NEH: 'Nehemiah',      TOB: 'Tobit',            JDT: 'Judith',          EST: 'Esther',
-  '1MA': '1 Maccabees', '2MA': '2 Maccabees',   '3MA': '3 Maccabees',  '4MA': '4 Maccabees',
-  JOB: 'Job',           PSA: 'Psalms',           MAN: 'Prayer of Manasseh', PRO: 'Proverbs',
-  ECC: 'Ecclesiastes',  SNG: 'Song of Songs',    WIS: 'Wisdom of Solomon', SIR: 'Sirach',
-  ISA: 'Isaiah',        JER: 'Jeremiah',         LAM: 'Lamentations',    BAR: 'Baruch',
-  LJE: 'Letter of Jeremiah',
-  EZK: 'Ezekiel',       DAN: 'Daniel',           S3Y: 'Song of the Three Young Men',
-  SUS: 'Susanna',       BEL: 'Bel and the Dragon',
-  HOS: 'Hosea',         JOL: 'Joel',             AMO: 'Amos',            OBA: 'Obadiah',
-  JON: 'Jonah',         MIC: 'Micah',            NAM: 'Nahum',           HAB: 'Habakkuk',
-  ZEP: 'Zephaniah',     HAG: 'Haggai',           ZEC: 'Zechariah',       MAL: 'Malachi',
-  PS2: 'Psalm 151',     MAT: 'Matthew',          MRK: 'Mark',            LUK: 'Luke',
-  JHN: 'John',          ACT: 'Acts',             ROM: 'Romans',          '1CO': '1 Corinthians',
-  '2CO': '2 Corinthians', GAL: 'Galatians',      EPH: 'Ephesians',       PHP: 'Philippians',
-  COL: 'Colossians',   '1TH': '1 Thessalonians', '2TH': '2 Thessalonians', '1TI': '1 Timothy',
-  '2TI': '2 Timothy',  TIT: 'Titus',             PHM: 'Philemon',         HEB: 'Hebrews',
-  JAS: 'James',        '1PE': '1 Peter',          '2PE': '2 Peter',        '1JN': '1 John',
-  '2JN': '2 John',     '3JN': '3 John',           JUD: 'Jude',             REV: 'Revelation',
-};
-
-// Books that are deuterocanonical / apocryphal in the helloao sense
-const APOCRYPHAL_CODES = new Set([
-  'TOB', 'JDT', '1MA', '2MA', '3MA', '4MA', 'WIS', 'SIR', 'BAR', 'LJE',
-  '1ES', 'MAN', 'PS2', 'S3Y', 'SUS', 'BEL',
-]);
-
 // Startup validation: every usfmCode must have an English name entry
-const missingEnglishNames = booksConfig
-  .map((b) => b.usfmCode)
-  .filter((code) => !(code in ENGLISH_BOOK_NAMES));
-if (missingEnglishNames.length > 0) {
-  throw new Error(`Missing ENGLISH_BOOK_NAMES entries for: ${missingEnglishNames.join(', ')}`);
-}
+validateEnglishNames(booksConfig);
 
 // ─── HTTP helper ─────────────────────────────────────────────────────────────
 
@@ -371,14 +332,9 @@ function parseChapterVerses(html: string): Verse[] {
   return verses;
 }
 
-function sleep(ms: number): Promise<void> {
-  return new Promise((resolve) => setTimeout(resolve, ms));
-}
-
 // ─── Main pipeline ────────────────────────────────────────────────────────────
 
 async function main(): Promise<void> {
-  await fs.mkdir(BIBLES_DIR, { recursive: true });
   console.log('=== Biblia Anania Pipeline ===\n');
 
   // ── Step 1: discover book paths and display names from OT + NT index pages ──
@@ -458,18 +414,7 @@ async function main(): Promise<void> {
         continue;
       }
 
-      chapters.push({
-        chapter: {
-          number: cap,
-          bookName: displayName,
-          content: verses.map((v) => ({
-            type: 'verse' as const,
-            number: v.number,
-            content: [v.text],
-          })),
-        },
-      });
-
+      chapters.push(buildChapterEntry(cap, displayName, verses));
       bookVerses += verses.length;
     }
 
@@ -481,18 +426,14 @@ async function main(): Promise<void> {
     totalChapters += chapters.length;
     totalVerses += bookVerses;
 
-    books.push({
-      id: book.usfmCode,
+    books.push(buildBookEntry({
+      usfmCode: book.usfmCode,
       name: displayName,
       shortName: book.nameAbbrev,
-      commonName: ENGLISH_BOOK_NAMES[book.usfmCode],
-      title: displayName,
       order: book.order,
-      numberOfChapters: chapters.length,
-      totalNumberOfVerses: bookVerses,
-      isApocryphal: APOCRYPHAL_CODES.has(book.usfmCode),
       chapters,
-    });
+      totalVerses: bookVerses,
+    }));
 
     console.log(`  ✓ ${chapters.length} chapters, ${bookVerses} verses`);
   }
@@ -506,28 +447,23 @@ async function main(): Promise<void> {
   }
 
   // ── Step 4: write output ───────────────────────────────────────────────────
-  const output = {
-    translation: {
-      id: TRANSLATION_ID,
-      name: 'Biblia Anania',
-      englishName: 'Romanian Anania Bible',
-      shortName: 'Anania',
-      textDirection: 'ltr',
-      language: 'ro',
-      website: 'https://biblia-online.ro',
-      licenseUrl: 'https://biblia-online.ro',
-      numberOfBooks: books.length,
-      totalNumberOfChapters: totalChapters,
-      totalNumberOfVerses: totalVerses,
-      availableFormats: ['json'],
-    },
-    books,
-  };
-
-  await fs.writeFile(FINAL_OUTPUT, JSON.stringify(output, null, 2), 'utf-8');
+  const outputPath = await writeOutput(TRANSLATION_ID, {
+    id: TRANSLATION_ID,
+    name: 'Biblia Anania',
+    englishName: 'Romanian Anania Bible',
+    shortName: 'Anania',
+    textDirection: 'ltr',
+    language: 'ro',
+    website: 'https://biblia-online.ro',
+    licenseUrl: 'https://biblia-online.ro',
+    numberOfBooks: books.length,
+    totalNumberOfChapters: totalChapters,
+    totalNumberOfVerses: totalVerses,
+    availableFormats: ['json'],
+  }, books);
 
   console.log('\n✅ Pipeline complete.');
-  console.log(`   Written: ${FINAL_OUTPUT}`);
+  console.log(`   Written: ${outputPath}`);
   console.log(`   ${books.length} books, ${totalChapters} chapters, ${totalVerses} verses`);
 }
 
