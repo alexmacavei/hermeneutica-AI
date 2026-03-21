@@ -105,37 +105,37 @@ const booksConfig: BookConfig[] = [
   { order: 1,  usfmCode: 'GEN', pdfHeading: 'Facerea',                                  nameAbbrev: 'Fac'    },
   { order: 2,  usfmCode: 'EXO', pdfHeading: 'Ieșirea',           altHeadings: ['Iesirea'],                          nameAbbrev: 'Ieș'    },
   { order: 3,  usfmCode: 'LEV', pdfHeading: 'Leviticul',                                nameAbbrev: 'Lev'    },
-  { order: 4,  usfmCode: 'NUM', pdfHeading: 'Numerii',           altHeadings: ['Numeri'],                           nameAbbrev: 'Num'    },
+  { order: 4,  usfmCode: 'NUM', pdfHeading: 'Numerii',           altHeadings: ['Numeri', 'Cartea Numerilor', 'CARTEA NUMERILOR', 'Numerele'],           nameAbbrev: 'Num'    },
   { order: 5,  usfmCode: 'DEU', pdfHeading: 'Deuteronomul',                             nameAbbrev: 'Deut'   },
 
   // ── Historical books ─────────────────────────────────────────────────────
   { order: 6,  usfmCode: 'JOS', pdfHeading: 'Iosua Navi',       altHeadings: ['Iosua'],                            nameAbbrev: 'Ios'    },
   { order: 7,  usfmCode: 'JDG', pdfHeading: 'Judecătorii',      altHeadings: ['Judecatori', 'Judecători'],          nameAbbrev: 'Jud'    },
   { order: 8,  usfmCode: 'RUT', pdfHeading: 'Rut',              altHeadings: ['Ruta'],                              nameAbbrev: 'Rut'    },
-  { order: 9,  usfmCode: '1SA', pdfHeading: 'Cartea întâi a Regilor',  altHeadings: ['I Regi', '1 Regi'],           nameAbbrev: '1Reg'   },
-  { order: 10, usfmCode: '2SA', pdfHeading: 'Cartea a doua a Regilor', altHeadings: ['II Regi', '2 Regi'],          nameAbbrev: '2Reg'   },
-  { order: 11, usfmCode: '1KI', pdfHeading: 'Cartea a treia a Regilor', altHeadings: ['III Regi', '3 Regi'],        nameAbbrev: '3Reg'   },
-  { order: 12, usfmCode: '2KI', pdfHeading: 'Cartea a patra a Regilor', altHeadings: ['IV Regi', '4 Regi'],         nameAbbrev: '4Reg'   },
-  { order: 13, usfmCode: '1CH', pdfHeading: 'Cartea întâi a Cronicilor', altHeadings: ['I Paralipomena', '1 Paralipomena', 'I Cronici'], nameAbbrev: '1Par' },
-  { order: 14, usfmCode: '2CH', pdfHeading: 'Cartea a doua a Cronicilor', altHeadings: ['II Paralipomena', '2 Paralipomena', 'II Cronici'], nameAbbrev: '2Par' },
+  { order: 9,  usfmCode: '1SA', pdfHeading: 'Cartea întâi a Regilor',  altHeadings: ['I Regi', '1 Regi', 'Cartea I a Regilor'],           nameAbbrev: '1Reg'   },
+  { order: 10, usfmCode: '2SA', pdfHeading: 'Cartea a doua a Regilor', altHeadings: ['II Regi', '2 Regi', 'Cartea a II-a a Regilor'],          nameAbbrev: '2Reg'   },
+  { order: 11, usfmCode: '1KI', pdfHeading: 'Cartea a treia a Regilor', altHeadings: ['III Regi', '3 Regi', 'Cartea a III-a a Regilor'],        nameAbbrev: '3Reg'   },
+  { order: 12, usfmCode: '2KI', pdfHeading: 'Cartea a patra a Regilor', altHeadings: ['IV Regi', '4 Regi', 'Cartea a IV-a a Regilor'],         nameAbbrev: '4Reg'   },
+  { order: 13, usfmCode: '1CH', pdfHeading: 'Cartea întâi a Cronicilor', altHeadings: ['I Paralipomena', '1 Paralipomena', 'I Cronici', 'Cartea I a Cronicilor'], nameAbbrev: '1Par' },
+  { order: 14, usfmCode: '2CH', pdfHeading: 'Cartea a doua a Cronicilor', altHeadings: ['II Paralipomena', '2 Paralipomena', 'II Cronici', 'Cartea a II-a a Cronicilor'], nameAbbrev: '2Par' },
   { order: 15, usfmCode: 'EZR', pdfHeading: 'Cartea lui Ezdra', altHeadings: ['Ezdra', 'I Ezdra'],                 nameAbbrev: '2Ezd'   },
   { order: 16, usfmCode: 'NEH', pdfHeading: 'Cartea lui Neemia', altHeadings: ['Neemia'],                           nameAbbrev: 'Neem'   },
   { order: 17, usfmCode: 'EST', pdfHeading: 'Cartea Esterei',   altHeadings: ['Estera'],                            nameAbbrev: 'Est'    },
   { order: 67, usfmCode: 'TOB', pdfHeading: 'Cartea lui Tobit', altHeadings: ['Tobit'],                             nameAbbrev: 'Tob'    },
   { order: 68, usfmCode: 'JDT', pdfHeading: 'Cartea Iuditei',  altHeadings: ['Iudita'],                            nameAbbrev: 'Iudt'   },
-  { order: 77, usfmCode: '1MA', pdfHeading: 'Cartea întâi a Macabeilor', altHeadings: ['I Macabei', '1 Macabei'],   nameAbbrev: '1Mac'   },
-  { order: 78, usfmCode: '2MA', pdfHeading: 'Cartea a doua a Macabeilor', altHeadings: ['II Macabei', '2 Macabei'], nameAbbrev: '2Mac'   },
-  { order: 79, usfmCode: '3MA', pdfHeading: 'Cartea a treia a Macabeilor', altHeadings: ['III Macabei', '3 Macabei'], nameAbbrev: '3Mac' },
+  { order: 77, usfmCode: '1MA', pdfHeading: 'Cartea întâi a Macabeilor', altHeadings: ['I Macabei', '1 Macabei', 'Cartea I a Macabeilor'],   nameAbbrev: '1Mac'   },
+  { order: 78, usfmCode: '2MA', pdfHeading: 'Cartea a doua a Macabeilor', altHeadings: ['II Macabei', '2 Macabei', 'Cartea a II-a a Macabeilor'], nameAbbrev: '2Mac'   },
+  { order: 79, usfmCode: '3MA', pdfHeading: 'Cartea a treia a Macabeilor', altHeadings: ['III Macabei', '3 Macabei', 'Cartea a III-a a Macabeilor'], nameAbbrev: '3Mac' },
 
   // ── Poetic / Wisdom books ────────────────────────────────────────────────
   { order: 18, usfmCode: 'JOB', pdfHeading: 'Cartea lui Iov',  altHeadings: ['Iov'],                               nameAbbrev: 'Iov'    },
   { order: 19, usfmCode: 'PSA', pdfHeading: 'Psalmii',         altHeadings: ['Psalmi', 'Cartea Psalmilor'],         nameAbbrev: 'Ps'     },
-  { order: 83, usfmCode: 'MAN', pdfHeading: 'Rugăciunea lui Manase', altHeadings: ['Manase'],                       nameAbbrev: 'RgMan'  },
+  { order: 83, usfmCode: 'MAN', pdfHeading: 'Rugăciunea lui Manase', altHeadings: ['Manase', 'Rugaciunea lui Manase', 'Rugăciunea regelui Manase'],                       nameAbbrev: 'RgMan'  },
   { order: 20, usfmCode: 'PRO', pdfHeading: 'Proverbele lui Solomon', altHeadings: ['Pildele lui Solomon', 'Pilde', 'Proverbele'], nameAbbrev: 'Pild' },
   { order: 21, usfmCode: 'ECC', pdfHeading: 'Ecclesiastul',                                                         nameAbbrev: 'Eccl'   },
   { order: 22, usfmCode: 'SNG', pdfHeading: 'Cântarea Cântărilor', altHeadings: ['Cântări', 'Cantarea Cantarilor'], nameAbbrev: 'Cânt'   },
   { order: 70, usfmCode: 'WIS', pdfHeading: 'Înțelepciunea lui Solomon', altHeadings: ['Solomon'],                  nameAbbrev: 'ÎnțSol' },
-  { order: 71, usfmCode: 'SIR', pdfHeading: 'Înțelepciunea lui Isus, fiul lui Sirah', altHeadings: ['Ecclesiasticul', 'Sirah'], nameAbbrev: 'Sir' },
+  { order: 71, usfmCode: 'SIR', pdfHeading: 'Înțelepciunea lui Isus, fiul lui Sirah', altHeadings: ['Ecclesiasticul', 'Sirah', 'Intelepciunea lui Isus, fiul lui Sirah', 'Cartea înţelepciunii lui Isus, fiul lui Sirah (Ecclesiasticul)'], nameAbbrev: 'Sir' },
   { order: 81, usfmCode: '1ES', pdfHeading: 'Cartea a treia a lui Ezdra', altHeadings: ['III Ezdra', '3 Ezdra'],   nameAbbrev: '1Ezd'   },
 
   // ── Major prophets ───────────────────────────────────────────────────────
@@ -171,27 +171,27 @@ const booksConfig: BookConfig[] = [
   { order: 43, usfmCode: 'JHN', pdfHeading: 'Evanghelia după Ioan',        altHeadings: ['Sfânta Evanghelie după Ioan', 'Ioan'],    nameAbbrev: 'In'   },
   { order: 44, usfmCode: 'ACT', pdfHeading: 'Faptele Apostolilor',         altHeadings: ['Faptele Sfinților Apostoli'],             nameAbbrev: 'FA'   },
   { order: 45, usfmCode: 'ROM', pdfHeading: 'Epistola către Romani',       altHeadings: ['Romani'],                                 nameAbbrev: 'Rom'  },
-  { order: 46, usfmCode: '1CO', pdfHeading: 'Epistola întâi către Corinteni', altHeadings: ['I Corinteni', '1 Corinteni'],          nameAbbrev: '1Cor' },
-  { order: 47, usfmCode: '2CO', pdfHeading: 'Epistola a doua către Corinteni', altHeadings: ['II Corinteni', '2 Corinteni'],        nameAbbrev: '2Cor' },
+  { order: 46, usfmCode: '1CO', pdfHeading: 'Epistola întâi către Corinteni', altHeadings: ['I Corinteni', '1 Corinteni', 'Epistola I către Corinteni', 'I CORINTENI', 'Epistola întâi către Corinteni'],          nameAbbrev: '1Cor' },
+  { order: 47, usfmCode: '2CO', pdfHeading: 'Epistola a doua către Corinteni', altHeadings: ['II Corinteni', '2 Corinteni', 'Epistola a II-a către Corinteni', 'II CORINTENI', 'Epistola a doua către Corinteni'],        nameAbbrev: '2Cor' },
   { order: 48, usfmCode: 'GAL', pdfHeading: 'Epistola către Galateni',     altHeadings: ['Galateni'],                               nameAbbrev: 'Gal'  },
   { order: 49, usfmCode: 'EPH', pdfHeading: 'Epistola către Efeseni',      altHeadings: ['Efeseni'],                                nameAbbrev: 'Ef'   },
   { order: 50, usfmCode: 'PHP', pdfHeading: 'Epistola către Filipeni',     altHeadings: ['Filipeni'],                               nameAbbrev: 'Flp'  },
-  { order: 51, usfmCode: 'COL', pdfHeading: 'Epistola către Coloseni',     altHeadings: ['Coloseni'],                               nameAbbrev: 'Col'  },
-  { order: 52, usfmCode: '1TH', pdfHeading: 'Epistola întâi către Tesaloniceni', altHeadings: ['I Tesaloniceni', '1 Tesaloniceni'], nameAbbrev: '1Tes' },
-  { order: 53, usfmCode: '2TH', pdfHeading: 'Epistola a doua către Tesaloniceni', altHeadings: ['II Tesaloniceni', '2 Tesaloniceni'], nameAbbrev: '2Tes' },
-  { order: 54, usfmCode: '1TI', pdfHeading: 'Epistola întâi către Timotei', altHeadings: ['I Timotei', '1 Timotei'],                nameAbbrev: '1Tim' },
-  { order: 55, usfmCode: '2TI', pdfHeading: 'Epistola a doua către Timotei', altHeadings: ['II Timotei', '2 Timotei'],              nameAbbrev: '2Tim' },
-  { order: 56, usfmCode: 'TIT', pdfHeading: 'Epistola către Tit',          altHeadings: ['Tit'],                                    nameAbbrev: 'Tit'  },
-  { order: 57, usfmCode: 'PHM', pdfHeading: 'Epistola către Filimon',      altHeadings: ['Filimon'],                                nameAbbrev: 'Flm'  },
-  { order: 58, usfmCode: 'HEB', pdfHeading: 'Epistola către Evrei',        altHeadings: ['Evrei'],                                  nameAbbrev: 'Evr'  },
-  { order: 59, usfmCode: 'JAS', pdfHeading: 'Epistola lui Iacob',          altHeadings: ['Iacob', 'Epistola Sobornicească a lui Iacob'],  nameAbbrev: 'Iac' },
-  { order: 60, usfmCode: '1PE', pdfHeading: 'Epistola întâi a lui Petru',  altHeadings: ['I Petru', '1 Petru'],                     nameAbbrev: '1Pet' },
-  { order: 61, usfmCode: '2PE', pdfHeading: 'Epistola a doua a lui Petru', altHeadings: ['II Petru', '2 Petru'],                    nameAbbrev: '2Pet' },
-  { order: 62, usfmCode: '1JN', pdfHeading: 'Epistola întâi a lui Ioan',   altHeadings: ['I Ioan', '1 Ioan'],                       nameAbbrev: '1In'  },
-  { order: 63, usfmCode: '2JN', pdfHeading: 'Epistola a doua a lui Ioan',  altHeadings: ['II Ioan', '2 Ioan'],                      nameAbbrev: '2In'  },
-  { order: 64, usfmCode: '3JN', pdfHeading: 'Epistola a treia a lui Ioan', altHeadings: ['III Ioan', '3 Ioan'],                     nameAbbrev: '3In'  },
-  { order: 65, usfmCode: 'JUD', pdfHeading: 'Epistola lui Iuda',           altHeadings: ['Iuda'],                                   nameAbbrev: 'Iud'  },
-  { order: 66, usfmCode: 'REV', pdfHeading: 'Apocalipsa',                  altHeadings: ['Apocalipsa lui Ioan'],                    nameAbbrev: 'Apoc' },
+  { order: 51, usfmCode: 'COL', pdfHeading: 'Epistola către Coloseni',     altHeadings: ['Coloseni', 'COLOSENI', 'Epistola Sfântului Apostol Pavel către Coloseni'],                               nameAbbrev: 'Col'  },
+  { order: 52, usfmCode: '1TH', pdfHeading: 'Epistola întâi către Tesaloniceni', altHeadings: ['I Tesaloniceni', '1 Tesaloniceni', 'Epistola I către Tesaloniceni', 'I TESALONICENI', 'Epistola întâi către Tesaloniceni'], nameAbbrev: '1Tes' },
+  { order: 53, usfmCode: '2TH', pdfHeading: 'Epistola a doua către Tesaloniceni', altHeadings: ['II Tesaloniceni', '2 Tesaloniceni', 'Epistola a II-a către Tesaloniceni', 'II TESALONICENI', 'Epistola a doua către Tesaloniceni'], nameAbbrev: '2Tes' },
+  { order: 54, usfmCode: '1TI', pdfHeading: 'Epistola întâi către Timotei', altHeadings: ['I Timotei', '1 Timotei', 'Epistola I către Timotei', 'I TIMOTEI', 'Epistola Sfântului Apostol Pavel întâia către Timotei'],                nameAbbrev: '1Tim' },
+  { order: 55, usfmCode: '2TI', pdfHeading: 'Epistola a doua către Timotei', altHeadings: ['II Timotei', '2 Timotei', 'Epistola a II-a către Timotei', 'II TIMOTEI', 'Epistola Sfântului Apostol Pavel a doua către Timotei'],              nameAbbrev: '2Tim' },
+  { order: 56, usfmCode: 'TIT', pdfHeading: 'Epistola către Tit',          altHeadings: ['Tit', 'TIT', 'Epistola Sfântului Apostol Pavel către Tit'],                                    nameAbbrev: 'Tit'  },
+  { order: 57, usfmCode: 'PHM', pdfHeading: 'Epistola către Filimon',      altHeadings: ['Filimon', 'FILIMON', 'Epistola Sfântului Apostol Pavel către Filimon'],                                nameAbbrev: 'Flm'  },
+  { order: 58, usfmCode: 'HEB', pdfHeading: 'Epistola către Evrei',        altHeadings: ['Evrei', 'EVREI', 'Epistola Sfântului Apostol Pavel către Evrei'],                                  nameAbbrev: 'Evr'  },
+  { order: 59, usfmCode: 'JAS', pdfHeading: 'Epistola lui Iacob',          altHeadings: ['Iacob', 'Epistola Sobornicească a lui Iacob', 'IACOB', 'Epistola Sobornicească a Sfântului Apostol Iacob'],  nameAbbrev: 'Iac' },
+  { order: 60, usfmCode: '1PE', pdfHeading: 'Epistola întâi a lui Petru',  altHeadings: ['I Petru', '1 Petru', 'Epistola I a lui Petru', 'I PETRU', 'Epistola Sobornicească întâia a Sfântului Apostol Petru'],                     nameAbbrev: '1Pet' },
+  { order: 61, usfmCode: '2PE', pdfHeading: 'Epistola a doua a lui Petru', altHeadings: ['II Petru', '2 Petru', 'Epistola a II-a a lui Petru', 'II PETRU', 'Epistola Sobornicească a doua a Sfântului Apostol Petru'],                    nameAbbrev: '2Pet' },
+  { order: 62, usfmCode: '1JN', pdfHeading: 'Epistola întâi a lui Ioan',   altHeadings: ['I Ioan', '1 Ioan', 'Epistola I a lui Ioan', 'I IOAN', 'Epistola Sobornicească întâia a Sfântului Apostol Ioan'],                       nameAbbrev: '1In'  },
+  { order: 63, usfmCode: '2JN', pdfHeading: 'Epistola a doua a lui Ioan',  altHeadings: ['II Ioan', '2 Ioan', 'Epistola a II-a a lui Ioan', 'II IOAN', 'Epistola Sobornicească a doua a Sfântului Apostol Ioan'],                      nameAbbrev: '2In'  },
+  { order: 64, usfmCode: '3JN', pdfHeading: 'Epistola a treia a lui Ioan', altHeadings: ['III Ioan', '3 Ioan', 'Epistola a III-a a lui Ioan', 'III IOAN', 'Epistola Sobornicească a treia a Sfântului Apostol Ioan'],                     nameAbbrev: '3In'  },
+  { order: 65, usfmCode: 'JUD', pdfHeading: 'Epistola lui Iuda',           altHeadings: ['Iuda', 'IUDA', 'Epistola Sobornicească a Sfântului Apostol Iuda'],                                   nameAbbrev: 'Iud'  },
+  { order: 66, usfmCode: 'REV', pdfHeading: 'Apocalipsa',                  altHeadings: ['Apocalipsa lui Ioan', 'APOCALIPSA', 'Apocalipsa Sfântului Ioan'],                    nameAbbrev: 'Apoc' },
 ];
 
 // Startup validation: every usfmCode must have an English name entry
@@ -213,16 +213,16 @@ const SUPERSCRIPT_MAP: Record<string, string> = {
 const SUPERSCRIPT_RE = /[⁰¹²³⁴⁵⁶⁷⁸⁹]+/g;
 
 /**
- * Matches 1–2 digits that appear directly after a Unicode letter with no
+ * Matches 1–2 digits that appear directly after a Unicode letter or punctuation with no
  * intervening space, followed by punctuation / whitespace / end-of-string.
  *
  * This catches superscript markers that pdf-parse renders as regular digits,
  * e.g. "Dumnezeu6:" → the "6" is a note marker, not part of the word.
  *
- * Uses a lookbehind for \p{L} (any Unicode letter) so the letter itself is
+ * Uses a lookbehind for \p{L} or \p{P} so the character itself is
  * not consumed by the match.
  */
-const INLINE_SUPERSCRIPT_RE = /(?<=\p{L})(\d{1,2})(?=[\s:;,.\-"'!?„""—–\)\]\/>]|$)/gu;
+const INLINE_SUPERSCRIPT_RE = /(?<=[^\s])(\d{1,2})(?=[\s:;,.\-"'!?„""—–\)\]\/>]|$)/gu;
 
 function superscriptToNumber(sup: string): number {
   const digits = sup.split('').map(c => SUPERSCRIPT_MAP[c]).filter(d => d !== undefined).join('');
@@ -234,7 +234,7 @@ function stripSuperscripts(text: string): string {
   // Strip Unicode superscript digits (¹²³ etc.)
   let result = text.replace(SUPERSCRIPT_RE, '');
   // Strip inline digit superscripts rendered as regular digits by pdf-parse
-  result = result.replace(/(?<=\p{L})\d{1,2}(?=[\s:;,.\-"'!?„""—–\)\]\/>]|$)/gu, '');
+  result = result.replace(/(?<=[^\s])\d{1,2}(?=[\s:;,.\-"'!?„""—–\)\]\/>]|$)/gu, '');
   return result.replace(/\s{2,}/g, ' ').trim();
 }
 
@@ -244,7 +244,9 @@ function stripSuperscripts(text: string): string {
  */
 function findWordBefore(text: string, matchIndex: number): string | undefined {
   const before = text.slice(0, matchIndex);
-  const wordMatch = before.match(/(\S+)\s*$/);
+  // Find the last "word" (non-whitespace sequence) that ends just before the marker,
+  // potentially ignoring trailing punctuation attached to it.
+  const wordMatch = before.match(/([^\s\p{P}]+)\p{P}*$/u);
   return wordMatch ? wordMatch[1] : undefined;
 }
 
@@ -262,8 +264,12 @@ function normalizeForMatch(s: string): string {
   return s
     .toLowerCase()
     .replace(/[îâ]/g, 'x')   // unify î/â (same phoneme) with a neutral char
+    .replace(/[șş]/g, 's')   // normalize ș (comma) and ş (cedilla) to s
+    .replace(/[țţ]/g, 't')   // normalize ț (comma) and ţ (cedilla) to t
+    .replace(/[—–-]/g, '-')  // unify dashes
     .normalize('NFD')
     .replace(/[\u0300-\u036f]/g, '')
+    .replace(/[^\w\s-]/g, '') // remove remaining punctuation except word chars and spaces
     .replace(/\s+/g, ' ')
     .trim();
 }
@@ -301,11 +307,21 @@ const VERSE_RE = /^(\d+)[.\s]\s*(.+)/;
 const NOTE_LINE_RE = /^([⁰¹²³⁴⁵⁶⁷⁸⁹]+)\s*[=:.]?\s*(.+)/;
 
 /**
- * Matches a footnote line using regular digits with a required separator
- * (= or :), to distinguish from verse-number lines.
- * Examples: "6 = Aceasta este nota", "12: Nota explicativă"
+ * Matches a footnote line using regular digits with an obligatory separator
+ * (= or : or . or whitespace), followed by text.
+ *
+ * To avoid misidentifying the first verse of a chapter (e.g., "1. In inceput...")
+ * as a note, we require:
+ *  - the separator to be either '=' or ':'
+ *  - OR if it's '.', it must NOT be followed by a word starting with a capital letter
+ *    that looks like the start of a verse (this is a weak heuristic, better to
+ *    check the context or the presence of a superscript in the text).
+ *
+ * REFINED: We'll require '=' or ':' as strong indicators of a note line,
+ * or a '.' followed by text that doesn't look like a verse start.
  */
-const DIGIT_NOTE_LINE_RE = /^(\d{1,2})\s*[=:]\s*(.+)/;
+const DIGIT_NOTE_LINE_RE = /^(\d{1,2})\s*([=:.])\s+(.+)/;
+// const DOT_NOTE_LINE_RE = /^(\d{1,2})\s*\.\s+([^A-ZĂÎȘȚ].+)/; // Removed as it's too aggressive
 
 /**
  * A raw text segment belonging to one book, as extracted from the PDF.
@@ -355,6 +371,26 @@ function splitIntoBookSegments(fullText: string): BookTextSegment[] {
     let matchedBook = headingMap.get(normalized);
     let headingChapter: number | undefined;
 
+    // Pass 1.2: Check if any known heading is a substring of the current line
+    // (handles titles that are preceded by extra words or punctuation on the same line)
+    if (!matchedBook && trimmed.length < 150) {
+      for (const [hNorm, config] of headingMap.entries()) {
+        // Only match if the normalized heading is long enough to be significant
+        if (hNorm.length > 10 && normalized.includes(hNorm)) {
+          matchedBook = config;
+          break;
+        }
+      }
+    }
+
+    // Pass 1.5: try stripping "CARTEA" prefix (handles "CARTEA NUMERII", etc.)
+    if (!matchedBook) {
+      const carteaMatch = normalized.match(/^cartea\s+(.+)$/);
+      if (carteaMatch) {
+        matchedBook = headingMap.get(carteaMatch[1]);
+      }
+    }
+
     // Pass 2: try stripping a trailing chapter number
     // (handles "FACEREA 1", "IESIREA 2", etc.)
     if (!matchedBook) {
@@ -363,11 +399,29 @@ function splitIntoBookSegments(fullText: string): BookTextSegment[] {
         matchedBook = headingMap.get(trailingMatch[1]);
         if (matchedBook) {
           headingChapter = parseInt(trailingMatch[2], 10);
+        } else {
+          // Try also stripping "CARTEA" with trailing number
+          const carteaTrailing = trailingMatch[1].match(/^cartea\s+(.+)$/);
+          if (carteaTrailing) {
+            matchedBook = headingMap.get(carteaTrailing[1]);
+            if (matchedBook) {
+              headingChapter = parseInt(trailingMatch[2], 10);
+            }
+          }
         }
       }
     }
 
     if (matchedBook) {
+      if (currentBook === matchedBook) {
+        // If we found the same book again (likely a running header), just continue
+        // but inject a synthetic chapter if it was found
+        if (headingChapter) {
+          currentLines.push(`Capitolul ${headingChapter}`);
+        }
+        continue;
+      }
+
       // Flush the previous book segment
       if (currentBook && currentLines.length > 0) {
         segments.push({
@@ -387,7 +441,7 @@ function splitIntoBookSegments(fullText: string): BookTextSegment[] {
     }
 
     // Collect short non-numeric lines as potential unmatched headings (for debug)
-    if (!currentBook && trimmed.length < 80 && !/^\d/.test(trimmed)) {
+    if (trimmed.length < 80 && !/^\d/.test(trimmed)) {
       unmatchedCandidates.push(trimmed);
     }
 
@@ -407,10 +461,18 @@ function splitIntoBookSegments(fullText: string): BookTextSegment[] {
 
   // Debug: show potential unmatched headings to help diagnose missing books
   if (unmatchedCandidates.length > 0) {
-    const unique = [...new Set(unmatchedCandidates)].slice(0, 30);
-    console.log('\n[DEBUG] Sample lines before the first matched heading (potential unrecognized headings):');
-    for (const h of unique) {
-      console.log(`  "${h}"`);
+    const counts = new Map<string, number>();
+    for (const h of unmatchedCandidates) {
+      counts.set(h, (counts.get(h) ?? 0) + 1);
+    }
+    const frequent = [...counts.entries()]
+      .sort((a, b) => b[1] - a[1])
+      .filter(([text]) => text.length > 3 && !/^\d/.test(text))
+      .slice(0, 50);
+
+    console.log('\n[DEBUG] Potential unrecognized book headings (sorted by frequency):');
+    for (const [h, count] of frequent) {
+      console.log(`  "${h}" (${count} occurrences)`);
     }
   }
 
@@ -456,11 +518,6 @@ function detectSuperscripts(
     }
   }
 
-  for (const r of results) {
-    console.log(
-      `Detected superscript ${r.noteNumber} attached to word '${r.attachedWord ?? '?'}' on ${bookCode} ${chapter}:${verseNum}`,
-    );
-  }
   return results;
 }
 
@@ -491,18 +548,22 @@ function parseBookText(text: string, bookCode: string): ParseResult {
 
   // Accumulate note lines per chapter: noteNumber → noteText
   let chapterNoteLines: Map<number, string> = new Map();
+  let lastNoteNum: number | null = null;
 
   /**
    * Flushes a completed chapter: merges detected superscripts with note lines
    * and produces AnaniaNote entries.
    */
-  function flushChapter(): void {
+function flushChapter(): void {
     if (currentChapter > 0 && currentVerses.length > 0) {
       chapters.set(currentChapter, currentVerses);
 
       // Build notes from chapterNoteLines, associating with superscript info
       for (const [noteNum, noteText] of chapterNoteLines) {
         const supInfo = chapterSuperscripts.get(noteNum);
+        if (!supInfo) {
+          console.warn(`    [WARN] Note ${noteNum} in ${bookCode} chapter ${currentChapter} has no matching superscript in text.`);
+        }
         notes.push({
           book: bookCode,
           chapter: currentChapter,
@@ -519,6 +580,7 @@ function parseBookText(text: string, bookCode: string): ParseResult {
       // Also create note entries for detected superscripts that have no note-line text
       for (const [noteNum, supInfo] of chapterSuperscripts) {
         if (!chapterNoteLines.has(noteNum)) {
+          console.warn(`    [WARN] Superscript ${noteNum} in ${bookCode} ${currentChapter}:${supInfo.verse} has no matching note text at the end of chapter.`);
           notes.push({
             book: bookCode,
             chapter: currentChapter,
@@ -560,11 +622,14 @@ function parseBookText(text: string, bookCode: string): ParseResult {
       const chapNum = parseInt(chapMatch[1], 10);
       // Only accept reasonable chapter numbers (1–MAX_CHAPTER_NUMBER)
       if (chapNum >= 1 && chapNum <= MAX_CHAPTER_NUMBER) {
+        // Log chapter transition
+        console.log(`  Chapter ${chapNum}...`);
         // Flush current chapter (including notes)
         flushChapter();
         currentChapter = chapNum;
         currentVerses = [];
         lastVerse = null;
+        lastNoteNum = null;
         chapterSuperscripts = new Map();
         chapterNoteLines = new Map();
         continue;
@@ -578,6 +643,7 @@ function parseBookText(text: string, bookCode: string): ParseResult {
       if (noteNum >= 0) {
         const existing = chapterNoteLines.get(noteNum);
         chapterNoteLines.set(noteNum, existing ? existing + ' ' + noteMatch[2].trim() : noteMatch[2].trim());
+        lastNoteNum = noteNum;
         continue;
       }
     }
@@ -587,9 +653,11 @@ function parseBookText(text: string, bookCode: string): ParseResult {
     const digitNoteMatch = trimmed.match(DIGIT_NOTE_LINE_RE);
     if (digitNoteMatch && currentChapter > 0) {
       const noteNum = parseInt(digitNoteMatch[1], 10);
+      const noteText = digitNoteMatch[3];
       if (noteNum > 0 && noteNum <= MAX_NOTE_NUMBER) {
         const existing = chapterNoteLines.get(noteNum);
-        chapterNoteLines.set(noteNum, existing ? existing + ' ' + digitNoteMatch[2].trim() : digitNoteMatch[2].trim());
+        chapterNoteLines.set(noteNum, existing ? existing + ' ' + noteText.trim() : noteText.trim());
+        lastNoteNum = noteNum;
         continue;
       }
     }
@@ -606,16 +674,24 @@ function parseBookText(text: string, bookCode: string): ParseResult {
       }
 
       // Accept any positive verse number (PDFs may have non-sequential numbering)
-      if (vnum > 0) {
-        const vtext = processVerseText(rawVtext, currentChapter, vnum);
-        lastVerse = { number: vnum, text: vtext };
-        currentVerses.push(lastVerse);
-        continue;
+    if (vnum > 0) {
+      const vtext = processVerseText(rawVtext, currentChapter, vnum);
+      lastVerse = { number: vnum, text: vtext };
+      currentVerses.push(lastVerse);
+      lastNoteNum = null;
+      // Periodically log progress for long chapters
+      if (vnum % 50 === 0) {
+        console.log(`    (verse ${vnum}...)`);
       }
+      continue;
+    }
     }
 
-    // Continuation line: append to the last verse of the current chapter
-    if (lastVerse) {
+    // Continuation line: append to either the last note or the last verse
+    if (lastNoteNum !== null) {
+      const existing = chapterNoteLines.get(lastNoteNum);
+      chapterNoteLines.set(lastNoteNum, existing ? existing + ' ' + trimmed : trimmed);
+    } else if (lastVerse) {
       const cleanedCont = processVerseText(trimmed, currentChapter, lastVerse.number);
       lastVerse.text += ' ' + cleanedCont;
     }

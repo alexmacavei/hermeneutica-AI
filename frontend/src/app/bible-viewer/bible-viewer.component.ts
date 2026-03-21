@@ -316,6 +316,9 @@ import { SlicePipe } from '@angular/common';
         gap: 20px;
         flex-wrap: wrap;
       }
+      :host ::ng-deep .analyze-btn .p-button .p-button-label {
+        margin-left: 5px;
+      }
       :host ::ng-deep .analyze-btn .p-button {
         background: var(--cross-red);
         border-color: var(--cross-red);
@@ -334,6 +337,9 @@ import { SlicePipe } from '@angular/common';
         background: rgba(198, 40, 40, 0.3);
         border-color: rgba(198, 40, 40, 0.3);
         color: rgba(255, 255, 255, 0.4);
+      }
+      :host ::ng-deep .parallel-btn.p-button .p-button-label {
+        margin-left: 5px;
       }
       :host ::ng-deep .parallel-btn.p-button {
         background: rgba(26, 35, 126, 0.5);
