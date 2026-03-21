@@ -7,9 +7,10 @@ Proiectul **nu** include textul biblic în repository – utilizatorul trebuie s
 descarce manual un exemplar PDF obținut legal.
 
 Pipeline-ul de extracție:
-1. Citește PDF-ul local (fără descărcare automată).
-2. Extrage textul versetelor **curat** (fără superscript-uri) în format helloao JSON.
-3. Extrage notele/comentariile Anania (cu superscript fidel) și le stochează în baza de date PostgreSQL.
+1. Citește PDF-ul local (fără descărcare automată) folosind `pdfplumber` (Python).
+2. Detectează layout-ul cu 2 coloane și zona de note de subsol pe fiecare pagină.
+3. Extrage textul versetelor **curat** (fără superscript-uri) în format JSON.
+4. Extrage notele/comentariile Anania și le atașează versetelor corespunzătoare.
 
 ---
 
@@ -41,28 +42,22 @@ ANANIA_PDF_PATH=/calea/către/Biblia-ANANIA.pdf
 cp ~/Downloads/Biblia-ANANIA.pdf data/bibles/anania-source.pdf
 ```
 
-### 3. Asigură-te că baza de date este pornită
-
-Notele Anania sunt stocate în PostgreSQL. Asigură-te că `DATABASE_URL` este
-setat corect în `.env` și că baza de date rulează:
+### 3. Instalează dependințele Python
 
 ```bash
-# Pornește doar PostgreSQL cu Podman Compose
-podman compose -f docker-compose.dev.yml up -d postgres
+cd scripts
+pip install pdfplumber      # sau: pip install -r requirements.txt
 ```
 
 ---
 
 ## Cum rulezi extracția
 
-### Varianta 1: Python (pdfplumber) – **recomandată**
-
 Scriptul Python folosește `pdfplumber` pentru extracție cu coordonate,
 detectând automat layout-ul cu 2 coloane și zona de note de subsol.
 
 ```bash
 cd scripts
-pip install pdfplumber      # prima dată
 python3 anania_extract.py /calea/către/Biblia-ANANIA.pdf
 # sau cu output specificat:
 python3 anania_extract.py /calea/către/Biblia-ANANIA.pdf anania_output.json
@@ -73,43 +68,28 @@ Poate fi rulat și prin npm:
 npm run anania-extract -- /calea/către/Biblia-ANANIA.pdf
 ```
 
-### Varianta 2: TypeScript (pdf-parse)
-
-Pipeline-ul TypeScript original citește calea din `ANANIA_PDF_PATH` (`.env`):
-
-```bash
-cd scripts
-npm install          # prima dată sau după actualizări
-npm run anania-pipeline
-```
-
 Pipeline-ul va afișa progresul în consolă:
 
 ```
-=== Biblia Anania Pipeline (PDF source) ===
+=== Anania Bible Extraction (pdfplumber) ===
+PDF: /calea/către/Biblia-ANANIA.pdf (11.0 MB)
+Total pages: 2163
+  Processing page 1/2163...
+  📖 Found book: Facerea (GEN)
+  Processing page 100/2163...
+  ...
 
-Reading PDF from: /calea/către/Biblia-ANANIA.pdf
-PDF file size: 12.3 MB
-Extracted 1250 pages, 4500000 characters of text.
+Extracted 31102 total verses.
+Linked 850 footnotes to verses.
 
-Identified 73 book segment(s) in the PDF.
-
-[GEN] Facerea
-Detected superscript 1 attached to word 'începutul' on GEN 1:1
-  ✓ 50 chapters, 1533 verses, 42 notes
-[EXO] Ieșirea
-  ✓ 40 chapters, 1213 verses, 38 notes
+Book   Chapters   Verses  Notes
+--------------------------------
+GEN          50     1533     42
+EXO          40     1213     38
 ...
 
-✅ JSON output complete.
-   Written: data/bibles/ro_anania.json
-   73 books, 1189 chapters, 31102 verses
-   850 total annotation notes collected.
-
-Inserting 850 Anania notes into database...
-  ✓ Inserted 850 notes into anania_adnotari.
-
-✅ Pipeline complete.
+✅ Output written to: anania_output.json
+   31102 verses, 850 footnotes
 ```
 
 ---
@@ -124,18 +104,34 @@ versetelor – fără superscript-uri, fără note, fără prefixe.
 Structura:
 ```json
 {
-  "id": "ro_anania",
-  "name": "Biblia Anania",
+  "translation": {
+    "id": "ro_anania",
+    "name": "Biblia Anania",
+    "englishName": "Romanian Anania Bible",
+    "language": "ro",
+    "numberOfBooks": 73,
+    "totalNumberOfChapters": 1189,
+    "totalNumberOfVerses": 31102
+  },
   "books": [
     {
       "id": "GEN",
       "name": "Facerea",
+      "shortName": "Fac",
+      "commonName": "Genesis",
+      "order": 1,
+      "numberOfChapters": 50,
+      "totalNumberOfVerses": 1533,
+      "isApocryphal": false,
       "chapters": [
         {
-          "number": 1,
-          "verses": [
-            { "number": 1, "text": "La început a făcut Dumnezeu cerul și pământul." }
-          ]
+          "chapter": {
+            "number": 1,
+            "bookName": "Facerea",
+            "content": [
+              { "type": "verse", "number": 1, "content": ["La început a făcut Dumnezeu cerul și pământul."] }
+            ]
+          }
         }
       ]
     }
@@ -143,18 +139,17 @@ Structura:
 }
 ```
 
-### 2. Tabelă PostgreSQL (`anania_adnotari`)
+### 2. Fișier note (`data/bibles/anania_notes.json`)
 
-| Coloană | Tip | Descriere |
-|---------|-----|-----------|
-| `id` | SERIAL PK | Identificator unic |
-| `book` | VARCHAR(10) | Cod USFM (ex: `GEN`, `ACT`) |
-| `chapter` | INT | Număr capitol |
-| `verse_start` | INT | Verset de început |
-| `verse_end` | INT NULL | Verset de final (NULL = verset unic) |
-| `note_number` | INT | Număr notă (1 pentru ¹, 15 pentru ¹⁵ etc.) |
-| `note_text` | TEXT | Textul complet al notei |
-| `metadata` | JSONB | `{ attached_to_word?, original_marker? }` |
+Note/comentarii extrase din zona de subsol, salvate separat:
+```json
+[
+  { "book": "GEN", "chapter": 1, "verse": 3, "symbol": 6, "note_text": "Textul notei..." }
+]
+```
+
+Aceste note sunt de asemenea stocate în tabelul PostgreSQL `anania_adnotari`
+(populat automat la pornirea backend-ului) și afișate în frontend.
 
 ### 3. Card "Note Anania" în frontend
 
@@ -169,14 +164,13 @@ pentru acel verset. Fiecare notă afișează:
 
 ## Depanare frecventă
 
-### ❌ „Cannot read PDF file at: ..."
+### ❌ „ERROR: PDF not found at ..."
 
 **Cauza**: Fișierul PDF nu există la calea specificată.
 
 **Soluție**:
 1. Verifică că ai descărcat PDF-ul de la https://dervent.ro/biblia/Biblia-ANANIA.pdf
-2. Verifică calea din `.env`: `ANANIA_PDF_PATH=/calea/corectă/Biblia-ANANIA.pdf`
-3. Sau copiază PDF-ul în `data/bibles/anania-source.pdf`
+2. Verifică calea pe care o pasezi scriptului: `python3 anania_extract.py /calea/corectă/Biblia-ANANIA.pdf`
 
 ### ❌ „No book headings were detected"
 
@@ -184,13 +178,6 @@ pentru acel verset. Fiecare notă afișează:
 
 **Soluție**: Asigură-te că folosești PDF-ul oficial de la Dervent. Alte ediții PDF
 pot avea structură diferită.
-
-### ❌ „DATABASE_URL not set – skipping database insertion"
-
-**Cauza**: Variabila `DATABASE_URL` nu e setată în `.env`.
-
-**Soluție**: JSON-ul a fost generat corect, dar notele nu au fost salvate în baza
-de date. Setează `DATABASE_URL` și rerulează pipeline-ul.
 
 ### Note cu text gol
 

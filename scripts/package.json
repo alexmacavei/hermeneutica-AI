@@ -5,19 +5,14 @@
   "private": true,
   "scripts": {
     "biblia-pipeline": "ts-node --project tsconfig.json biblia-pipeline.ts",
-    "anania-pipeline": "ts-node --project tsconfig.json anania-pipeline.ts",
     "anania-extract": "python3 anania_extract.py"
   },
   "dependencies": {
     "axios": "^1.6.7",
-    "cheerio": "^1.0.0",
-    "dotenv": "^17.3.1",
-    "pdf-parse": "^2.4.5",
-    "pg": "^8.20.0"
+    "cheerio": "^1.0.0"
   },
   "devDependencies": {
     "@types/node": "^20.0.0",
-    "@types/pg": "^8.18.0",
     "ts-node": "^10.9.2",
     "typescript": "^5.1.6"
   }

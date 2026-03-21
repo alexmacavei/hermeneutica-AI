@@ -10,8 +10,11 @@ Verses are identified as lines starting with a number (1, 2, 3, …).
 Footnotes are extracted as (symbol, note_text) pairs and linked back to
 the verses that reference the symbol.
 
-Output:
-  anania_output.json  – all verses with embedded footnotes.
+Output (helloao-compatible):
+  ../data/bibles/ro_anania.json  – bible text in helloao format (same as
+      other translations), with clean verse text (no superscripts).
+  anania_notes.json              – footnotes linked to verses (optional,
+      same directory as the bible JSON).
 
 Usage:
   pip install pdfplumber
@@ -159,6 +162,16 @@ ENGLISH_BOOK_NAMES: dict[str, str] = {
     "1MA": "1 Maccabees", "2MA": "2 Maccabees", "3MA": "3 Maccabees",
     "MAN": "Prayer of Manasseh", "1ES": "1 Esdras",
 }
+
+
+APOCRYPHAL_CODES = {
+    "TOB", "JDT", "1MA", "2MA", "3MA", "4MA", "WIS", "SIR", "BAR", "LJE",
+    "1ES", "MAN", "PS2", "S3Y", "SUS", "BEL",
+}
+
+# Default output path: ../data/bibles/ro_anania.json (relative to this script)
+_SCRIPT_DIR = os.path.dirname(os.path.abspath(__file__))
+DEFAULT_OUTPUT_PATH = os.path.join(_SCRIPT_DIR, "..", "data", "bibles", "ro_anania.json")
 
 
 # ──────────────────────────────────────────────────────────────────────────────
@@ -713,13 +726,75 @@ def extract(pdf_path: str, output_path: str) -> None:
             heading = next((b["headings"][0] for b in BOOKS_CONFIG if b["code"] == code), code)
             print(f"  {heading} ({code})")
 
-    # ── Build output JSON ──
-    output = {
-        "source_pdf": os.path.basename(pdf_path),
-        "translation_id": "ro_anania",
-        "total_verses": len(tracker.verses),
-        "total_footnotes": total_linked,
-        "verses": [v.to_dict() for v in tracker.verses],
+    # ── Build helloao-compatible output ──
+    # Group verses by book → chapter
+    from collections import OrderedDict
+
+    book_chapters: dict[str, dict[int, list[VerseRecord]]] = OrderedDict()
+    for v in tracker.verses:
+        if v.book not in book_chapters:
+            book_chapters[v.book] = OrderedDict()
+        if v.chapter not in book_chapters[v.book]:
+            book_chapters[v.book][v.chapter] = []
+        book_chapters[v.book][v.chapter].append(v)
+
+    helloao_books: list[dict[str, Any]] = []
+    for code, chapters_map in book_chapters.items():
+        cfg = next((b for b in BOOKS_CONFIG if b["code"] == code), None)
+        if not cfg:
+            continue
+
+        helloao_chapters: list[dict[str, Any]] = []
+        total_book_verses = 0
+        for chap_num, chap_verses in chapters_map.items():
+            content = [
+                {
+                    "type": "verse",
+                    "number": v.verse,
+                    "content": [v.text],
+                }
+                for v in chap_verses
+            ]
+            helloao_chapters.append({
+                "chapter": {
+                    "number": chap_num,
+                    "bookName": cfg["headings"][0],
+                    "content": content,
+                },
+            })
+            total_book_verses += len(chap_verses)
+
+        helloao_books.append({
+            "id": code,
+            "name": cfg["headings"][0],
+            "shortName": cfg["abbrev"],
+            "commonName": ENGLISH_BOOK_NAMES.get(code, code),
+            "title": cfg["headings"][0],
+            "order": cfg["order"],
+            "numberOfChapters": len(chapters_map),
+            "totalNumberOfVerses": total_book_verses,
+            "isApocryphal": code in APOCRYPHAL_CODES,
+            "chapters": helloao_chapters,
+        })
+
+    total_chapters = sum(b["numberOfChapters"] for b in helloao_books)
+
+    output: dict[str, Any] = {
+        "translation": {
+            "id": "ro_anania",
+            "name": "Biblia Anania",
+            "englishName": "Romanian Anania Bible",
+            "shortName": "Anania",
+            "textDirection": "ltr",
+            "language": "ro",
+            "website": "https://dervent.ro/biblia/Biblia-ANANIA.pdf",
+            "licenseUrl": "",
+            "numberOfBooks": len(helloao_books),
+            "totalNumberOfChapters": total_chapters,
+            "totalNumberOfVerses": len(tracker.verses),
+            "availableFormats": ["json"],
+        },
+        "books": helloao_books,
     }
 
     output_path = os.path.abspath(output_path)
@@ -727,8 +802,28 @@ def extract(pdf_path: str, output_path: str) -> None:
     with open(output_path, "w", encoding="utf-8") as f:
         json.dump(output, f, ensure_ascii=False, indent=2)
 
-    print(f"\n✅ Output written to: {output_path}")
-    print(f"   {len(tracker.verses)} verses, {total_linked} footnotes")
+    print(f"\n✅ Bible JSON written to: {output_path}")
+    print(f"   {len(helloao_books)} books, {total_chapters} chapters, {len(tracker.verses)} verses")
+
+    # ── Save footnotes separately ──
+    if total_linked > 0:
+        notes_list: list[dict[str, Any]] = []
+        for v in tracker.verses:
+            for fn in v.footnotes:
+                notes_list.append({
+                    "book": v.book,
+                    "chapter": v.chapter,
+                    "verse": v.verse,
+                    "symbol": fn["symbol"],
+                    "note_text": fn["note_text"],
+                })
+
+        notes_path = os.path.join(os.path.dirname(output_path), "anania_notes.json")
+        with open(notes_path, "w", encoding="utf-8") as f:
+            json.dump(notes_list, f, ensure_ascii=False, indent=2)
+        print(f"   {total_linked} footnotes written to: {notes_path}")
+    else:
+        print("   No footnotes extracted.")
 
 
 # ──────────────────────────────────────────────────────────────────────────────
@@ -738,14 +833,15 @@ def extract(pdf_path: str, output_path: str) -> None:
 def main() -> None:
     if len(sys.argv) < 2:
         print("Usage: python anania_extract.py <path-to-Biblia-ANANIA.pdf> [output.json]")
+        print(f"\nDefault output: {os.path.abspath(DEFAULT_OUTPUT_PATH)}")
         print("\nExample:")
         print("  pip install pdfplumber")
         print("  python anania_extract.py /path/to/Biblia-ANANIA.pdf")
-        print("  python anania_extract.py /path/to/Biblia-ANANIA.pdf anania_output.json")
+        print("  python anania_extract.py /path/to/Biblia-ANANIA.pdf ../data/bibles/ro_anania.json")
         sys.exit(1)
 
     pdf_path = sys.argv[1]
-    output_path = sys.argv[2] if len(sys.argv) > 2 else "anania_output.json"
+    output_path = sys.argv[2] if len(sys.argv) > 2 else DEFAULT_OUTPUT_PATH
 
     extract(pdf_path, output_path)
 
