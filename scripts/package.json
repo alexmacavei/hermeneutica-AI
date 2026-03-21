@@ -5,7 +5,8 @@
   "private": true,
   "scripts": {
     "biblia-pipeline": "ts-node --project tsconfig.json biblia-pipeline.ts",
-    "anania-pipeline": "ts-node --project tsconfig.json anania-pipeline.ts"
+    "anania-pipeline": "ts-node --project tsconfig.json anania-pipeline.ts",
+    "anania-extract": "python3 anania_extract.py"
   },
   "dependencies": {
     "axios": "^1.6.7",

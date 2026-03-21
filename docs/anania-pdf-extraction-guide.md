@@ -55,6 +55,28 @@ podman compose -f docker-compose.dev.yml up -d postgres
 
 ## Cum rulezi extracția
 
+### Varianta 1: Python (pdfplumber) – **recomandată**
+
+Scriptul Python folosește `pdfplumber` pentru extracție cu coordonate,
+detectând automat layout-ul cu 2 coloane și zona de note de subsol.
+
+```bash
+cd scripts
+pip install pdfplumber      # prima dată
+python3 anania_extract.py /calea/către/Biblia-ANANIA.pdf
+# sau cu output specificat:
+python3 anania_extract.py /calea/către/Biblia-ANANIA.pdf anania_output.json
+```
+
+Poate fi rulat și prin npm:
+```bash
+npm run anania-extract -- /calea/către/Biblia-ANANIA.pdf
+```
+
+### Varianta 2: TypeScript (pdf-parse)
+
+Pipeline-ul TypeScript original citește calea din `ANANIA_PDF_PATH` (`.env`):
+
 ```bash
 cd scripts
 npm install          # prima dată sau după actualizări

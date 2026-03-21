@@ -129,7 +129,7 @@ Utilizator selectează: "Fiindcă Dumnezeu aşa a iubit lumea, că pe Fiul Său 
 - Podman & Podman Compose
 - Cheie API OpenAI (pentru analiza AI)
 - **Biblia Sinodală Română** – generată local din scriptul `scripts/biblia-pipeline.ts` (vezi [Date Biblice](#-date-biblice--biblical-data))
-- **Biblia Anania** – generată local din scriptul `scripts/anania-pipeline.ts` dintr-un PDF local (opțional; vezi [Ghid extracție Anania](docs/anania-pdf-extraction-guide.md))
+- **Biblia Anania** – generată local din `scripts/anania_extract.py` (Python/pdfplumber) sau `scripts/anania-pipeline.ts` (TypeScript/pdf-parse) dintr-un PDF local (opțional; vezi [Ghid extracție Anania](docs/anania-pdf-extraction-guide.md))
 - **Corpus patristic New Advent** *(opțional, pentru cardul Comentarii Patristice)* – vezi [docs/patristic-setup.md](docs/patristic-setup.md)
 
 ### Quick Start cu Podman
@@ -149,10 +149,11 @@ cd ..
 
 # 3b. (Opțional) Populează Biblia Anania locală (necesită PDF sursă)
 # Descarcă PDF-ul de la: https://dervent.ro/biblia/Biblia-ANANIA.pdf
-# Setează ANANIA_PDF_PATH în .env sau plasează-l în data/bibles/anania-source.pdf
-# Vezi ghidul detaliat: docs/anania-pdf-extraction-guide.md
-cd scripts && npm run anania-pipeline
+# Varianta Python (recomandată):
+cd scripts && pip install pdfplumber && python3 anania_extract.py /calea/către/Biblia-ANANIA.pdf
 cd ..
+# Sau varianta TypeScript (setează ANANIA_PDF_PATH în .env):
+# cd scripts && npm run anania-pipeline && cd ..
 
 # 4. Pornește toate serviciile
 podman compose up --build --force-recreate --remove-orphans
@@ -432,7 +433,7 @@ Aplicația utilizează atât API-ul extern furnizat de [bible.helloao.org](https
 Caracteristici:
 - **Acces dinamic:** Navigare prin toate cărțile și capitolele disponibile în traducerile suportate.
 - **Traduceri remote:** `hbo_wlc` (Ebraică Masoretică), `grc_bre` (Septuaginta Brenton), `grc_byz` (Greacă Byzantină NT), `eng_kja` (KJV cu Apocrife) – servite live via bible.helloao.org.
-- **Traduceri locale:** `ro_sinodala` (Biblia Sinodală Română) – populată cu scriptul `scripts/biblia-pipeline.ts` și stocată în `data/bibles/ro_sinodala.json`; `ro_anania` (Biblia Anania) – populată cu scriptul `scripts/anania-pipeline.ts` dintr-un PDF local și stocată în `data/bibles/ro_anania.json`. Vezi [Ghid extracție Anania](docs/anania-pdf-extraction-guide.md).
+- **Traduceri locale:** `ro_sinodala` (Biblia Sinodală Română) – populată cu scriptul `scripts/biblia-pipeline.ts` și stocată în `data/bibles/ro_sinodala.json`; `ro_anania` (Biblia Anania) – populată cu `scripts/anania_extract.py` (Python/pdfplumber, recomandat) sau `scripts/anania-pipeline.ts` (TypeScript) dintr-un PDF local și stocată în `data/bibles/ro_anania.json`. Vezi [Ghid extracție Anania](docs/anania-pdf-extraction-guide.md).
 - **Interfață simplificată:** Backend-ul NestJS acționează ca un proxy/adaptor, asigurând stabilitate și maparea corectă a versetelor pentru procesarea AI.
 
 ### Script Date / Data Pipeline Script
@@ -446,8 +447,14 @@ npm run biblia-pipeline
 
 # Procesează Biblia Anania locală din PDF (opțional)
 # Descarcă PDF-ul de la: https://dervent.ro/biblia/Biblia-ANANIA.pdf
-# Setează ANANIA_PDF_PATH în .env sau plasează-l în data/bibles/anania-source.pdf
 # Ghid detaliat: docs/anania-pdf-extraction-guide.md
+
+# Varianta Python (recomandată) – extracție cu coordonate pdfplumber:
+pip install pdfplumber
+python3 anania_extract.py /calea/către/Biblia-ANANIA.pdf
+# Generează: anania_output.json (cu footnotes incluse)
+
+# Varianta TypeScript (pdf-parse) – setează ANANIA_PDF_PATH în .env:
 npm run anania-pipeline
 # Generează: data/bibles/ro_anania.json + inserează note în DB
 ```
