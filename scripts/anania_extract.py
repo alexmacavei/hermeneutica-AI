@@ -701,20 +701,25 @@ def extract(pdf_path: str, output_path: str) -> None:
     print(f"Linked {total_linked} footnotes to verses.")
 
     # ── Collect stats per book ──
-    book_stats: dict[str, dict[str, int]] = {}
+    @dataclass
+    class BookStats:
+        chapters: set[int] = field(default_factory=set)
+        verses: int = 0
+        footnotes: int = 0
+
+    book_stats: dict[str, BookStats] = {}
     for v in tracker.verses:
         if v.book not in book_stats:
-            book_stats[v.book] = {"chapters": set(), "verses": 0, "footnotes": 0}  # type: ignore[dict-item]
-        book_stats[v.book]["chapters"].add(v.chapter)  # type: ignore[union-attr]
-        book_stats[v.book]["verses"] += 1
-        book_stats[v.book]["footnotes"] += len(v.footnotes)
+            book_stats[v.book] = BookStats()
+        book_stats[v.book].chapters.add(v.chapter)
+        book_stats[v.book].verses += 1
+        book_stats[v.book].footnotes += len(v.footnotes)
 
     print(f"\n{'Book':<6} {'Chapters':>8} {'Verses':>8} {'Notes':>6}")
     print("-" * 32)
     for code in sorted(book_stats.keys(), key=lambda c: next((b["order"] for b in BOOKS_CONFIG if b["code"] == c), 999)):
         stats = book_stats[code]
-        n_chap = len(stats["chapters"])  # type: ignore[arg-type]
-        print(f"{code:<6} {n_chap:>8} {stats['verses']:>8} {stats['footnotes']:>6}")
+        print(f"{code:<6} {len(stats.chapters):>8} {stats.verses:>8} {stats.footnotes:>6}")
 
     # Check for missing books
     found_codes = set(book_stats.keys())
