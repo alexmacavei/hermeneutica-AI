@@ -119,20 +119,20 @@ BOOKS_CONFIG: list[dict[str, Any]] = [
     {"code": "GAL", "order": 48, "headings": ["Epistola către Galateni", "Galateni", "Epistola Sfântului Apostol Pavel către Galateni", "Epistola Sfîntului Apostol Pavel către Galateni"], "abbrev": "Gal"},
     {"code": "EPH", "order": 49, "headings": ["Epistola către Efeseni", "Efeseni", "Epistola Sfântului Apostol Pavel către Efeseni", "Epistola Sfîntului Apostol Pavel către Efeseni"], "abbrev": "Ef"},
     {"code": "PHP", "order": 50, "headings": ["Epistola către Filipeni", "Filipeni", "Epistola Sfântului Apostol Pavel către Filipeni", "Epistola Sfîntului Apostol Pavel către Filipeni"], "abbrev": "Flp"},
-    {"code": "COL", "order": 51, "headings": ["Epistola către Coloseni", "Coloseni", "Epistola Sfântului Apostol Pavel către Coloseni", "Epistola Sfîntului Apostol Pavel către Coloseni"], "abbrev": "Col"},
+    {"code": "COL", "order": 51, "headings": ["Epistola către Coloseni", "Coloseni", "Epistola Sfântului Apostol Pavel către Coloseni", "Epistola Sfîntului Apostol Pavel către Coloseni", "Epistola catre Coloseni"], "abbrev": "Col"},
     {"code": "1TH", "order": 52, "headings": ["Epistola întâi către Tesaloniceni", "Epistola întîi către Tesaloniceni", "I Tesaloniceni", "1 Tesaloniceni", "Epistola Sfântului Apostol Pavel întâi către Tesaloniceni", "Epistola Sfîntului Apostol Pavel întîi către Tesaloniceni"], "abbrev": "1Tes"},
     {"code": "2TH", "order": 53, "headings": ["Epistola a doua către Tesaloniceni", "II Tesaloniceni", "2 Tesaloniceni", "Epistola Sfântului Apostol Pavel a doua către Tesaloniceni", "Epistola Sfîntului Apostol Pavel a doua către Tesaloniceni"], "abbrev": "2Tes"},
-    {"code": "1TI", "order": 54, "headings": ["Epistola întâi către Timotei", "Epistola întîi către Timotei", "I Timotei", "1 Timotei", "Epistola Sfântului Apostol Pavel întâi către Timotei", "Epistola Sfîntului Apostol Pavel întîi către Timotei"], "abbrev": "1Tim"},
+    {"code": "1TI", "order": 54, "headings": ["Epistola întâi către Timotei", "Epistola întîi către Timotei", "I Timotei", "1 Timotei", "Epistola Sfântului Apostol Pavel întâi către Timotei", "Epistola Sfîntului Apostol Pavel întîi către Timotei", "Epistola intai catre Timotei", "Epistola intai a Sfantului Apostol Pavel catre Timotei"], "abbrev": "1Tim"},
     {"code": "2TI", "order": 55, "headings": ["Epistola a doua către Timotei", "II Timotei", "2 Timotei", "Epistola Sfântului Apostol Pavel a doua către Timotei", "Epistola Sfîntului Apostol Pavel a doua către Timotei"], "abbrev": "2Tim"},
     {"code": "TIT", "order": 56, "headings": ["Epistola către Tit", "Tit", "Epistola Sfântului Apostol Pavel către Tit", "Epistola Sfîntului Apostol Pavel către Tit"], "abbrev": "Tit"},
-    {"code": "PHM", "order": 57, "headings": ["Epistola către Filimon", "Filimon", "Epistola Sfântului Apostol Pavel către Filimon", "Epistola Sfîntului Apostol Pavel către Filimon"], "abbrev": "Flm"},
+    {"code": "PHM", "order": 57, "headings": ["Epistola către Filimon", "Filimon", "Epistola Sfântului Apostol Pavel către Filimon", "Epistola Sfîntului Apostol Pavel către Filimon", "Epistola catre Filimon"], "abbrev": "Flm"},
     {"code": "HEB", "order": 58, "headings": ["Epistola către Evrei", "Evrei", "Epistola Sfântului Apostol Pavel către Evrei", "Epistola Sfîntului Apostol Pavel către Evrei"], "abbrev": "Evr"},
     {"code": "JAS", "order": 59, "headings": ["Epistola lui Iacob", "Iacob", "Epistola Sobornicească a lui Iacob", "Epistola Soborniceasca a lui Iacob", "Epistola Sobornicească a Sfântului Apostol Iacob", "Epistola Soborniceasca a Sfîntului Apostol Iacob"], "abbrev": "Iac"},
-    {"code": "1PE", "order": 60, "headings": ["Epistola întâi a lui Petru", "Epistola întîi a lui Petru", "I Petru", "1 Petru", "Epistola Sobornicească întâi a Sfântului Apostol Petru", "Epistola Soborniceasca întâi a Sfântului Apostol Petru", "Epistola întâi a Sfântului Apostol Petru", "Epistola Sobornicească întîi a Sfîntului Apostol Petru"], "abbrev": "1Pet"},
+    {"code": "1PE", "order": 60, "headings": ["Epistola întâi a lui Petru", "Epistola întîi a lui Petru", "I Petru", "1 Petru", "Epistola Sobornicească întâi a Sfântului Apostol Petru", "Epistola Soborniceasca întâi a Sfântului Apostol Petru", "Epistola întâi a Sfântului Apostol Petru", "Epistola Sobornicească întîi a Sfîntului Apostol Petru", "Epistola intai a lui Petru", "Epistola intai a Sfantului Apostol Petru"], "abbrev": "1Pet"},
     {"code": "2PE", "order": 61, "headings": ["Epistola a doua a lui Petru", "II Petru", "2 Petru", "Epistola Sobornicească a doua a Sfântului Apostol Petru", "Epistola a doua a Sfântului Apostol Petru", "Epistola Soborniceasca a doua a Sfîntului Apostol Petru"], "abbrev": "2Pet"},
     {"code": "1JN", "order": 62, "headings": ["Epistola întâi a lui Ioan", "Epistola întîi a lui Ioan", "I Ioan", "1 Ioan", "Epistola Sobornicească întâi a Sfântului Apostol Ioan", "Epistola întâi a Sfântului Apostol Ioan", "Epistola Soborniceasca întîi a Sfîntului Apostol Ioan"], "abbrev": "1In"},
-    {"code": "2JN", "order": 63, "headings": ["Epistola a doua a lui Ioan", "II Ioan", "2 Ioan", "Epistola Sobornicească a doua a Sfântului Apostol Ioan", "Epistola a doua a Sfântului Apostol Ioan", "Epistola Soborniceasca a doua a Sfîntului Apostol Ioan"], "abbrev": "2In"},
-    {"code": "3JN", "order": 64, "headings": ["Epistola a treia a lui Ioan", "III Ioan", "3 Ioan", "Epistola Sobornicească a treia a Sfântului Apostol Ioan", "Epistola a treia a Sfântului Apostol Ioan", "Epistola Soborniceasca a treia a Sfîntului Apostol Ioan"], "abbrev": "3In"},
+    {"code": "2JN", "order": 63, "headings": ["Epistola a doua a lui Ioan", "II Ioan", "2 Ioan", "Epistola Sobornicească a doua a Sfântului Apostol Ioan", "Epistola a doua a Sfântului Apostol Ioan", "Epistola Soborniceasca a doua a Sfîntului Apostol Ioan", "Epistola a doua a Sfantului Apostol Ioan"], "abbrev": "2In"},
+    {"code": "3JN", "order": 64, "headings": ["Epistola a treia a lui Ioan", "III Ioan", "3 Ioan", "Epistola Sobornicească a treia a Sfântului Apostol Ioan", "Epistola a treia a Sfântului Apostol Ioan", "Epistola Soborniceasca a treia a Sfîntului Apostol Ioan", "Epistola a treia a Sfantului Apostol Ioan"], "abbrev": "3In"},
     {"code": "JUD", "order": 65, "headings": ["Epistola lui Iuda", "Iuda", "Epistola Sobornicească a Sfântului Apostol Iuda", "Epistola Soborniceasca a Sfîntului Apostol Iuda"], "abbrev": "Iud"},
     {"code": "REV", "order": 66, "headings": ["Apocalipsa", "Apocalipsa lui Ioan", "Apocalipsa Sfântului Ioan Teologul", "Apocalipsa Sfîntului Ioan Teologul"], "abbrev": "Apoc"},
     # Deuterocanonical
@@ -142,7 +142,7 @@ BOOKS_CONFIG: list[dict[str, Any]] = [
     {"code": "SIR", "order": 71, "headings": ["Cartea înțelepciunii lui Isus, fiul lui Sirah", "Înțelepciunea lui Isus, fiul lui Sirah", "Intelepciunea lui Isus, fiul lui Sirah", "Ecclesiasticul", "Sirah"], "abbrev": "Sir"},
     {"code": "BAR", "order": 72, "headings": ["Baruh", "Cartea lui Baruh"], "abbrev": "Bar"},
     {"code": "LJE", "order": 73, "headings": ["Epistola lui Ieremia", "Scrisoarea lui Ieremia"], "abbrev": "EpIer"},
-    {"code": "S3Y", "order": 74, "headings": ["Cântarea celor trei tineri", "Cîntarea celor trei tineri", "Cantarea celor trei tineri"], "abbrev": "S3Y"},
+    {"code": "S3Y", "order": 74, "headings": ["Cântarea celor trei tineri", "Cîntarea celor trei tineri", "Cantarea celor trei tineri", "Cântarea celor Trei Tineri", "Cîntarea celor Trei Tineri"], "abbrev": "S3Y"},
     {"code": "SUS", "order": 75, "headings": ["Istoria Susanei", "Susana"], "abbrev": "Sus"},
     {"code": "BEL", "order": 76, "headings": ["Bel și balaurul", "Bel si balaurul", "Bel şi balaurul"], "abbrev": "Bel"},
     {"code": "1MA", "order": 77, "headings": ["Cartea întâi a Macabeilor", "Cartea întîi a Macabeilor", "I Macabei", "1 Macabei"], "abbrev": "1Mac"},
@@ -295,86 +295,98 @@ def _extract_footnote_zone(page: Page) -> str:
     """
     Attempt to find and extract the footnote zone at the bottom of a page.
 
-    Strategy: look for a horizontal line (rule) or a significant y-gap near
-    the bottom third of the page that separates footnotes from body text.
-    If found, extract the text below it using column-aware extraction
-    (footnotes are also laid out in two columns like the body text).
+    Uses _find_footnote_boundary() to find the separation point, then extracts
+    text below it using column-aware extraction (footnotes are also laid out
+    in two columns like the body text).
     """
     height = page.height
     width = page.width
 
-    # Strategy 1: Look for a horizontal line that spans part of the page
-    # (footnote separator rule).
-    lines = page.lines or []
-    best_rule_y: float | None = None
-    for line in lines:
-        y = line.get("top", 0)
-        # Only consider lines in the bottom 40% of the page
-        if y > height * 0.6:
-            x0 = line.get("x0", 0)
-            x1 = line.get("x1", 0)
-            line_width = x1 - x0
-            # Separator lines are typically at least 15% of page width
-            if line_width > width * 0.15:
-                if best_rule_y is None or y < best_rule_y:
-                    best_rule_y = y
+    footnote_y = _find_footnote_boundary(page)
 
-    if best_rule_y is not None:
-        # Use column-aware extraction for the footnote zone too
-        footnote_crop = page.crop((0, best_rule_y, width, height))
-        fn_chars = footnote_crop.chars or []
+    # No footnote zone found
+    if footnote_y >= height:
+        return ""
 
-        if fn_chars:
-            mid_x = width / 2
-            left_fn = [c for c in fn_chars if c["x0"] < mid_x - 15]
-            right_fn = [c for c in fn_chars if c["x0"] > mid_x + 15]
+    # Use column-aware extraction for the footnote zone
+    footnote_crop = page.crop((0, footnote_y, width, height))
+    fn_chars = footnote_crop.chars or []
 
-            # If there are chars on both sides, extract as two columns
-            if left_fn and right_fn:
-                left_crop = page.crop((0, best_rule_y, mid_x, height))
-                right_crop = page.crop((mid_x, best_rule_y, width, height))
-                left_text = left_crop.extract_text(x_tolerance=2, y_tolerance=2) or ""
-                right_text = right_crop.extract_text(x_tolerance=2, y_tolerance=2) or ""
-                return (left_text.strip() + "\n" + right_text.strip()).strip()
+    if fn_chars:
+        mid_x = width / 2
+        left_fn = [c for c in fn_chars if c["x0"] < mid_x - 15]
+        right_fn = [c for c in fn_chars if c["x0"] > mid_x + 15]
 
-        # Fallback: single extraction
-        text = footnote_crop.extract_text(x_tolerance=2, y_tolerance=2) or ""
-        return text.strip()
+        # If there are chars on both sides, extract as two columns
+        if left_fn and right_fn:
+            left_crop = page.crop((0, footnote_y, mid_x, height))
+            right_crop = page.crop((mid_x, footnote_y, width, height))
+            left_text = left_crop.extract_text(x_tolerance=2, y_tolerance=2) or ""
+            right_text = right_crop.extract_text(x_tolerance=2, y_tolerance=2) or ""
+            return (left_text.strip() + "\n" + right_text.strip()).strip()
 
-    # Strategy 2: Look for small font text at the bottom (footnotes tend to
-    # be in a smaller font). Extract chars, find the transition point.
-    chars = page.chars or []
-    if chars:
-        # Group chars by approximate y-position, find where font size drops
-        bottom_chars = [c for c in chars if c["top"] > height * 0.7]
-        if bottom_chars:
-            avg_size = sum(c.get("size", 10) for c in bottom_chars) / len(bottom_chars)
-            all_avg = sum(c.get("size", 10) for c in chars) / max(len(chars), 1)
-            # If bottom text is significantly smaller, it's likely footnotes
-            if avg_size < all_avg * 0.85:
-                transition_y = min(c["top"] for c in bottom_chars)
-                # Column-aware extraction for footnotes
-                mid_x = width / 2
-                left_fn = [c for c in bottom_chars if c["x0"] < mid_x - 15]
-                right_fn = [c for c in bottom_chars if c["x0"] > mid_x + 15]
-
-                if left_fn and right_fn:
-                    left_crop = page.crop((0, transition_y, mid_x, height))
-                    right_crop = page.crop((mid_x, transition_y, width, height))
-                    left_text = left_crop.extract_text(x_tolerance=2, y_tolerance=2) or ""
-                    right_text = right_crop.extract_text(x_tolerance=2, y_tolerance=2) or ""
-                    return (left_text.strip() + "\n" + right_text.strip()).strip()
-
-                crop = page.crop((0, transition_y, width, height))
-                text = crop.extract_text(x_tolerance=2, y_tolerance=2) or ""
-                return text.strip()
-
-    return ""
+    # Fallback: single extraction
+    text = footnote_crop.extract_text(x_tolerance=2, y_tolerance=2) or ""
+    return text.strip()
 
 
 # ──────────────────────────────────────────────────────────────────────────────
 # Two-column body text extraction
 # ──────────────────────────────────────────────────────────────────────────────
+
+def _find_footnote_boundary(page: Page) -> float:
+    """Find the y-coordinate where the footnote zone starts (or page height if none)."""
+    height = page.height
+    width = page.width
+
+    # Look for a horizontal separator line in the bottom 40% of the page
+    page_lines = page.lines or []
+    best_rule_y: float = height
+    for line in page_lines:
+        y = line.get("top", 0)
+        if y > height * 0.6:
+            x0 = line.get("x0", 0)
+            x1 = line.get("x1", 0)
+            if (x1 - x0) > width * 0.15:
+                best_rule_y = min(best_rule_y, y)
+
+    # Also check for font-size transition (footnotes use smaller font)
+    if best_rule_y >= height:
+        chars = page.chars or []
+        if chars:
+            body_chars = [c for c in chars if height * 0.2 < c["top"] < height * 0.7]
+            if body_chars:
+                avg_body_size = sum(c.get("size", 10) for c in body_chars) / len(body_chars)
+                bottom_chars = [c for c in chars if c["top"] > height * 0.7]
+                if bottom_chars:
+                    avg_bottom_size = sum(c.get("size", 10) for c in bottom_chars) / len(bottom_chars)
+                    if avg_bottom_size < avg_body_size * 0.85:
+                        best_rule_y = min(c["top"] for c in bottom_chars)
+
+    return best_rule_y
+
+
+def _find_header_boundary(page: Page) -> float:
+    """Find the y-coordinate where the body text starts (skip header/page numbers)."""
+    height = page.height
+    chars = page.chars or []
+
+    if not chars:
+        return 0
+
+    # Look at characters in the top 8% of the page
+    header_zone_y = height * 0.08
+    header_chars = [c for c in chars if c["top"] < header_zone_y]
+
+    if not header_chars:
+        return 0
+
+    # Find the bottom of the header zone (lowest character in top 8%)
+    header_bottom = max(c.get("bottom", c["top"] + 10) for c in header_chars)
+
+    # Add a small margin
+    return header_bottom + 5
+
 
 def _extract_body_columns(page: Page) -> str:
     """
@@ -383,6 +395,8 @@ def _extract_body_columns(page: Page) -> str:
     The Anania Bible PDF typically has two columns of text. We detect the
     column split by analyzing character x-positions, then extract left column
     first, then right column, to preserve reading order.
+
+    Excludes header zone (page numbers, headers) and footnote zone.
     """
     height = page.height
     width = page.width
@@ -391,15 +405,23 @@ def _extract_body_columns(page: Page) -> str:
     if not chars:
         return page.extract_text(x_tolerance=2, y_tolerance=2) or ""
 
-    # Determine if this is a two-column layout by looking at the x-distribution
-    # of characters in the middle third (y) of the page
-    mid_chars = [c for c in chars if height * 0.2 < c["top"] < height * 0.7]
+    # Find body zone boundaries (exclude headers and footnotes)
+    header_y = _find_header_boundary(page)
+    footnote_y = _find_footnote_boundary(page)
 
-    if not mid_chars:
+    # Ensure we have a valid body zone
+    if header_y >= footnote_y:
+        return page.extract_text(x_tolerance=2, y_tolerance=2) or ""
+
+    # Determine if this is a two-column layout by looking at the x-distribution
+    # of characters in the body zone
+    body_chars = [c for c in chars if header_y < c["top"] < footnote_y]
+
+    if not body_chars:
         return page.extract_text(x_tolerance=2, y_tolerance=2) or ""
 
     # Histogram of x-positions (left edge of character bounding box)
-    x_positions = [c["x0"] for c in mid_chars]
+    x_positions = [c["x0"] for c in body_chars]
     mid_x = width / 2
 
     # Count chars in left half vs right half
@@ -412,39 +434,25 @@ def _extract_body_columns(page: Page) -> str:
                   gap_count < (left_count + right_count) * 0.1)
 
     if not is_two_col:
-        # Single column – just extract normally
-        return page.extract_text(x_tolerance=2, y_tolerance=2) or ""
+        # Single column – extract just the body zone
+        body_crop = page.crop((0, header_y, width, footnote_y))
+        return body_crop.extract_text(x_tolerance=2, y_tolerance=2) or ""
 
     # Find the column split point (the x-position with fewest characters)
     # by finding the gap in the middle region
-    split_x = mid_x  # default
-
-    # Scan from 35%-65% of width for the best gap
     best_gap_x = mid_x
     min_chars_at_x = float("inf")
     for test_x in range(int(width * 0.35), int(width * 0.65)):
-        count = sum(1 for c in mid_chars if test_x - 5 <= c["x0"] <= test_x + 5)
+        count = sum(1 for c in body_chars if test_x - 5 <= c["x0"] <= test_x + 5)
         if count < min_chars_at_x:
             min_chars_at_x = count
             best_gap_x = test_x
 
     split_x = best_gap_x
 
-    # Find the footnote zone boundary to exclude it from body
-    footnote_y = height  # default: no footnotes excluded here
-
-    page_lines = page.lines or []
-    for line in page_lines:
-        y = line.get("top", 0)
-        if y > height * 0.6:
-            x0 = line.get("x0", 0)
-            x1 = line.get("x1", 0)
-            if (x1 - x0) > width * 0.15:
-                footnote_y = min(footnote_y, y)
-
-    # Extract left column, then right column
-    left_crop = page.crop((0, 0, split_x, footnote_y))
-    right_crop = page.crop((split_x, 0, width, footnote_y))
+    # Extract left column, then right column (body zone only, no header/footnotes)
+    left_crop = page.crop((0, header_y, split_x, footnote_y))
+    right_crop = page.crop((split_x, header_y, width, footnote_y))
 
     left_text = left_crop.extract_text(x_tolerance=2, y_tolerance=2) or ""
     right_text = right_crop.extract_text(x_tolerance=2, y_tolerance=2) or ""
@@ -456,35 +464,55 @@ def _extract_body_columns(page: Page) -> str:
 # Footnote parsing
 # ──────────────────────────────────────────────────────────────────────────────
 
-# Footnote line patterns
+# Footnote line patterns (line-based — fallback)
 _FN_UNICODE_RE = re.compile(r"^([⁰¹²³⁴⁵⁶⁷⁸⁹]+)\s*[=:.\-–)]*\s*(.+)")
 _FN_DIGIT_RE = re.compile(r"^(\d{1,2})\s*[=:.\-–)]\s*(.+)")
 # Fallback: digit at start followed by space and text (no separator)
 _FN_DIGIT_NOSEP_RE = re.compile(r"^(\d{1,2})\s{2,}(.+)")
 
+# Marker-based splitting: find superscript or digit markers inside text
+_FN_MARKER_SPLIT_RE = re.compile(r"([⁰¹²³⁴⁵⁶⁷⁸⁹]+)")
+
 
 def _parse_footnotes(text: str) -> list[dict[str, str | int]]:
-    """Parse footnote lines from the footnote zone text."""
+    """Parse footnote lines from the footnote zone text.
+
+    Uses two strategies:
+    1. Marker-based: find Unicode superscript markers in the text and split
+       on them (handles cases where multiple footnotes are on the same line).
+    2. Line-based (fallback): look for digit-based markers at line starts.
+    """
     notes: list[dict[str, str | int]] = []
     if not text:
         return notes
 
+    # Strategy 1: Split on Unicode superscript markers
+    markers: list[tuple[int, int, int]] = []  # (start, end, number)
+    for m in _FN_MARKER_SPLIT_RE.finditer(text):
+        n = _superscript_to_int(m.group())
+        if n is not None and 1 <= n <= _MAX_FOOTNOTE_NUMBER:
+            markers.append((m.start(), m.end(), n))
+
+    if markers:
+        # Extract text between consecutive markers
+        for i, (start, end, n) in enumerate(markers):
+            next_start = markers[i + 1][0] if i + 1 < len(markers) else len(text)
+            note_text = text[end:next_start].strip()
+            # Clean up: remove leading separators (=, :, -, etc.)
+            note_text = re.sub(r'^[=:.\-–)\s]+', '', note_text).strip()
+            # Remove trailing whitespace artifacts
+            note_text = re.sub(r'\s+', ' ', note_text).strip()
+            if note_text:
+                notes.append({"symbol": n, "note_text": note_text})
+        return notes
+
+    # Strategy 2: Line-based parsing (for regular digit footnotes)
     lines = text.split("\n")
     current_note: dict[str, str | int] | None = None
 
     for line in lines:
         line = line.strip()
         if not line:
-            continue
-
-        # Try Unicode superscript note marker
-        m = _FN_UNICODE_RE.match(line)
-        if m:
-            if current_note:
-                notes.append(current_note)
-            n = _superscript_to_int(m.group(1))
-            if n is not None:
-                current_note = {"symbol": n, "note_text": m.group(2).strip()}
             continue
 
         # Try regular digit note marker (with separator)
@@ -549,9 +577,10 @@ class VerseRecord:
         return d
 
 
-_CHAPTER_RE = re.compile(
-    r"^\s*(?:(?:Capitolul|Cap\.?|Psalmul|Ps\.?)\s+)?(\d{1,3})\s*$", re.IGNORECASE
+_CHAPTER_KEYWORD_RE = re.compile(
+    r"^\s*(?:Capitolul|Cap\.?|Psalmul|Ps\.?)\s+(\d{1,3})\s*$", re.IGNORECASE
 )
+_STANDALONE_NUMBER_RE = re.compile(r"^\s*(\d{1,3})\s*$")
 _VERSE_RE = re.compile(r"^(\d+)[.\s]\s*(.+)")
 
 
@@ -564,6 +593,7 @@ class BookChapterTracker:
         self.current_chapter: int = 0
         self.current_verse: int = 0
         self.verses: list[VerseRecord] = []
+        self._unmatched_headings: list[str] = []  # for debug logging
         self._pending_text: str = ""          # accumulates verse text across lines
 
     def _flush_verse(self) -> None:
@@ -616,9 +646,23 @@ class BookChapterTracker:
             # Reverse substring match (our heading is contained in the PDF line)
             if not matched and len(line) < 150 and len(normalized) > 15:
                 for hNorm, cfg in self._heading_map.items():
-                    if len(hNorm) > 10 and normalized.endswith(hNorm):
+                    if len(hNorm) > 10 and normalized in hNorm:
                         matched = cfg
                         break
+
+            # Partial word-based match: if all significant words of a heading
+            # appear in the line (handles reordering, extra words, etc.)
+            if not matched and len(line) < 150 and len(normalized) > 10:
+                norm_words = set(normalized.split())
+                if len(norm_words) >= 3:
+                    for hNorm, cfg in self._heading_map.items():
+                        h_words = set(hNorm.split())
+                        if len(h_words) >= 3:
+                            # Check if most significant heading words are in the line
+                            common = h_words & norm_words
+                            if len(common) >= len(h_words) * 0.7 and len(common) >= 3:
+                                matched = cfg
+                                break
 
             if matched and matched != self.current_book:
                 self._flush_verse()
@@ -628,14 +672,41 @@ class BookChapterTracker:
                 print(f"  📖 Found book: {matched['headings'][0]} ({matched['code']})")
                 continue
 
+            # Debug: log uppercase lines that look like headings but weren't matched
+            if not matched and len(line) > 10 and line == line.upper() and not any(c.isdigit() for c in line[:3]):
+                if len(self._unmatched_headings) < 50:  # limit
+                    self._unmatched_headings.append(line[:100])
+
             # ── Chapter heading detection ──
-            chap_m = _CHAPTER_RE.match(line)
+            # 1) Explicit keyword: "Capitolul N", "Cap. N", "Psalmul N"
+            chap_m = _CHAPTER_KEYWORD_RE.match(line)
             if chap_m and self.current_book:
                 chap = int(chap_m.group(1))
                 if 1 <= chap <= 150:
                     self._flush_verse()
                     self.current_chapter = chap
                     self.current_verse = 0
+                    continue
+
+            # 2) Standalone number: only accept as chapter if sequential
+            standalone_m = _STANDALONE_NUMBER_RE.match(line)
+            if standalone_m and self.current_book:
+                num = int(standalone_m.group(1))
+                is_next_chapter = (
+                    (self.current_chapter == 0 and num == 1) or
+                    (self.current_chapter > 0 and num == self.current_chapter + 1 and num <= 150)
+                )
+                if is_next_chapter:
+                    self._flush_verse()
+                    self.current_chapter = num
+                    self.current_verse = 0
+                    continue
+                # Otherwise it's NOT a chapter — could be a verse number
+                # on its own line. Store as pending verse if reasonable.
+                if 1 <= num <= 200 and self.current_chapter > 0:
+                    self._flush_verse()
+                    self.current_verse = num
+                    self._pending_text = ""
                     continue
 
             # ── Verse detection ──
@@ -660,6 +731,11 @@ class BookChapterTracker:
     def finalize(self) -> None:
         """Flush any remaining pending verse."""
         self._flush_verse()
+        # Print unmatched heading candidates for debugging
+        if self._unmatched_headings:
+            print(f"\n[DEBUG] {len(self._unmatched_headings)} unmatched uppercase lines (potential book headings):")
+            for h in self._unmatched_headings[:20]:
+                print(f"  • {h}")
 
 
 # ──────────────────────────────────────────────────────────────────────────────
