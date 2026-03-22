@@ -114,27 +114,27 @@ BOOKS_CONFIG: list[dict[str, Any]] = [
     {"code": "JHN", "order": 43, "headings": ["Sfânta Evanghelie după Ioan", "Sfînta Evanghelie după Ioan", "Evanghelia după Ioan", "Ioan"], "abbrev": "In"},
     {"code": "ACT", "order": 44, "headings": ["Faptele Apostolilor", "Faptele Sfinților Apostoli", "Faptele Sfintilor Apostoli"], "abbrev": "FA"},
     {"code": "ROM", "order": 45, "headings": ["Epistola către Romani", "Romani", "Epistola Sfântului Apostol Pavel către Romani"], "abbrev": "Rom"},
-    {"code": "1CO", "order": 46, "headings": ["Epistola întâi către Corinteni", "Epistola întîi către Corinteni", "I Corinteni", "1 Corinteni"], "abbrev": "1Cor"},
-    {"code": "2CO", "order": 47, "headings": ["Epistola a doua către Corinteni", "II Corinteni", "2 Corinteni"], "abbrev": "2Cor"},
-    {"code": "GAL", "order": 48, "headings": ["Epistola către Galateni", "Galateni"], "abbrev": "Gal"},
-    {"code": "EPH", "order": 49, "headings": ["Epistola către Efeseni", "Efeseni"], "abbrev": "Ef"},
-    {"code": "PHP", "order": 50, "headings": ["Epistola către Filipeni", "Filipeni"], "abbrev": "Flp"},
-    {"code": "COL", "order": 51, "headings": ["Epistola către Coloseni", "Coloseni"], "abbrev": "Col"},
-    {"code": "1TH", "order": 52, "headings": ["Epistola întâi către Tesaloniceni", "Epistola întîi către Tesaloniceni", "I Tesaloniceni", "1 Tesaloniceni"], "abbrev": "1Tes"},
-    {"code": "2TH", "order": 53, "headings": ["Epistola a doua către Tesaloniceni", "II Tesaloniceni", "2 Tesaloniceni"], "abbrev": "2Tes"},
-    {"code": "1TI", "order": 54, "headings": ["Epistola întâi către Timotei", "Epistola întîi către Timotei", "I Timotei", "1 Timotei"], "abbrev": "1Tim"},
-    {"code": "2TI", "order": 55, "headings": ["Epistola a doua către Timotei", "II Timotei", "2 Timotei"], "abbrev": "2Tim"},
-    {"code": "TIT", "order": 56, "headings": ["Epistola către Tit", "Tit"], "abbrev": "Tit"},
-    {"code": "PHM", "order": 57, "headings": ["Epistola către Filimon", "Filimon"], "abbrev": "Flm"},
-    {"code": "HEB", "order": 58, "headings": ["Epistola către Evrei", "Evrei"], "abbrev": "Evr"},
-    {"code": "JAS", "order": 59, "headings": ["Epistola lui Iacob", "Iacob", "Epistola Sobornicească a lui Iacob"], "abbrev": "Iac"},
-    {"code": "1PE", "order": 60, "headings": ["Epistola întâi a lui Petru", "Epistola întîi a lui Petru", "I Petru", "1 Petru"], "abbrev": "1Pet"},
-    {"code": "2PE", "order": 61, "headings": ["Epistola a doua a lui Petru", "II Petru", "2 Petru"], "abbrev": "2Pet"},
-    {"code": "1JN", "order": 62, "headings": ["Epistola întâi a lui Ioan", "Epistola întîi a lui Ioan", "I Ioan", "1 Ioan"], "abbrev": "1In"},
-    {"code": "2JN", "order": 63, "headings": ["Epistola a doua a lui Ioan", "II Ioan", "2 Ioan"], "abbrev": "2In"},
-    {"code": "3JN", "order": 64, "headings": ["Epistola a treia a lui Ioan", "III Ioan", "3 Ioan"], "abbrev": "3In"},
-    {"code": "JUD", "order": 65, "headings": ["Epistola lui Iuda", "Iuda"], "abbrev": "Iud"},
-    {"code": "REV", "order": 66, "headings": ["Apocalipsa", "Apocalipsa lui Ioan"], "abbrev": "Apoc"},
+    {"code": "1CO", "order": 46, "headings": ["Epistola întâi către Corinteni", "Epistola întîi către Corinteni", "I Corinteni", "1 Corinteni", "Epistola Sfântului Apostol Pavel întâi către Corinteni", "Epistola Sfîntului Apostol Pavel întîi către Corinteni"], "abbrev": "1Cor"},
+    {"code": "2CO", "order": 47, "headings": ["Epistola a doua către Corinteni", "II Corinteni", "2 Corinteni", "Epistola Sfântului Apostol Pavel a doua către Corinteni", "Epistola Sfîntului Apostol Pavel a doua către Corinteni"], "abbrev": "2Cor"},
+    {"code": "GAL", "order": 48, "headings": ["Epistola către Galateni", "Galateni", "Epistola Sfântului Apostol Pavel către Galateni", "Epistola Sfîntului Apostol Pavel către Galateni"], "abbrev": "Gal"},
+    {"code": "EPH", "order": 49, "headings": ["Epistola către Efeseni", "Efeseni", "Epistola Sfântului Apostol Pavel către Efeseni", "Epistola Sfîntului Apostol Pavel către Efeseni"], "abbrev": "Ef"},
+    {"code": "PHP", "order": 50, "headings": ["Epistola către Filipeni", "Filipeni", "Epistola Sfântului Apostol Pavel către Filipeni", "Epistola Sfîntului Apostol Pavel către Filipeni"], "abbrev": "Flp"},
+    {"code": "COL", "order": 51, "headings": ["Epistola către Coloseni", "Coloseni", "Epistola Sfântului Apostol Pavel către Coloseni", "Epistola Sfîntului Apostol Pavel către Coloseni"], "abbrev": "Col"},
+    {"code": "1TH", "order": 52, "headings": ["Epistola întâi către Tesaloniceni", "Epistola întîi către Tesaloniceni", "I Tesaloniceni", "1 Tesaloniceni", "Epistola Sfântului Apostol Pavel întâi către Tesaloniceni", "Epistola Sfîntului Apostol Pavel întîi către Tesaloniceni"], "abbrev": "1Tes"},
+    {"code": "2TH", "order": 53, "headings": ["Epistola a doua către Tesaloniceni", "II Tesaloniceni", "2 Tesaloniceni", "Epistola Sfântului Apostol Pavel a doua către Tesaloniceni", "Epistola Sfîntului Apostol Pavel a doua către Tesaloniceni"], "abbrev": "2Tes"},
+    {"code": "1TI", "order": 54, "headings": ["Epistola întâi către Timotei", "Epistola întîi către Timotei", "I Timotei", "1 Timotei", "Epistola Sfântului Apostol Pavel întâi către Timotei", "Epistola Sfîntului Apostol Pavel întîi către Timotei"], "abbrev": "1Tim"},
+    {"code": "2TI", "order": 55, "headings": ["Epistola a doua către Timotei", "II Timotei", "2 Timotei", "Epistola Sfântului Apostol Pavel a doua către Timotei", "Epistola Sfîntului Apostol Pavel a doua către Timotei"], "abbrev": "2Tim"},
+    {"code": "TIT", "order": 56, "headings": ["Epistola către Tit", "Tit", "Epistola Sfântului Apostol Pavel către Tit", "Epistola Sfîntului Apostol Pavel către Tit"], "abbrev": "Tit"},
+    {"code": "PHM", "order": 57, "headings": ["Epistola către Filimon", "Filimon", "Epistola Sfântului Apostol Pavel către Filimon", "Epistola Sfîntului Apostol Pavel către Filimon"], "abbrev": "Flm"},
+    {"code": "HEB", "order": 58, "headings": ["Epistola către Evrei", "Evrei", "Epistola Sfântului Apostol Pavel către Evrei", "Epistola Sfîntului Apostol Pavel către Evrei"], "abbrev": "Evr"},
+    {"code": "JAS", "order": 59, "headings": ["Epistola lui Iacob", "Iacob", "Epistola Sobornicească a lui Iacob", "Epistola Soborniceasca a lui Iacob", "Epistola Sobornicească a Sfântului Apostol Iacob", "Epistola Soborniceasca a Sfîntului Apostol Iacob"], "abbrev": "Iac"},
+    {"code": "1PE", "order": 60, "headings": ["Epistola întâi a lui Petru", "Epistola întîi a lui Petru", "I Petru", "1 Petru", "Epistola Sobornicească întâi a Sfântului Apostol Petru", "Epistola Soborniceasca întâi a Sfântului Apostol Petru", "Epistola întâi a Sfântului Apostol Petru", "Epistola Sobornicească întîi a Sfîntului Apostol Petru"], "abbrev": "1Pet"},
+    {"code": "2PE", "order": 61, "headings": ["Epistola a doua a lui Petru", "II Petru", "2 Petru", "Epistola Sobornicească a doua a Sfântului Apostol Petru", "Epistola a doua a Sfântului Apostol Petru", "Epistola Soborniceasca a doua a Sfîntului Apostol Petru"], "abbrev": "2Pet"},
+    {"code": "1JN", "order": 62, "headings": ["Epistola întâi a lui Ioan", "Epistola întîi a lui Ioan", "I Ioan", "1 Ioan", "Epistola Sobornicească întâi a Sfântului Apostol Ioan", "Epistola întâi a Sfântului Apostol Ioan", "Epistola Soborniceasca întîi a Sfîntului Apostol Ioan"], "abbrev": "1In"},
+    {"code": "2JN", "order": 63, "headings": ["Epistola a doua a lui Ioan", "II Ioan", "2 Ioan", "Epistola Sobornicească a doua a Sfântului Apostol Ioan", "Epistola a doua a Sfântului Apostol Ioan", "Epistola Soborniceasca a doua a Sfîntului Apostol Ioan"], "abbrev": "2In"},
+    {"code": "3JN", "order": 64, "headings": ["Epistola a treia a lui Ioan", "III Ioan", "3 Ioan", "Epistola Sobornicească a treia a Sfântului Apostol Ioan", "Epistola a treia a Sfântului Apostol Ioan", "Epistola Soborniceasca a treia a Sfîntului Apostol Ioan"], "abbrev": "3In"},
+    {"code": "JUD", "order": 65, "headings": ["Epistola lui Iuda", "Iuda", "Epistola Sobornicească a Sfântului Apostol Iuda", "Epistola Soborniceasca a Sfîntului Apostol Iuda"], "abbrev": "Iud"},
+    {"code": "REV", "order": 66, "headings": ["Apocalipsa", "Apocalipsa lui Ioan", "Apocalipsa Sfântului Ioan Teologul", "Apocalipsa Sfîntului Ioan Teologul"], "abbrev": "Apoc"},
     # Deuterocanonical
     {"code": "TOB", "order": 67, "headings": ["Cartea lui Tobit", "Tobit"], "abbrev": "Tob"},
     {"code": "JDT", "order": 68, "headings": ["Cartea Iuditei", "Iudita"], "abbrev": "Iudt"},
@@ -142,7 +142,7 @@ BOOKS_CONFIG: list[dict[str, Any]] = [
     {"code": "SIR", "order": 71, "headings": ["Cartea înțelepciunii lui Isus, fiul lui Sirah", "Înțelepciunea lui Isus, fiul lui Sirah", "Intelepciunea lui Isus, fiul lui Sirah", "Ecclesiasticul", "Sirah"], "abbrev": "Sir"},
     {"code": "BAR", "order": 72, "headings": ["Baruh", "Cartea lui Baruh"], "abbrev": "Bar"},
     {"code": "LJE", "order": 73, "headings": ["Epistola lui Ieremia", "Scrisoarea lui Ieremia"], "abbrev": "EpIer"},
-    {"code": "S3Y", "order": 74, "headings": ["Cântarea celor trei tineri", "Cîntarea celor trei tineri"], "abbrev": "S3Y"},
+    {"code": "S3Y", "order": 74, "headings": ["Cântarea celor trei tineri", "Cîntarea celor trei tineri", "Cantarea celor trei tineri"], "abbrev": "S3Y"},
     {"code": "SUS", "order": 75, "headings": ["Istoria Susanei", "Susana"], "abbrev": "Sus"},
     {"code": "BEL", "order": 76, "headings": ["Bel și balaurul", "Bel si balaurul", "Bel şi balaurul"], "abbrev": "Bel"},
     {"code": "1MA", "order": 77, "headings": ["Cartea întâi a Macabeilor", "Cartea întîi a Macabeilor", "I Macabei", "1 Macabei"], "abbrev": "1Mac"},
@@ -294,7 +294,8 @@ def _extract_footnote_zone(page: Page) -> str:
 
     Strategy: look for a horizontal line (rule) or a significant y-gap near
     the bottom third of the page that separates footnotes from body text.
-    If found, extract only the text below it.
+    If found, extract the text below it using column-aware extraction
+    (footnotes are also laid out in two columns like the body text).
     """
     height = page.height
     width = page.width
@@ -310,14 +311,31 @@ def _extract_footnote_zone(page: Page) -> str:
             x0 = line.get("x0", 0)
             x1 = line.get("x1", 0)
             line_width = x1 - x0
-            # Separator lines are typically at least 20% of page width
-            if line_width > width * 0.2:
+            # Separator lines are typically at least 15% of page width
+            if line_width > width * 0.15:
                 if best_rule_y is None or y < best_rule_y:
                     best_rule_y = y
 
     if best_rule_y is not None:
-        crop = page.crop((0, best_rule_y, width, height))
-        text = crop.extract_text(x_tolerance=2, y_tolerance=2) or ""
+        # Use column-aware extraction for the footnote zone too
+        footnote_crop = page.crop((0, best_rule_y, width, height))
+        fn_chars = footnote_crop.chars or []
+
+        if fn_chars:
+            mid_x = width / 2
+            left_fn = [c for c in fn_chars if c["x0"] < mid_x - 15]
+            right_fn = [c for c in fn_chars if c["x0"] > mid_x + 15]
+
+            # If there are chars on both sides, extract as two columns
+            if left_fn and right_fn:
+                left_crop = page.crop((0, best_rule_y, mid_x, height))
+                right_crop = page.crop((mid_x, best_rule_y, width, height))
+                left_text = left_crop.extract_text(x_tolerance=2, y_tolerance=2) or ""
+                right_text = right_crop.extract_text(x_tolerance=2, y_tolerance=2) or ""
+                return (left_text.strip() + "\n" + right_text.strip()).strip()
+
+        # Fallback: single extraction
+        text = footnote_crop.extract_text(x_tolerance=2, y_tolerance=2) or ""
         return text.strip()
 
     # Strategy 2: Look for small font text at the bottom (footnotes tend to
@@ -332,6 +350,18 @@ def _extract_footnote_zone(page: Page) -> str:
             # If bottom text is significantly smaller, it's likely footnotes
             if avg_size < all_avg * 0.85:
                 transition_y = min(c["top"] for c in bottom_chars)
+                # Column-aware extraction for footnotes
+                mid_x = width / 2
+                left_fn = [c for c in bottom_chars if c["x0"] < mid_x - 15]
+                right_fn = [c for c in bottom_chars if c["x0"] > mid_x + 15]
+
+                if left_fn and right_fn:
+                    left_crop = page.crop((0, transition_y, mid_x, height))
+                    right_crop = page.crop((mid_x, transition_y, width, height))
+                    left_text = left_crop.extract_text(x_tolerance=2, y_tolerance=2) or ""
+                    right_text = right_crop.extract_text(x_tolerance=2, y_tolerance=2) or ""
+                    return (left_text.strip() + "\n" + right_text.strip()).strip()
+
                 crop = page.crop((0, transition_y, width, height))
                 text = crop.extract_text(x_tolerance=2, y_tolerance=2) or ""
                 return text.strip()
@@ -406,7 +436,7 @@ def _extract_body_columns(page: Page) -> str:
         if y > height * 0.6:
             x0 = line.get("x0", 0)
             x1 = line.get("x1", 0)
-            if (x1 - x0) > width * 0.2:
+            if (x1 - x0) > width * 0.15:
                 footnote_y = min(footnote_y, y)
 
     # Extract left column, then right column
@@ -424,8 +454,10 @@ def _extract_body_columns(page: Page) -> str:
 # ──────────────────────────────────────────────────────────────────────────────
 
 # Footnote line patterns
-_FN_UNICODE_RE = re.compile(r"^([⁰¹²³⁴⁵⁶⁷⁸⁹]+)\s*[=:.]\s*(.+)")
-_FN_DIGIT_RE = re.compile(r"^(\d{1,2})\s*[=:.]\s+(.+)")
+_FN_UNICODE_RE = re.compile(r"^([⁰¹²³⁴⁵⁶⁷⁸⁹]+)\s*[=:.\-–)]*\s*(.+)")
+_FN_DIGIT_RE = re.compile(r"^(\d{1,2})\s*[=:.\-–)]\s*(.+)")
+# Fallback: digit at start followed by space and text (no separator)
+_FN_DIGIT_NOSEP_RE = re.compile(r"^(\d{1,2})\s{2,}(.+)")
 
 
 def _parse_footnotes(text: str) -> list[dict[str, str | int]]:
@@ -452,14 +484,27 @@ def _parse_footnotes(text: str) -> list[dict[str, str | int]]:
                 current_note = {"symbol": n, "note_text": m.group(2).strip()}
             continue
 
-        # Try regular digit note marker
+        # Try regular digit note marker (with separator)
         m = _FN_DIGIT_RE.match(line)
         if m:
             if current_note:
                 notes.append(current_note)
             try:
                 n = int(m.group(1))
-                if 1 <= n <= 20:
+                if 1 <= n <= 30:
+                    current_note = {"symbol": n, "note_text": m.group(2).strip()}
+                    continue
+            except ValueError:
+                pass
+
+        # Try regular digit note marker (no separator, just whitespace)
+        m = _FN_DIGIT_NOSEP_RE.match(line)
+        if m:
+            try:
+                n = int(m.group(1))
+                if 1 <= n <= 30:
+                    if current_note:
+                        notes.append(current_note)
                     current_note = {"symbol": n, "note_text": m.group(2).strip()}
                     continue
             except ValueError:
@@ -486,6 +531,7 @@ class VerseRecord:
     chapter: int
     verse: int
     text: str                           # clean text (no superscripts)
+    raw_text: str = ""                  # original text before superscript stripping
     footnotes: list[dict[str, Any]] = field(default_factory=list)
 
     def to_dict(self) -> dict[str, Any]:
@@ -526,6 +572,7 @@ class BookChapterTracker:
                 chapter=self.current_chapter,
                 verse=self.current_verse,
                 text=clean,
+                raw_text=self._pending_text,
             ))
         self._pending_text = ""
 
@@ -556,10 +603,17 @@ class BookChapterTracker:
                             self.current_chapter = chap
                         continue
 
-            # Try substring match for long headings
+            # Try substring match for long headings (PDF heading contains our heading)
             if not matched and len(line) < 150:
                 for hNorm, cfg in self._heading_map.items():
                     if len(hNorm) > 10 and hNorm in normalized:
+                        matched = cfg
+                        break
+
+            # Reverse substring match (our heading is contained in the PDF line)
+            if not matched and len(line) < 150 and len(normalized) > 15:
+                for hNorm, cfg in self._heading_map.items():
+                    if len(hNorm) > 10 and normalized.endswith(hNorm):
                         matched = cfg
                         break
 
@@ -606,42 +660,33 @@ class BookChapterTracker:
 
 
 # ──────────────────────────────────────────────────────────────────────────────
-# Link footnotes to verses
-# ──────────────────────────────────────────────────────────────────────────────
-
-def _link_footnotes(
-    verses: list[VerseRecord],
-    page_notes: list[tuple[int, list[dict[str, str | int]]]],
-) -> None:
-    """
-    For each page's footnotes, find the verses on that page that contain
-    the footnote symbol and attach the note text.
-
-    page_notes is a list of (page_number, [footnote_dicts]) tuples.
-    """
-    # Build a lookup: (book, chapter, verse) → VerseRecord index
-    verse_idx: dict[tuple[str, int, int], int] = {}
-    for i, v in enumerate(verses):
-        key = (v.book, v.chapter, v.verse)
-        verse_idx[key] = i
-
-    # For each page's footnotes, scan the verses' *original* text
-    # (before stripping) to find which verse contains the symbol.
-    # Since we've already stripped, we need to use the detected superscripts.
-    # A simpler approach: for each footnote symbol N from page P, attach it
-    # to the last verse on that page that we know about.
-    # However, the best approach is to re-detect superscripts in the raw text.
-    # Since we don't keep raw text, we'll attach footnotes to the most recent
-    # verse that makes sense — using a page-range heuristic.
-
-    # We actually need a different approach: keep track of which verses came
-    # from which page. Let's do this via the main extraction loop instead.
-    pass
-
-
-# ──────────────────────────────────────────────────────────────────────────────
 # Database insertion
 # ──────────────────────────────────────────────────────────────────────────────
+
+def _clear_db_table(database_url: str) -> None:
+    """Clear the anania_adnotari table before a fresh extraction."""
+    try:
+        import psycopg2
+    except ImportError:
+        return  # Will be handled during insertion
+
+    print("   Clearing anania_adnotari table...")
+    try:
+        conn = psycopg2.connect(database_url)
+        try:
+            with conn:
+                with conn.cursor() as cur:
+                    cur.execute("DELETE FROM anania_adnotari")
+            print("   ✅ Table cleared.")
+        except psycopg2.ProgrammingError as e:
+            print(f"   ⚠ Could not clear table (may not exist yet): {e}")
+        except Exception as e:
+            print(f"   ⚠ Could not clear table: {type(e).__name__}: {e}")
+        finally:
+            conn.close()
+    except psycopg2.OperationalError as e:
+        print(f"   ⚠ Could not connect to database to clear table: {e}")
+
 
 def _insert_notes_to_db(verses: list[VerseRecord], database_url: str) -> None:
     """Insert extracted footnotes into the anania_adnotari PostgreSQL table."""
@@ -674,14 +719,11 @@ def _insert_notes_to_db(verses: list[VerseRecord], database_url: str) -> None:
         return
 
     print(f"   Inserting {len(notes_to_insert)} footnotes into anania_adnotari...")
-    print("   (Existing rows will be replaced — this is a full re-extraction.)")
 
     conn = psycopg2.connect(database_url)
     try:
         with conn:
             with conn.cursor() as cur:
-                cur.execute("DELETE FROM anania_adnotari")
-
                 batch_size = 500
                 for i in range(0, len(notes_to_insert), batch_size):
                     batch = notes_to_insert[i:i + batch_size]
@@ -726,6 +768,15 @@ def extract(pdf_path: str, output_path: str, database_url: str | None = None) ->
     size_mb = os.path.getsize(pdf_path) / (1024 * 1024)
     print(f"=== Anania Bible Extraction (pdfplumber) ===")
     print(f"PDF: {pdf_path} ({size_mb:.1f} MB)")
+
+    # ── Clean up before extraction ──
+    output_path_abs = os.path.abspath(output_path)
+    if os.path.isfile(output_path_abs):
+        os.remove(output_path_abs)
+        print(f"   Removed old output: {output_path_abs}")
+
+    if database_url:
+        _clear_db_table(database_url)
 
     tracker = BookChapterTracker()
 
@@ -773,18 +824,43 @@ def extract(pdf_path: str, output_path: str, database_url: str | None = None) ->
         end_v = verse_count_before_page[page_idx + 1] if page_idx + 1 < len(verse_count_before_page) else len(tracker.verses)
 
         page_verses = tracker.verses[start_v:end_v]
+        if not page_verses:
+            continue
+
         for note in notes:
             symbol = note["symbol"]
             note_text = str(note["note_text"])
-            # Attach to the last verse on this page (simplistic but reasonable)
-            # A more sophisticated approach would search the raw text for the symbol
-            if page_verses:
-                fn_entry: dict[str, Any] = {
-                    "symbol": symbol,
-                    "note_text": note_text,
-                }
-                page_verses[-1].footnotes.append(fn_entry)
-                total_linked += 1
+
+            # Search page verses' raw text for the footnote symbol
+            # (as Unicode superscript or inline digit)
+            matched_verse = None
+            sup_str = "".join("⁰¹²³⁴⁵⁶⁷⁸⁹"[int(d)] for d in str(symbol))
+            for v in page_verses:
+                if sup_str in v.raw_text or str(symbol) in v.raw_text:
+                    matched_verse = v
+                    break
+
+            # Fallback: attach to the last verse on this page
+            if matched_verse is None:
+                matched_verse = page_verses[-1]
+
+            # Find attached word
+            attached_word = None
+            superscripts = _find_superscripts(matched_verse.raw_text)
+            for sup in superscripts:
+                if sup["symbol"] == symbol:
+                    attached_word = sup.get("attached_to_word")
+                    break
+
+            fn_entry: dict[str, Any] = {
+                "symbol": symbol,
+                "note_text": note_text,
+            }
+            if attached_word:
+                fn_entry["attached_to_word"] = attached_word
+
+            matched_verse.footnotes.append(fn_entry)
+            total_linked += 1
 
     print(f"Linked {total_linked} footnotes to verses.")
 
@@ -890,12 +966,11 @@ def extract(pdf_path: str, output_path: str, database_url: str | None = None) ->
         "books": helloao_books,
     }
 
-    output_path = os.path.abspath(output_path)
-    os.makedirs(os.path.dirname(output_path), exist_ok=True)
-    with open(output_path, "w", encoding="utf-8") as f:
+    os.makedirs(os.path.dirname(output_path_abs), exist_ok=True)
+    with open(output_path_abs, "w", encoding="utf-8") as f:
         json.dump(output, f, ensure_ascii=False, indent=2)
 
-    print(f"\n✅ Bible JSON written to: {output_path}")
+    print(f"\n✅ Bible JSON written to: {output_path_abs}")
     print(f"   {len(helloao_books)} books, {total_chapters} chapters, {len(tracker.verses)} verses")
 
     # ── Insert footnotes into database ──
