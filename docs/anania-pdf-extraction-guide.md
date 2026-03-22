@@ -53,19 +53,39 @@ pip install pdfplumber psycopg2-binary      # sau: pip install -r requirements.t
 
 ## Cum rulezi extracția
 
-Scriptul Python folosește `pdfplumber` pentru extracție cu coordonate,
-detectând automat layout-ul cu 2 coloane și zona de note de subsol.
+### Pregătire (o singură dată)
+
+Instalează dependințele Python:
+```bash
+cd scripts
+pip install -r requirements.txt    # sau: pip install pdfplumber psycopg2-binary
+```
+
+### Varianta 1: cu ANANIA_PDF_PATH din `.env`
+
+Adaugă în `.env`:
+```bash
+ANANIA_PDF_PATH=/calea/către/Biblia-ANANIA.pdf
+```
+
+Apoi rulează:
+```bash
+cd scripts
+npm run anania-extract
+```
+
+### Varianta 2: cu cale explicită
+
+```bash
+cd scripts
+npm run anania-extract -- /calea/către/Biblia-ANANIA.pdf
+```
+
+### Varianta 3: direct cu Python
 
 ```bash
 cd scripts
 python3 anania_extract.py /calea/către/Biblia-ANANIA.pdf
-# sau cu output specificat:
-python3 anania_extract.py /calea/către/Biblia-ANANIA.pdf anania_output.json
-```
-
-Poate fi rulat și prin npm:
-```bash
-npm run anania-extract -- /calea/către/Biblia-ANANIA.pdf
 ```
 
 Pipeline-ul va afișa progresul în consolă:

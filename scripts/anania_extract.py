@@ -23,8 +23,14 @@ Usage:
   python anania_extract.py /path/to/Biblia-ANANIA.pdf
   python anania_extract.py /path/to/Biblia-ANANIA.pdf --database-url postgresql://user:pass@localhost:5432/db
 
+The PDF path can also be read from the ANANIA_PDF_PATH environment variable
+(set it in .env) when no positional argument is given:
+  export ANANIA_PDF_PATH=/path/to/Biblia-ANANIA.pdf
+  python anania_extract.py
+
 The script can also be invoked via npm from the scripts/ directory:
-  npm run anania-extract -- /path/to/Biblia-ANANIA.pdf
+  npm run anania-extract                          # uses ANANIA_PDF_PATH from .env
+  npm run anania-extract -- /path/to/Biblia.pdf   # explicit path
 """
 
 from __future__ import annotations
@@ -38,8 +44,14 @@ from dataclasses import dataclass, field
 from pathlib import Path
 from typing import Any
 
-import pdfplumber                       # pip install pdfplumber
-from pdfplumber.page import Page
+try:
+    import pdfplumber                   # pip install pdfplumber
+    from pdfplumber.page import Page
+except ImportError:
+    print("ERROR: pdfplumber is not installed.")
+    print("       Run:  pip install pdfplumber psycopg2-binary")
+    print("       Or:   pip install -r requirements.txt")
+    sys.exit(1)
 
 
 # ──────────────────────────────────────────────────────────────────────────────
@@ -632,7 +644,13 @@ def _link_footnotes(
 
 def _insert_notes_to_db(verses: list[VerseRecord], database_url: str) -> None:
     """Insert extracted footnotes into the anania_adnotari PostgreSQL table."""
-    import psycopg2  # pip install psycopg2-binary
+    try:
+        import psycopg2  # pip install psycopg2-binary
+    except ImportError:
+        print("ERROR: psycopg2 is not installed (needed for database insertion).")
+        print("       Run:  pip install psycopg2-binary")
+        print("       Or:   pip install -r requirements.txt")
+        sys.exit(1)
 
     notes_to_insert: list[tuple[str, int, int, int, str, str]] = []
     for v in verses:
@@ -894,36 +912,42 @@ def extract(pdf_path: str, output_path: str, database_url: str | None = None) ->
 # ──────────────────────────────────────────────────────────────────────────────
 
 def main() -> None:
-    if len(sys.argv) < 2 or sys.argv[1] in ("-h", "--help"):
-        print("Usage: python anania_extract.py <path-to-Biblia-ANANIA.pdf> [output.json] [--database-url URL]")
-        print(f"\nDefault output: {os.path.abspath(DEFAULT_OUTPUT_PATH)}")
-        print("\nOptions:")
-        print("  --database-url URL   PostgreSQL connection string for inserting footnotes")
-        print("                       into the anania_adnotari table. Falls back to the")
-        print("                       DATABASE_URL environment variable if not provided.")
-        print("\nExample:")
-        print("  pip install pdfplumber psycopg2-binary")
-        print("  python anania_extract.py /path/to/Biblia-ANANIA.pdf")
-        print("  python anania_extract.py /path/to/Biblia-ANANIA.pdf --database-url postgresql://user:pass@localhost:5432/db")
-        sys.exit(1)
-
     # Parse arguments (simple: positional + optional --database-url)
     positional: list[str] = []
     database_url: str | None = None
+    show_help = False
     i = 1
     while i < len(sys.argv):
-        if sys.argv[i] == "--database-url" and i + 1 < len(sys.argv):
+        if sys.argv[i] in ("-h", "--help"):
+            show_help = True
+            i += 1
+        elif sys.argv[i] == "--database-url" and i + 1 < len(sys.argv):
             database_url = sys.argv[i + 1]
             i += 2
         else:
             positional.append(sys.argv[i])
             i += 1
 
-    if not positional:
-        print("ERROR: PDF path is required.")
+    # Resolve PDF path: CLI arg > ANANIA_PDF_PATH env var
+    pdf_path = positional[0] if positional else os.environ.get("ANANIA_PDF_PATH", "")
+
+    if show_help or not pdf_path:
+        print("Usage: python anania_extract.py <path-to-Biblia-ANANIA.pdf> [--database-url URL]")
+        print(f"\nDefault output: {os.path.abspath(DEFAULT_OUTPUT_PATH)}")
+        print("\nThe PDF path can be passed as the first argument or set via the")
+        print("ANANIA_PDF_PATH environment variable (in .env).")
+        print("\nOptions:")
+        print("  --database-url URL   PostgreSQL connection string for inserting footnotes")
+        print("                       into the anania_adnotari table. Falls back to the")
+        print("                       DATABASE_URL environment variable if not provided.")
+        print("\nSetup:")
+        print("  pip install -r requirements.txt   # or: pip install pdfplumber psycopg2-binary")
+        print("\nExample:")
+        print("  python anania_extract.py /path/to/Biblia-ANANIA.pdf")
+        print("  python anania_extract.py /path/to/Biblia-ANANIA.pdf --database-url postgresql://user:pass@localhost:5432/db")
+        print("\nDownload the PDF from: https://dervent.ro/biblia/Biblia-ANANIA.pdf")
         sys.exit(1)
 
-    pdf_path = positional[0]
     output_path = positional[1] if len(positional) > 1 else DEFAULT_OUTPUT_PATH
 
     # Fall back to DATABASE_URL environment variable
