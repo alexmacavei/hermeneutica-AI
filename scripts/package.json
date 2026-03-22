@@ -5,7 +5,7 @@
   "private": true,
   "scripts": {
     "biblia-pipeline": "ts-node --project tsconfig.json biblia-pipeline.ts",
-    "anania-extract": "set -a && [ -f ../.env ] && . ../.env; set +a; python3 anania_extract.py"
+    "anania-extract": "test -d .venv || python3 -m venv .venv && .venv/bin/pip install -q -r requirements.txt && set -a && [ -f ../.env ] && . ../.env; set +a; .venv/bin/python anania_extract.py"
   },
   "dependencies": {
     "axios": "^1.6.7",

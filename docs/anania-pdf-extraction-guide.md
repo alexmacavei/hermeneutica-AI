@@ -42,49 +42,46 @@ ANANIA_PDF_PATH=/calea/către/Biblia-ANANIA.pdf
 cp ~/Downloads/Biblia-ANANIA.pdf data/bibles/anania-source.pdf
 ```
 
-### 3. Instalează dependințele Python
+### 3. Verifică că Python 3 este instalat
 
+Scriptul necesită Python 3.8+. Verifică:
 ```bash
-cd scripts
-pip install pdfplumber psycopg2-binary      # sau: pip install -r requirements.txt
+python3 --version
 ```
+
+> **Nu** trebuie să instalezi manual `pdfplumber` sau alte pachete Python –
+> comanda `npm run anania-extract` creează automat un *virtual environment*
+> (`.venv/`) în directorul `scripts/` și instalează totul acolo.
 
 ---
 
 ## Cum rulezi extracția
 
-### Pregătire (o singură dată)
+### Varianta 1 (recomandată): cu `npm run`
 
-Instalează dependințele Python:
-```bash
-cd scripts
-pip install -r requirements.txt    # sau: pip install pdfplumber psycopg2-binary
-```
+Comanda creează automat un virtual environment Python, instalează dependințele
+și rulează extracția. Nu trebuie să faci nimic manual cu `pip` sau `venv`:
 
-### Varianta 1: cu ANANIA_PDF_PATH din `.env`
-
-Adaugă în `.env`:
-```bash
-ANANIA_PDF_PATH=/calea/către/Biblia-ANANIA.pdf
-```
-
-Apoi rulează:
 ```bash
 cd scripts
 npm run anania-extract
 ```
 
-### Varianta 2: cu cale explicită
+> Scriptul citește `ANANIA_PDF_PATH` din `.env`. Dacă variabila nu este setată,
+> poți pasa calea explicit:
+> ```bash
+> npm run anania-extract -- /calea/către/Biblia-ANANIA.pdf
+> ```
+
+### Varianta 2: manual cu Python (avansat)
+
+Dacă preferi să gestionezi singur environment-ul Python:
 
 ```bash
 cd scripts
-npm run anania-extract -- /calea/către/Biblia-ANANIA.pdf
-```
-
-### Varianta 3: direct cu Python
-
-```bash
-cd scripts
+python3 -m venv .venv                 # creează virtual environment
+source .venv/bin/activate             # activează-l (macOS/Linux)
+pip install -r requirements.txt       # instalează pdfplumber + psycopg2
 python3 anania_extract.py /calea/către/Biblia-ANANIA.pdf
 ```
 

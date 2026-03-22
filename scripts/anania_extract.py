@@ -18,19 +18,17 @@ Footnotes are inserted directly into the `anania_adnotari` PostgreSQL
 table when a DATABASE_URL is provided (via --database-url flag or the
 DATABASE_URL environment variable).
 
-Usage:
-  pip install pdfplumber psycopg2-binary
-  python anania_extract.py /path/to/Biblia-ANANIA.pdf
-  python anania_extract.py /path/to/Biblia-ANANIA.pdf --database-url postgresql://user:pass@localhost:5432/db
+Recommended (automatic venv):
+  cd scripts && npm run anania-extract
+
+Manual (advanced):
+  cd scripts
+  python3 -m venv .venv && source .venv/bin/activate
+  pip install -r requirements.txt
+  python3 anania_extract.py /path/to/Biblia-ANANIA.pdf
 
 The PDF path can also be read from the ANANIA_PDF_PATH environment variable
-(set it in .env) when no positional argument is given:
-  export ANANIA_PDF_PATH=/path/to/Biblia-ANANIA.pdf
-  python anania_extract.py
-
-The script can also be invoked via npm from the scripts/ directory:
-  npm run anania-extract                          # uses ANANIA_PDF_PATH from .env
-  npm run anania-extract -- /path/to/Biblia.pdf   # explicit path
+(set it in .env) when no positional argument is given.
 """
 
 from __future__ import annotations
@@ -49,8 +47,11 @@ try:
     from pdfplumber.page import Page
 except ImportError:
     print("ERROR: pdfplumber is not installed.")
-    print("       Run:  pip install pdfplumber psycopg2-binary")
-    print("       Or:   pip install -r requirements.txt")
+    print("       Recommended:  cd scripts && npm run anania-extract")
+    print("                     (this auto-creates a venv and installs deps)")
+    print()
+    print("       Manual:  python3 -m venv .venv && source .venv/bin/activate")
+    print("                pip install -r requirements.txt")
     sys.exit(1)
 
 
