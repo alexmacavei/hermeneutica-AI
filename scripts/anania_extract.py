@@ -229,6 +229,9 @@ def _superscript_to_int(s: str) -> int | None:
         return None
 
 
+# Maximum footnote/superscript number to consider valid
+_MAX_FOOTNOTE_NUMBER = 30
+
 # Regex for Unicode superscript sequences in text
 _UNICODE_SUP_RE = re.compile(r"[⁰¹²³⁴⁵⁶⁷⁸⁹]+")
 
@@ -254,7 +257,7 @@ def _find_superscripts(text: str) -> list[dict[str, Any]]:
     # 1) Unicode superscripts
     for m in _UNICODE_SUP_RE.finditer(text):
         n = _superscript_to_int(m.group())
-        if n is not None and 1 <= n <= 20 and n not in seen:
+        if n is not None and 1 <= n <= _MAX_FOOTNOTE_NUMBER and n not in seen:
             seen.add(n)
             word = _word_before(text, m.start())
             found.append({"symbol": n, "original": m.group(), "attached_to_word": word})
@@ -265,7 +268,7 @@ def _find_superscripts(text: str) -> list[dict[str, Any]]:
             n = int(m.group(1))
         except ValueError:
             continue
-        if 1 <= n <= 20 and n not in seen:
+        if 1 <= n <= _MAX_FOOTNOTE_NUMBER and n not in seen:
             seen.add(n)
             word = _word_before(text, m.start())
             found.append({"symbol": n, "original": m.group(), "attached_to_word": word})
@@ -491,7 +494,7 @@ def _parse_footnotes(text: str) -> list[dict[str, str | int]]:
                 notes.append(current_note)
             try:
                 n = int(m.group(1))
-                if 1 <= n <= 30:
+                if 1 <= n <= _MAX_FOOTNOTE_NUMBER:
                     current_note = {"symbol": n, "note_text": m.group(2).strip()}
                     continue
             except ValueError:
@@ -502,7 +505,7 @@ def _parse_footnotes(text: str) -> list[dict[str, str | int]]:
         if m:
             try:
                 n = int(m.group(1))
-                if 1 <= n <= 30:
+                if 1 <= n <= _MAX_FOOTNOTE_NUMBER:
                     if current_note:
                         notes.append(current_note)
                     current_note = {"symbol": n, "note_text": m.group(2).strip()}
