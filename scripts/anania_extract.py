@@ -655,36 +655,39 @@ def _insert_notes_to_db(verses: list[VerseRecord], database_url: str) -> None:
         return
 
     print(f"   Inserting {len(notes_to_insert)} footnotes into anania_adnotari...")
+    print("   (Existing rows will be replaced — this is a full re-extraction.)")
 
     conn = psycopg2.connect(database_url)
     try:
-        with conn.cursor() as cur:
-            # Clear existing notes to allow re-runs
-            cur.execute("DELETE FROM anania_adnotari")
+        with conn:
+            with conn.cursor() as cur:
+                cur.execute("DELETE FROM anania_adnotari")
 
-            # Batch insert
-            batch_size = 500
-            for i in range(0, len(notes_to_insert), batch_size):
-                batch = notes_to_insert[i:i + batch_size]
-                args_str = ",".join(
-                    cur.mogrify(
-                        "(%s, %s, %s, %s, %s, %s::jsonb)",
-                        (book, chap, verse, note_num, note_text, meta)
-                    ).decode("utf-8")
-                    for book, chap, verse, note_num, note_text, meta in batch
-                )
-                cur.execute(
-                    "INSERT INTO anania_adnotari "
-                    "(book, chapter, verse_start, note_number, note_text, metadata) "
-                    f"VALUES {args_str}"
-                )
+                batch_size = 500
+                for i in range(0, len(notes_to_insert), batch_size):
+                    batch = notes_to_insert[i:i + batch_size]
+                    args_str = ",".join(
+                        cur.mogrify(
+                            "(%s, %s, %s, %s, %s, %s::jsonb)",
+                            (book, chap, verse, note_num, note_text, meta)
+                        ).decode("utf-8")
+                        for book, chap, verse, note_num, note_text, meta in batch
+                    )
+                    cur.execute(
+                        "INSERT INTO anania_adnotari "
+                        "(book, chapter, verse_start, note_number, note_text, metadata) "
+                        f"VALUES {args_str}"
+                    )
 
-        conn.commit()
         print(f"   ✅ {len(notes_to_insert)} footnotes inserted into anania_adnotari.")
-    except Exception as e:
-        conn.rollback()
-        print(f"   ❌ Database error: {e}")
+    except psycopg2.OperationalError as e:
+        print(f"   ❌ Database connection error: {e}")
+        print("   Check that PostgreSQL is running and DATABASE_URL is correct.")
+    except psycopg2.ProgrammingError as e:
+        print(f"   ❌ SQL error: {e}")
         print("   Make sure the anania_adnotari table exists (start the backend once first).")
+    except Exception as e:
+        print(f"   ❌ Unexpected database error: {type(e).__name__}: {e}")
     finally:
         conn.close()
 
