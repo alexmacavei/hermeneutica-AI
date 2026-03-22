@@ -499,7 +499,7 @@ def _parse_footnotes(text: str) -> list[dict[str, str | int]]:
             next_start = markers[i + 1][0] if i + 1 < len(markers) else len(text)
             note_text = text[end:next_start].strip()
             # Clean up: remove leading separators (=, :, -, etc.)
-            note_text = re.sub(r'^[=:.\-–)\s]+', '', note_text).strip()
+            note_text = re.sub(r'^[=:.–)\s-]+', '', note_text).strip()
             # Remove trailing whitespace artifacts
             note_text = re.sub(r'\s+', ' ', note_text).strip()
             if note_text:
@@ -643,7 +643,7 @@ class BookChapterTracker:
                         matched = cfg
                         break
 
-            # Reverse substring match (our heading is contained in the PDF line)
+            # Reverse substring match (PDF line is a partial extract of our heading)
             if not matched and len(line) < 150 and len(normalized) > 15:
                 for hNorm, cfg in self._heading_map.items():
                     if len(hNorm) > 10 and normalized in hNorm:
@@ -673,7 +673,7 @@ class BookChapterTracker:
                 continue
 
             # Debug: log uppercase lines that look like headings but weren't matched
-            if not matched and len(line) > 10 and line == line.upper() and not any(c.isdigit() for c in line[:3]):
+            if not matched and len(line) > 10 and line == line.upper() and not line[:3].replace(" ", "").isdigit():
                 if len(self._unmatched_headings) < 50:  # limit
                     self._unmatched_headings.append(line[:100])
 
