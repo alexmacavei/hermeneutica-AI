@@ -43,7 +43,6 @@ data/bibles/ro_sinodala.json
 # Anania pipeline – source PDF (copyright) and generated output
 data/bibles/anania-source.pdf
 data/bibles/ro_anania.json
-data/bibles/anania_notes.json
 
 # Patristic data directories – users place their own legally-obtained texts here.
 # These files must never be committed (copyright + size).

@@ -13,12 +13,15 @@ the verses that reference the symbol.
 Output (helloao-compatible):
   ../data/bibles/ro_anania.json  – bible text in helloao format (same as
       other translations), with clean verse text (no superscripts).
-  anania_notes.json              – footnotes linked to verses (optional,
-      same directory as the bible JSON).
+
+Footnotes are inserted directly into the `anania_adnotari` PostgreSQL
+table when a DATABASE_URL is provided (via --database-url flag or the
+DATABASE_URL environment variable).
 
 Usage:
-  pip install pdfplumber
+  pip install pdfplumber psycopg2-binary
   python anania_extract.py /path/to/Biblia-ANANIA.pdf
+  python anania_extract.py /path/to/Biblia-ANANIA.pdf --database-url postgresql://user:pass@localhost:5432/db
 
 The script can also be invoked via npm from the scripts/ directory:
   npm run anania-extract -- /path/to/Biblia-ANANIA.pdf
@@ -624,10 +627,73 @@ def _link_footnotes(
 
 
 # ──────────────────────────────────────────────────────────────────────────────
+# Database insertion
+# ──────────────────────────────────────────────────────────────────────────────
+
+def _insert_notes_to_db(verses: list[VerseRecord], database_url: str) -> None:
+    """Insert extracted footnotes into the anania_adnotari PostgreSQL table."""
+    import psycopg2  # pip install psycopg2-binary
+
+    notes_to_insert: list[tuple[str, int, int, int, str, str]] = []
+    for v in verses:
+        for fn in v.footnotes:
+            metadata = json.dumps(
+                {"attached_to_word": fn.get("attached_to_word")},
+                ensure_ascii=False,
+            )
+            notes_to_insert.append((
+                v.book,
+                v.chapter,
+                v.verse,
+                fn["symbol"],
+                str(fn["note_text"]),
+                metadata,
+            ))
+
+    if not notes_to_insert:
+        print("   No footnotes to insert into database.")
+        return
+
+    print(f"   Inserting {len(notes_to_insert)} footnotes into anania_adnotari...")
+
+    conn = psycopg2.connect(database_url)
+    try:
+        with conn.cursor() as cur:
+            # Clear existing notes to allow re-runs
+            cur.execute("DELETE FROM anania_adnotari")
+
+            # Batch insert
+            batch_size = 500
+            for i in range(0, len(notes_to_insert), batch_size):
+                batch = notes_to_insert[i:i + batch_size]
+                args_str = ",".join(
+                    cur.mogrify(
+                        "(%s, %s, %s, %s, %s, %s::jsonb)",
+                        (book, chap, verse, note_num, note_text, meta)
+                    ).decode("utf-8")
+                    for book, chap, verse, note_num, note_text, meta in batch
+                )
+                cur.execute(
+                    "INSERT INTO anania_adnotari "
+                    "(book, chapter, verse_start, note_number, note_text, metadata) "
+                    f"VALUES {args_str}"
+                )
+
+        conn.commit()
+        print(f"   ✅ {len(notes_to_insert)} footnotes inserted into anania_adnotari.")
+    except Exception as e:
+        conn.rollback()
+        print(f"   ❌ Database error: {e}")
+        print("   Make sure the anania_adnotari table exists (start the backend once first).")
+    finally:
+        conn.close()
+
+
+# ──────────────────────────────────────────────────────────────────────────────
 # Main extraction
 # ──────────────────────────────────────────────────────────────────────────────
 
-def extract(pdf_path: str, output_path: str) -> None:
+def extract(pdf_path: str, output_path: str, database_url: str | None = None) -> None:
     """Main extraction entry point."""
     pdf_path = os.path.abspath(pdf_path)
     if not os.path.isfile(pdf_path):
@@ -810,23 +876,12 @@ def extract(pdf_path: str, output_path: str) -> None:
     print(f"\n✅ Bible JSON written to: {output_path}")
     print(f"   {len(helloao_books)} books, {total_chapters} chapters, {len(tracker.verses)} verses")
 
-    # ── Save footnotes separately ──
-    if total_linked > 0:
-        notes_list: list[dict[str, Any]] = []
-        for v in tracker.verses:
-            for fn in v.footnotes:
-                notes_list.append({
-                    "book": v.book,
-                    "chapter": v.chapter,
-                    "verse": v.verse,
-                    "symbol": fn["symbol"],
-                    "note_text": fn["note_text"],
-                })
-
-        notes_path = os.path.join(os.path.dirname(output_path), "anania_notes.json")
-        with open(notes_path, "w", encoding="utf-8") as f:
-            json.dump(notes_list, f, ensure_ascii=False, indent=2)
-        print(f"   {total_linked} footnotes written to: {notes_path}")
+    # ── Insert footnotes into database ──
+    if total_linked > 0 and database_url:
+        _insert_notes_to_db(tracker.verses, database_url)
+    elif total_linked > 0:
+        print(f"   {total_linked} footnotes found but no DATABASE_URL provided — skipping DB insert.")
+        print("   Re-run with --database-url or set the DATABASE_URL env var to persist notes.")
     else:
         print("   No footnotes extracted.")
 
@@ -836,19 +891,43 @@ def extract(pdf_path: str, output_path: str) -> None:
 # ──────────────────────────────────────────────────────────────────────────────
 
 def main() -> None:
-    if len(sys.argv) < 2:
-        print("Usage: python anania_extract.py <path-to-Biblia-ANANIA.pdf> [output.json]")
+    if len(sys.argv) < 2 or sys.argv[1] in ("-h", "--help"):
+        print("Usage: python anania_extract.py <path-to-Biblia-ANANIA.pdf> [output.json] [--database-url URL]")
         print(f"\nDefault output: {os.path.abspath(DEFAULT_OUTPUT_PATH)}")
+        print("\nOptions:")
+        print("  --database-url URL   PostgreSQL connection string for inserting footnotes")
+        print("                       into the anania_adnotari table. Falls back to the")
+        print("                       DATABASE_URL environment variable if not provided.")
         print("\nExample:")
-        print("  pip install pdfplumber")
+        print("  pip install pdfplumber psycopg2-binary")
         print("  python anania_extract.py /path/to/Biblia-ANANIA.pdf")
-        print("  python anania_extract.py /path/to/Biblia-ANANIA.pdf ../data/bibles/ro_anania.json")
+        print("  python anania_extract.py /path/to/Biblia-ANANIA.pdf --database-url postgresql://user:pass@localhost:5432/db")
         sys.exit(1)
 
-    pdf_path = sys.argv[1]
-    output_path = sys.argv[2] if len(sys.argv) > 2 else DEFAULT_OUTPUT_PATH
+    # Parse arguments (simple: positional + optional --database-url)
+    positional: list[str] = []
+    database_url: str | None = None
+    i = 1
+    while i < len(sys.argv):
+        if sys.argv[i] == "--database-url" and i + 1 < len(sys.argv):
+            database_url = sys.argv[i + 1]
+            i += 2
+        else:
+            positional.append(sys.argv[i])
+            i += 1
 
-    extract(pdf_path, output_path)
+    if not positional:
+        print("ERROR: PDF path is required.")
+        sys.exit(1)
+
+    pdf_path = positional[0]
+    output_path = positional[1] if len(positional) > 1 else DEFAULT_OUTPUT_PATH
+
+    # Fall back to DATABASE_URL environment variable
+    if not database_url:
+        database_url = os.environ.get("DATABASE_URL")
+
+    extract(pdf_path, output_path, database_url=database_url)
 
 
 if __name__ == "__main__":

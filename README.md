@@ -150,7 +150,7 @@ cd ..
 # 3b. (Opțional) Populează Biblia Anania locală (necesită PDF sursă)
 # Descarcă PDF-ul de la: https://dervent.ro/biblia/Biblia-ANANIA.pdf
 # Ghid detaliat: docs/anania-pdf-extraction-guide.md
-cd scripts && pip install pdfplumber && python3 anania_extract.py /calea/către/Biblia-ANANIA.pdf
+cd scripts && pip install -r requirements.txt && python3 anania_extract.py /calea/către/Biblia-ANANIA.pdf --database-url postgresql://hermeneutica:hermeneutica_pass@localhost:5432/hermeneutica
 cd ..
 
 # 4. Pornește toate serviciile
@@ -446,9 +446,10 @@ npm run biblia-pipeline
 # Procesează Biblia Anania locală din PDF (opțional)
 # Descarcă PDF-ul de la: https://dervent.ro/biblia/Biblia-ANANIA.pdf
 # Ghid detaliat: docs/anania-pdf-extraction-guide.md
-pip install pdfplumber
-python3 anania_extract.py /calea/către/Biblia-ANANIA.pdf
-# Generează: data/bibles/ro_anania.json (helloao format) + data/bibles/anania_notes.json
+pip install -r requirements.txt
+python3 anania_extract.py /calea/către/Biblia-ANANIA.pdf --database-url postgresql://hermeneutica:hermeneutica_pass@localhost:5432/hermeneutica
+# Generează: data/bibles/ro_anania.json (helloao format)
+# Inserează notele în tabelul anania_adnotari (PostgreSQL)
 ```
 
 ---

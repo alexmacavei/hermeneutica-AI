@@ -46,7 +46,7 @@ cp ~/Downloads/Biblia-ANANIA.pdf data/bibles/anania-source.pdf
 
 ```bash
 cd scripts
-pip install pdfplumber      # sau: pip install -r requirements.txt
+pip install pdfplumber psycopg2-binary      # sau: pip install -r requirements.txt
 ```
 
 ---
@@ -139,17 +139,35 @@ Structura:
 }
 ```
 
-### 2. Fișier note (`data/bibles/anania_notes.json`)
+### 2. Note în baza de date (`anania_adnotari`)
 
-Note/comentarii extrase din zona de subsol, salvate separat:
-```json
-[
-  { "book": "GEN", "chapter": 1, "verse": 3, "symbol": 6, "note_text": "Textul notei..." }
-]
+Notele/comentariile extrase din zona de subsol sunt inserate direct în tabelul
+PostgreSQL `anania_adnotari`. Pentru aceasta, trebuie să pasezi `--database-url`:
+
+```bash
+python3 anania_extract.py /calea/către/Biblia-ANANIA.pdf --database-url postgresql://user:pass@localhost:5432/db
 ```
 
-Aceste note sunt de asemenea stocate în tabelul PostgreSQL `anania_adnotari`
-(populat automat la pornirea backend-ului) și afișate în frontend.
+Sau setează variabila de mediu `DATABASE_URL`:
+```bash
+export DATABASE_URL=postgresql://hermeneutica:hermeneutica_pass@localhost:5432/hermeneutica
+python3 anania_extract.py /calea/către/Biblia-ANANIA.pdf
+```
+
+Structura tabelului:
+| Coloană       | Tip        | Descriere                                      |
+|---------------|------------|-------------------------------------------------|
+| `id`          | SERIAL     | PK auto-increment                               |
+| `book`        | VARCHAR    | Cod USFM (ex: GEN, MAT)                        |
+| `chapter`     | INT        | Număr capitol                                   |
+| `verse_start` | INT        | Număr verset                                    |
+| `verse_end`   | INT / NULL | Verset final (pentru range)                     |
+| `note_number` | INT        | Simbol notă (1, 2, 3…)                         |
+| `note_text`   | TEXT       | Textul complet al notei                          |
+| `metadata`    | JSONB      | `{ "attached_to_word": "..." }`                 |
+
+Notele sunt afișate automat în frontend prin endpoint-ul
+`GET /api/anania-notes?book=...&chapter=...&verse=...`.
 
 ### 3. Card "Note Anania" în frontend
 
