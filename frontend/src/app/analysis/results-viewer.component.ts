@@ -161,6 +161,20 @@ interface AnalysisCard {
       margin: 0;
       padding: 14px 16px 16px;
     }
+
+    @media (max-width: 480px) {
+      .results-section {
+        padding: 14px;
+      }
+      .results-header {
+        flex-wrap: wrap;
+        gap: 10px;
+      }
+      .language-badge {
+        order: -1;
+        align-self: flex-start;
+      }
+    }
   `],
 })
 export class ResultsViewerComponent {

@@ -112,6 +112,20 @@ interface SelectOption<T = string> {
         border: 1px solid rgba(121, 134, 203, 0.4);
       }
     }
+
+    @media (max-width: 640px) {
+      .selector-bar {
+        padding: 6px 10px;
+        gap: 6px;
+      }
+    }
+
+    @media (max-width: 480px) {
+      :host ::ng-deep .selector-dropdown {
+        min-width: 90px;
+        flex: 1;
+      }
+    }
   `],
 })
 export class BibleSelectorComponent implements OnInit {

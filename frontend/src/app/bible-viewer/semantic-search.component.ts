@@ -199,6 +199,19 @@ export interface SearchNavigateEvent {
       font-size: 0.8rem;
       line-height: 1.45;
     }
+    @media (max-width: 640px) {
+      .search-wrapper {
+        min-width: 0;
+        max-width: none;
+      }
+      .search-results {
+        left: 0;
+        right: 0;
+        width: auto;
+        min-width: 0;
+        max-width: none;
+      }
+    }
   `],
 })
 export class SemanticSearchComponent {

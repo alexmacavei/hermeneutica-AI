@@ -37,7 +37,7 @@ import { AuthService } from '../services/auth.service';
       [closable]="true"
       [draggable]="false"
       [resizable]="false"
-      [style]="{ width: '380px' }"
+      [style]="{ width: 'min(380px, 95vw)' }"
       [header]="currentMode() === 'login' ? 'Autentificare' : 'Creare cont'"
     >
       <div class="auth-form">

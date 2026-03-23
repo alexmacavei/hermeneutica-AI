@@ -358,3 +358,19 @@ h1, h2, h3 { font-family: 'Palatino Linotype', 'Georgia', serif; }
   color: #ef9a9a !important;
 }
 
+/* ── Mobile / Responsive ── */
+@media (max-width: 480px) {
+  /* Dialogs should not overflow the viewport */
+  .p-dialog {
+    max-width: 95vw !important;
+  }
+  /* Select overlays should not overflow the viewport */
+  .p-select-overlay {
+    max-width: 92vw !important;
+  }
+  /* Menu dropdown shouldn't overflow on small screens */
+  .p-menu {
+    max-width: 90vw !important;
+  }
+}
+

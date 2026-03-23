@@ -434,16 +434,73 @@ import { SlicePipe } from '@angular/common';
       @media (max-width: 768px) {
         .main-layout {
           flex-direction: column;
+          overflow: visible;
+        }
+        .bible-panel {
+          max-height: none;
+          overflow-y: visible;
         }
         .analysis-panel {
           width: 100%;
+          min-width: 0;
           border-left: none;
           border-top: 1px solid rgba(121, 134, 203, 0.2);
+          max-height: none;
+          overflow-y: visible;
         }
         .parallel-panel {
           width: 100%;
+          min-width: 0;
           border-left: none;
           border-top: 1px solid rgba(121, 134, 203, 0.2);
+          max-height: none;
+          overflow-y: visible;
+        }
+        .viewer-shell {
+          overflow-y: auto;
+          height: auto;
+        }
+        .analyze-bar {
+          gap: 10px;
+          padding: 10px 14px;
+        }
+        .selection-preview {
+          font-size: 0.82rem;
+          flex-basis: 100%;
+          order: 10;
+        }
+      }
+      @media (max-width: 540px) {
+        .brand {
+          padding: 10px 14px;
+          flex: 1;
+        }
+        .brand-title {
+          font-size: 0.9rem;
+        }
+        .auth-area {
+          padding-right: 10px;
+        }
+        :host ::ng-deep .analyze-btn .p-button {
+          padding: 8px 16px !important;
+          height: 40px !important;
+          font-size: 0.9rem !important;
+        }
+        :host ::ng-deep .parallel-btn .p-button {
+          padding: 8px 14px !important;
+          height: 40px !important;
+          font-size: 0.9rem !important;
+        }
+      }
+      @media (max-width: 420px) {
+        .brand-title {
+          display: none;
+        }
+        .analyze-bar {
+          padding: 8px 12px;
+        }
+        .verse-footer {
+          padding: 8px 12px;
         }
       }
     `,
