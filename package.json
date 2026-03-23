@@ -5,7 +5,7 @@
   "private": true,
   "scripts": {
     "dev": "concurrently --names \"backend,frontend\" --prefix-colors \"cyan,magenta\" \"npm run dev:backend\" \"npm run dev:frontend\"",
-    "dev:backend": "cd backend && npm run start:dev",
+    "dev:backend": "npx dotenv-cli -e .env -- npm --prefix backend run start:dev",
     "dev:frontend": "cd frontend && npm run start"
   },
   "devDependencies": {
