@@ -2,6 +2,7 @@ import { Test, TestingModule } from '@nestjs/testing';
 import { AnalyzeService } from './analyze.service';
 import { AiService } from '../ai/ai.service';
 import { PatristicRagService } from '../patristic/patristic-rag.service';
+import { PhilosophyEnrichmentService } from '../philosophy/philosophy-enrichment.service';
 import { AnalyzeDto } from './dto/analyze.dto';
 
 describe('AnalyzeService', () => {
@@ -9,11 +10,15 @@ describe('AnalyzeService', () => {
   let aiService: AiService;
 
   const mockAiService = {
-    generateThreeCards: jest.fn(),
+    generateTwoCards: jest.fn(),
   };
 
   const mockPatristicRagService = {
     buildPatristicSummary: jest.fn(),
+  };
+
+  const mockPhilosophyEnrichmentService = {
+    buildPhilosophySummary: jest.fn(),
   };
 
   beforeEach(async () => {
@@ -22,6 +27,7 @@ describe('AnalyzeService', () => {
         AnalyzeService,
         { provide: AiService, useValue: mockAiService },
         { provide: PatristicRagService, useValue: mockPatristicRagService },
+        { provide: PhilosophyEnrichmentService, useValue: mockPhilosophyEnrichmentService },
       ],
     }).compile();
 
@@ -34,16 +40,18 @@ describe('AnalyzeService', () => {
   });
 
   describe('analyze()', () => {
-    it('should return analysis result with patristics field from RAG service', async () => {
-      const mockThreeCards = {
+    it('should return analysis result with patristics from RAG and philosophy from enrichment', async () => {
+      const mockTwoCards = {
         hermeneutics: 'Interpretare în 4 sensuri: literal, tropologic, alegoric, anagogic',
-        philosophy: 'Platonism creștin: scala ființei, theosis',
         philology: 'πτωχοί (ptōchoi): cerșetor total, Strong\'s G4434',
       };
       const ragPatristics = 'Ioan Gură de Aur – Omilii la Ioan: Comentariu patristic RAG.';
+      const enrichedPhilosophy =
+        'Platonism: teoria formelor influențează hermeneutica alegorică.\n\nNeoplatonism: Plotin și conceptul de Unul.';
 
-      mockAiService.generateThreeCards.mockResolvedValue(mockThreeCards);
+      mockAiService.generateTwoCards.mockResolvedValue(mockTwoCards);
       mockPatristicRagService.buildPatristicSummary.mockResolvedValue(ragPatristics);
+      mockPhilosophyEnrichmentService.buildPhilosophySummary.mockResolvedValue(enrichedPhilosophy);
 
       const dto: AnalyzeDto = {
         text: 'Fericiți cei săraci cu duhul, că a lor este Împărăția cerurilor.',
@@ -58,19 +66,20 @@ describe('AnalyzeService', () => {
       expect(result.text).toBe(dto.text);
       // The patristics field must come exclusively from the RAG service
       expect(result.cards.patristics).toBe(ragPatristics);
-      expect(result.cards.hermeneutics).toBe(mockThreeCards.hermeneutics);
-      expect(result.cards.philosophy).toBe(mockThreeCards.philosophy);
-      expect(result.cards.philology).toBe(mockThreeCards.philology);
+      // The philosophy field must come from the enrichment service
+      expect(result.cards.philosophy).toBe(enrichedPhilosophy);
+      expect(result.cards.hermeneutics).toBe(mockTwoCards.hermeneutics);
+      expect(result.cards.philology).toBe(mockTwoCards.philology);
       expect(result.timestamp).toBeDefined();
     });
 
     it('should use default language when not provided', async () => {
-      mockAiService.generateThreeCards.mockResolvedValue({
+      mockAiService.generateTwoCards.mockResolvedValue({
         hermeneutics: 'test',
-        philosophy: 'test',
         philology: 'test',
       });
       mockPatristicRagService.buildPatristicSummary.mockResolvedValue('rag patristics');
+      mockPhilosophyEnrichmentService.buildPhilosophySummary.mockResolvedValue('enriched philosophy');
 
       const dto: AnalyzeDto = {
         text: 'Fericiți cei săraci cu duhul',
@@ -81,13 +90,13 @@ describe('AnalyzeService', () => {
       expect(result.language).toBe('Sinodală Română');
     });
 
-    it('should call aiService.generateThreeCards with correct params', async () => {
-      mockAiService.generateThreeCards.mockResolvedValue({
+    it('should call aiService.generateTwoCards with correct params', async () => {
+      mockAiService.generateTwoCards.mockResolvedValue({
         hermeneutics: '',
-        philosophy: '',
         philology: '',
       });
       mockPatristicRagService.buildPatristicSummary.mockResolvedValue('');
+      mockPhilosophyEnrichmentService.buildPhilosophySummary.mockResolvedValue('');
 
       const dto: AnalyzeDto = {
         text: 'La început era Cuvântul',
@@ -97,7 +106,7 @@ describe('AnalyzeService', () => {
 
       await service.analyze(dto);
 
-      expect(aiService.generateThreeCards).toHaveBeenCalledWith(
+      expect(aiService.generateTwoCards).toHaveBeenCalledWith(
         'La început era Cuvântul',
         'Ioan 1:1',
         'Greacă',
@@ -105,12 +114,12 @@ describe('AnalyzeService', () => {
     });
 
     it('should call patristicRagService.buildPatristicSummary with text, range and translationId', async () => {
-      mockAiService.generateThreeCards.mockResolvedValue({
+      mockAiService.generateTwoCards.mockResolvedValue({
         hermeneutics: '',
-        philosophy: '',
         philology: '',
       });
       mockPatristicRagService.buildPatristicSummary.mockResolvedValue('patristic result');
+      mockPhilosophyEnrichmentService.buildPhilosophySummary.mockResolvedValue('');
 
       const dto: AnalyzeDto = {
         text: 'Căci atât de mult a iubit Dumnezeu lumea',
@@ -128,13 +137,35 @@ describe('AnalyzeService', () => {
       );
     });
 
-    it('should return timestamp in ISO format', async () => {
-      mockAiService.generateThreeCards.mockResolvedValue({
+    it('should call philosophyEnrichmentService.buildPhilosophySummary with text and range', async () => {
+      mockAiService.generateTwoCards.mockResolvedValue({
         hermeneutics: '',
-        philosophy: '',
         philology: '',
       });
       mockPatristicRagService.buildPatristicSummary.mockResolvedValue('');
+      mockPhilosophyEnrichmentService.buildPhilosophySummary.mockResolvedValue('enriched');
+
+      const dto: AnalyzeDto = {
+        text: 'La început era Cuvântul',
+        range: 'Ioan 1:1',
+        language: 'Sinodală Română',
+      };
+
+      await service.analyze(dto);
+
+      expect(mockPhilosophyEnrichmentService.buildPhilosophySummary).toHaveBeenCalledWith(
+        'La început era Cuvântul',
+        'Ioan 1:1',
+      );
+    });
+
+    it('should return timestamp in ISO format', async () => {
+      mockAiService.generateTwoCards.mockResolvedValue({
+        hermeneutics: '',
+        philology: '',
+      });
+      mockPatristicRagService.buildPatristicSummary.mockResolvedValue('');
+      mockPhilosophyEnrichmentService.buildPhilosophySummary.mockResolvedValue('');
 
       const dto: AnalyzeDto = {
         text: 'Test text',

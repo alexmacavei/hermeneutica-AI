@@ -5,6 +5,10 @@ import * as fs from 'fs';
 import * as path from 'path';
 import * as yaml from 'js-yaml';
 
+/** Fallback text for the philosophy card when the AI is unavailable. */
+const PHILOSOPHY_ENRICHED_FALLBACK =
+  'Analiza influențelor filozofice este temporar indisponibilă. Vă rugăm configurați OPENAI_API_KEY.';
+
 export interface HermeneuticaCards {
   hermeneutics: string;
   philosophy: string;
@@ -12,8 +16,8 @@ export interface HermeneuticaCards {
   philology: string;
 }
 
-/** Cards generated directly by the LLM (patristics is supplied separately via RAG). */
-export type ThreeCards = Omit<HermeneuticaCards, 'patristics'>;
+/** Cards generated directly by the LLM (patristics and philosophy are supplied separately). */
+export type TwoCards = Omit<HermeneuticaCards, 'patristics' | 'philosophy'>;
 
 interface CardPrompt {
   title: string;
@@ -25,8 +29,11 @@ interface HermeneuticaPromptConfig {
   user_template: string;
   cards: {
     hermeneutics: CardPrompt;
-    philosophy: CardPrompt;
     philology: CardPrompt;
+  };
+  philosophy: {
+    system: string;
+    user_template: string;
   };
   patristic_rag: {
     system: string;
@@ -67,11 +74,11 @@ export class AiService {
     this.systemMessage = `${this.prompts.system}\n\n## Instrucțiuni per card:\n${cardInstructions}`;
   }
 
-  async generateThreeCards(
+  async generateTwoCards(
     text: string,
     reference: string,
     language: string = 'Sinodală Română',
-  ): Promise<ThreeCards> {
+  ): Promise<TwoCards> {
     if (!this.hasApiKey) {
       return this.getFallbackCards(reference, text);
     }
@@ -94,7 +101,7 @@ export class AiService {
       });
 
       const content = completion.choices[0]?.message?.content ?? '{}';
-      return JSON.parse(content) as ThreeCards;
+      return JSON.parse(content) as TwoCards;
     } catch (error) {
       this.logger.error('OpenAI API error', error);
       return this.getFallbackCards(reference, text);
@@ -192,6 +199,40 @@ export class AiService {
   }
 
   /**
+   * Generates the enriched "Influențe Filozofice" card using context assembled
+   * from BiblIndex, Wikidata (P737) and the Philosophers API.
+   *
+   * @param reference          Human-readable verse reference (e.g. „Ioan 1:1").
+   * @param verseText          Plain-text content of the Bible verse.
+   * @param fathersContext     Comma-separated list of Church Fathers (BiblIndex).
+   * @param philosophersContext Bullet-list of philosophers and their key ideas
+   *                            (Wikidata P737 + Philosophers API).
+   */
+  async generatePhilosophySummary(
+    reference: string,
+    verseText: string,
+    fathersContext: string,
+    philosophersContext: string,
+  ): Promise<string> {
+    const systemPrompt = this.prompts.philosophy.system;
+    const userMessage = this.prompts.philosophy.user_template
+      .replace('{reference}', reference)
+      .replace('{verse_text}', verseText)
+      .replace('{fathers_context}', fathersContext)
+      .replace('{philosophers_context}', philosophersContext);
+
+    const result = await this.chat(
+      [
+        { role: 'system', content: systemPrompt },
+        { role: 'user', content: userMessage },
+      ],
+      { temperature: 0.5, max_tokens: 700 },
+    );
+
+    return result || PHILOSOPHY_ENRICHED_FALLBACK;
+  }
+
+  /**
    * Specifically for the Patristic RAG flow: builds the prompt and calls the LLM.
    */
   async generatePatristicSummary(
@@ -221,10 +262,9 @@ export class AiService {
   private getFallbackCards(
     reference: string,
     text: string,
-  ): ThreeCards {
+  ): TwoCards {
     return {
       hermeneutics: `Analiză hermeneutică pentru ${reference}: ${text.slice(0, 50)}... [Serviciul AI temporar indisponibil. Vă rugăm configurați OPENAI_API_KEY.]`,
-      philosophy: `Analiză filozofică pentru ${reference}: [Serviciul AI temporar indisponibil.]`,
       philology: `Analiză filologică pentru ${reference}: [Serviciul AI temporar indisponibil.]`,
     };
   }
