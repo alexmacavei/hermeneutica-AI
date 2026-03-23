@@ -322,6 +322,7 @@ import { SlicePipe } from '@angular/common';
         padding: 10px 28px;
         border-radius: 24px;
         height: 46px;
+        gap: 0.5rem;
       }
       :host ::ng-deep .analyze-btn .p-button:not(:disabled):hover {
         background: #b71c1c;
@@ -332,27 +333,28 @@ import { SlicePipe } from '@angular/common';
         border-color: rgba(198, 40, 40, 0.3);
         color: rgba(255, 255, 255, 0.4);
       }
-      :host ::ng-deep .parallel-btn.p-button {
+      :host ::ng-deep .parallel-btn .p-button {
         background: rgba(26, 35, 126, 0.5);
-        border-color: rgba(121, 134, 203, 0.5);
+        border: 1px solid rgba(121, 134, 203, 0.5);
         color: #9fa8da;
         font-size: 1rem;
         font-weight: 600;
         padding: 10px 22px;
         border-radius: 24px;
         height: 46px;
+        gap: 0.5rem;
       }
-      :host ::ng-deep .parallel-btn.p-button:not(:disabled):hover {
+      :host ::ng-deep .parallel-btn .p-button:not(:disabled):hover {
         background: rgba(26, 35, 126, 0.7);
         border-color: rgba(121, 134, 203, 0.8);
         color: #c5cae9;
       }
-      :host ::ng-deep .parallel-btn.parallel-btn-active.p-button {
+      :host ::ng-deep .parallel-btn.parallel-btn-active .p-button {
         background: rgba(26, 35, 126, 0.8);
         border-color: #7986cb;
         color: #e8eaf6;
       }
-      :host ::ng-deep .parallel-btn.p-button:disabled {
+      :host ::ng-deep .parallel-btn .p-button:disabled {
         background: rgba(26, 35, 126, 0.2);
         border-color: rgba(121, 134, 203, 0.2);
         color: rgba(159, 168, 218, 0.4);
@@ -390,13 +392,16 @@ import { SlicePipe } from '@angular/common';
         color: var(--text-muted, #90a4ae);
         font-size: 0.9rem;
         gap: 6px;
-        padding: 6px 12px;
-      }
-      :host ::ng-deep .auth-menu-btn .p-button .p-button-icon {
-        margin-right: 0;
+        padding: 6px 14px;
+        border-radius: 20px;
+        border: 1px solid rgba(121, 134, 203, 0.25);
+        background: rgba(26, 35, 126, 0.2);
+        transition: background 0.2s, border-color 0.2s, color 0.2s;
       }
       :host ::ng-deep .auth-menu-btn .p-button:hover {
         color: var(--text-light, #eceff1);
+        background: rgba(26, 35, 126, 0.4);
+        border-color: rgba(121, 134, 203, 0.5);
       }
       .user-avatar-area {
         cursor: pointer;
