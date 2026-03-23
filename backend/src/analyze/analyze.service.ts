@@ -25,8 +25,8 @@ export class AnalyzeService {
   async analyze(dto: AnalyzeDto): Promise<AnalysisResult> {
     const language = dto.language ?? 'Sinodală Română';
 
-    const [threeCards, patristics, philosophy] = await Promise.all([
-      this.aiService.generateThreeCards(dto.text, dto.range, language),
+    const [twoCards, patristics, philosophy] = await Promise.all([
+      this.aiService.generateTwoCards(dto.text, dto.range, language),
       this.patristicRagService.buildPatristicSummary(dto.text, dto.range, dto.translationId),
       this.philosophyEnrichmentService.buildPhilosophySummary(dto.text, dto.range),
     ]);
@@ -39,7 +39,7 @@ export class AnalyzeService {
       reference: dto.range,
       language,
       text: dto.text,
-      cards: { ...threeCards, patristics, philosophy },
+      cards: { ...twoCards, patristics, philosophy },
       timestamp: new Date().toISOString(),
     };
   }

@@ -16,8 +16,8 @@ export interface HermeneuticaCards {
   philology: string;
 }
 
-/** Cards generated directly by the LLM (patristics is supplied separately via RAG). */
-export type ThreeCards = Omit<HermeneuticaCards, 'patristics'>;
+/** Cards generated directly by the LLM (patristics and philosophy are supplied separately). */
+export type TwoCards = Omit<HermeneuticaCards, 'patristics' | 'philosophy'>;
 
 interface CardPrompt {
   title: string;
@@ -29,7 +29,6 @@ interface HermeneuticaPromptConfig {
   user_template: string;
   cards: {
     hermeneutics: CardPrompt;
-    philosophy: CardPrompt;
     philology: CardPrompt;
   };
   philosophy_enriched: {
@@ -75,11 +74,11 @@ export class AiService {
     this.systemMessage = `${this.prompts.system}\n\n## Instrucțiuni per card:\n${cardInstructions}`;
   }
 
-  async generateThreeCards(
+  async generateTwoCards(
     text: string,
     reference: string,
     language: string = 'Sinodală Română',
-  ): Promise<ThreeCards> {
+  ): Promise<TwoCards> {
     if (!this.hasApiKey) {
       return this.getFallbackCards(reference, text);
     }
@@ -102,7 +101,7 @@ export class AiService {
       });
 
       const content = completion.choices[0]?.message?.content ?? '{}';
-      return JSON.parse(content) as ThreeCards;
+      return JSON.parse(content) as TwoCards;
     } catch (error) {
       this.logger.error('OpenAI API error', error);
       return this.getFallbackCards(reference, text);
@@ -263,10 +262,9 @@ export class AiService {
   private getFallbackCards(
     reference: string,
     text: string,
-  ): ThreeCards {
+  ): TwoCards {
     return {
       hermeneutics: `Analiză hermeneutică pentru ${reference}: ${text.slice(0, 50)}... [Serviciul AI temporar indisponibil. Vă rugăm configurați OPENAI_API_KEY.]`,
-      philosophy: `Analiză filozofică pentru ${reference}: [Serviciul AI temporar indisponibil.]`,
       philology: `Analiză filologică pentru ${reference}: [Serviciul AI temporar indisponibil.]`,
     };
   }

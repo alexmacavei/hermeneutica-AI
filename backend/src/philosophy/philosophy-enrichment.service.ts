@@ -1,12 +1,10 @@
 import { Injectable, Logger } from '@nestjs/common';
 import { AiService } from '../ai/ai.service';
+import { fetchJson } from '../common/http.utils';
 
 /** Message returned when no relevant philosophical context is found. */
 export const PHILOSOPHY_FALLBACK =
   'Nu s-au găsit influențe filozofice relevante pentru acest verset.';
-
-/** Timeout (ms) for each external HTTP request. */
-const HTTP_TIMEOUT_MS = 5_000;
 
 /** Maximum number of Church Father results to take from BiblIndex per verse. */
 const MAX_BIBLINDEX_RESULTS = 8;
@@ -107,6 +105,14 @@ interface PhilosophersApiResult {
 
 // ---------------------------------------------------------------------------
 
+// ---------------------------------------------------------------------------
+// External API endpoints
+// ---------------------------------------------------------------------------
+
+const WIKIDATA_SPARQL_URL = 'https://query.wikidata.org/sparql';
+const PHILOSOPHERS_API_URL = 'https://philosophersapi.com/api/philosophers';
+const BIBLINDEX_API_URL = 'https://www.biblindex.org/api';
+
 /**
  * Enrichment service for the "Influențe Filozofice" card.
  *
@@ -122,10 +128,6 @@ interface PhilosophersApiResult {
 export class PhilosophyEnrichmentService {
   private readonly logger = new Logger(PhilosophyEnrichmentService.name);
 
-  private readonly WIKIDATA_SPARQL_URL = 'https://query.wikidata.org/sparql';
-  private readonly PHILOSOPHERS_API_URL = 'https://philosophersapi.com/api/philosophers';
-  private readonly BIBLINDEX_API_URL = 'https://www.biblindex.org/api';
-
   constructor(private readonly aiService: AiService) {}
 
   // --------------------------------------------------------------------------
@@ -139,8 +141,8 @@ export class PhilosophyEnrichmentService {
    */
   async getFathersForVerse(reference: string): Promise<string[]> {
     try {
-      const url = `${this.BIBLINDEX_API_URL}/quotations?ref=${encodeURIComponent(reference)}&format=json`;
-      const data = await this.fetchJson(url) as Record<string, unknown>;
+      const url = `${BIBLINDEX_API_URL}/quotations?ref=${encodeURIComponent(reference)}&format=json`;
+      const data = await fetchJson(url) as Record<string, unknown>;
       const fathers: string[] = [];
       const results = data?.['results'];
       if (Array.isArray(results)) {
@@ -187,8 +189,8 @@ GROUP BY ?philosopher ?philosopherLabel
 LIMIT 25`.trim();
 
     try {
-      const url = `${this.WIKIDATA_SPARQL_URL}?query=${encodeURIComponent(sparql)}&format=json`;
-      const data = await this.fetchJson(url) as Record<string, unknown>;
+      const url = `${WIKIDATA_SPARQL_URL}?query=${encodeURIComponent(sparql)}&format=json`;
+      const data = await fetchJson(url) as Record<string, unknown>;
       const results: WikidataPhilosopher[] = [];
       const bindings = (data?.['results'] as Record<string, unknown>)?.['bindings'];
       if (Array.isArray(bindings)) {
@@ -216,8 +218,8 @@ LIMIT 25`.trim();
    */
   async searchPhilosophersApi(name: string): Promise<PhilosophersApiResult | null> {
     try {
-      const url = `${this.PHILOSOPHERS_API_URL}/search?keyword=${encodeURIComponent(name)}`;
-      const data = await this.fetchJson(url);
+      const url = `${PHILOSOPHERS_API_URL}/search?keyword=${encodeURIComponent(name)}`;
+      const data = await fetchJson(url);
       if (Array.isArray(data) && data.length > 0) {
         const item = (data as Record<string, unknown>[])[0];
         return {
@@ -292,30 +294,5 @@ LIMIT 25`.trim();
       fathersContext,
       philosophersContext,
     ).then((result) => result || PHILOSOPHY_FALLBACK);
-  }
-
-  // --------------------------------------------------------------------------
-  // HTTP helper
-  // --------------------------------------------------------------------------
-
-  /** Fetches a URL with a configurable timeout; parses and returns JSON. */
-  private async fetchJson(url: string): Promise<unknown> {
-    const controller = new AbortController();
-    const timer = setTimeout(() => controller.abort(), HTTP_TIMEOUT_MS);
-    try {
-      const response = await fetch(url, {
-        signal: controller.signal,
-        headers: {
-          Accept: 'application/json',
-          'User-Agent': 'HermeneuticaAI/1.0 (theological analysis tool)',
-        },
-      });
-      if (!response.ok) {
-        throw new Error(`HTTP ${response.status}: ${response.statusText}`);
-      }
-      return response.json();
-    } finally {
-      clearTimeout(timer);
-    }
   }
 }
