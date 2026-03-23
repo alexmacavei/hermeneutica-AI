@@ -389,6 +389,11 @@ import { SlicePipe } from '@angular/common';
       :host ::ng-deep .auth-menu-btn .p-button {
         color: var(--text-muted, #90a4ae);
         font-size: 0.9rem;
+        gap: 6px;
+        padding: 6px 12px;
+      }
+      :host ::ng-deep .auth-menu-btn .p-button .p-button-icon {
+        margin-right: 0;
       }
       :host ::ng-deep .auth-menu-btn .p-button:hover {
         color: var(--text-light, #eceff1);
