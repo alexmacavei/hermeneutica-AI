@@ -8,11 +8,20 @@ export const PHILOSOPHY_FALLBACK =
 /** Timeout (ms) for each external HTTP request. */
 const HTTP_TIMEOUT_MS = 5_000;
 
+/** Maximum number of Church Father results to take from BiblIndex per verse. */
+const MAX_BIBLINDEX_RESULTS = 8;
+
+/** Maximum number of top Wikidata philosophers to enrich via Philosophers API. */
+const MAX_ENRICHED_PHILOSOPHERS = 5;
+
+/** Maximum number of philosopher entries included in the AI context. */
+const MAX_PHILOSOPHERS_IN_CONTEXT = 12;
+
 // ---------------------------------------------------------------------------
-// Wikidata entity IDs for representative Church Fathers
-// Used in the P737 "influenced by" SPARQL query.
+// Wikidata entity IDs for representative Church Fathers and influential
+// medieval theologians (Aquinas) used in the P737 "influenced by" SPARQL query.
 // ---------------------------------------------------------------------------
-const FATHER_WIKIDATA_IDS = [
+const THEOLOGICAL_THINKER_WIKIDATA_IDS = [
   'wd:Q5895',   // Origen
   'wd:Q40958',  // Clement din Alexandria
   'wd:Q8017',   // Ioan Gură de Aur
@@ -135,7 +144,7 @@ export class PhilosophyEnrichmentService {
       const fathers: string[] = [];
       const results = data?.['results'];
       if (Array.isArray(results)) {
-        for (const item of (results as Record<string, unknown>[]).slice(0, 8)) {
+        for (const item of (results as Record<string, unknown>[]).slice(0, MAX_BIBLINDEX_RESULTS)) {
           if (item['author']) fathers.push(String(item['author']));
         }
       }
@@ -158,14 +167,14 @@ export class PhilosophyEnrichmentService {
 
   /**
    * Runs a Wikidata SPARQL query to collect all philosophers (P737 "influenced
-   * by") linked to the canonical set of Church Fathers.  Returns a list of
-   * philosopher labels and English descriptions.
+   * by") linked to the canonical set of Church Fathers and medieval theologians.
+   * Returns a list of philosopher labels and English descriptions.
    */
   async getWikidataInfluences(): Promise<WikidataPhilosopher[]> {
     const sparql = `
 SELECT DISTINCT ?philosopher ?philosopherLabel (SAMPLE(?desc) AS ?philosopherDesc) WHERE {
   VALUES ?father {
-    ${FATHER_WIKIDATA_IDS.join('\n    ')}
+    ${THEOLOGICAL_THINKER_WIKIDATA_IDS.join('\n    ')}
   }
   ?father wdt:P737 ?philosopher.
   OPTIONAL {
@@ -249,8 +258,8 @@ LIMIT 25`.trim();
       philosopherMap.set(p.label, p.description);
     }
 
-    // Enrich the first 5 Wikidata philosophers with Philosophers API details
-    const topPhilosophers = wikidataPhilosophers.slice(0, 5).map((p) => p.label);
+    // Enrich the first MAX_ENRICHED_PHILOSOPHERS Wikidata philosophers with Philosophers API details
+    const topPhilosophers = wikidataPhilosophers.slice(0, MAX_ENRICHED_PHILOSOPHERS).map((p) => p.label);
     const apiResults = await Promise.all(
       topPhilosophers.map((name) => this.searchPhilosophersApi(name)),
     );
@@ -273,7 +282,7 @@ LIMIT 25`.trim();
     // Build context strings for the AI prompt
     const fathersContext = fathers.join(', ');
     const philosophersContext = [...philosopherMap.entries()]
-      .slice(0, 12)
+      .slice(0, MAX_PHILOSOPHERS_IN_CONTEXT)
       .map(([name, desc]) => `• ${name}${desc ? ': ' + desc : ''}`)
       .join('\n');
 
