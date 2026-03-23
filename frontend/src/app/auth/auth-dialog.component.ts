@@ -102,6 +102,59 @@ import { AuthService } from '../services/auth.service';
   `,
   styles: [
     `
+      :host ::ng-deep .p-dialog {
+        background: #12122a;
+        border: 1px solid rgba(121, 134, 203, 0.35);
+        border-radius: 10px;
+        box-shadow: 0 8px 32px rgba(0, 0, 0, 0.7);
+      }
+      :host ::ng-deep .p-dialog .p-dialog-header {
+        background: #12122a;
+        color: var(--text-light, #e8eaf6);
+        border-bottom: 1px solid rgba(121, 134, 203, 0.2);
+        padding: 16px 20px 14px;
+        border-radius: 10px 10px 0 0;
+      }
+      :host ::ng-deep .p-dialog .p-dialog-header .p-dialog-title {
+        color: var(--text-light, #e8eaf6);
+        font-family: 'Palatino Linotype', serif;
+        font-size: 1.1rem;
+        font-weight: 600;
+        letter-spacing: 0.02em;
+      }
+      :host ::ng-deep .p-dialog .p-dialog-header .p-dialog-header-icon {
+        color: var(--text-muted, #9fa8da);
+      }
+      :host ::ng-deep .p-dialog .p-dialog-header .p-dialog-header-icon:hover {
+        color: var(--text-light, #e8eaf6);
+        background: rgba(121, 134, 203, 0.15);
+      }
+      :host ::ng-deep .p-dialog .p-dialog-content {
+        background: #1a1a2e;
+        color: var(--text-light, #e8eaf6);
+        padding: 20px;
+        border-radius: 0 0 10px 10px;
+      }
+      :host ::ng-deep .p-dialog .p-dialog-content .p-inputtext {
+        background: #0d0d1a;
+        border-color: rgba(121, 134, 203, 0.35);
+        color: var(--text-light, #e8eaf6);
+      }
+      :host ::ng-deep .p-dialog .p-dialog-content .p-inputtext:focus {
+        border-color: rgba(121, 134, 203, 0.7);
+        box-shadow: 0 0 0 2px rgba(121, 134, 203, 0.2);
+      }
+      :host ::ng-deep .p-dialog .p-dialog-content .p-password-input {
+        background: #0d0d1a;
+        border-color: rgba(121, 134, 203, 0.35);
+        color: var(--text-light, #e8eaf6);
+      }
+      :host ::ng-deep .p-dialog .p-dialog-content .p-password .p-password-toggle-mask-icon {
+        color: var(--text-muted, #9fa8da);
+      }
+      :host ::ng-deep .p-dialog-mask {
+        background: rgba(0, 0, 0, 0.65) !important;
+      }
       .auth-form {
         display: flex;
         flex-direction: column;
