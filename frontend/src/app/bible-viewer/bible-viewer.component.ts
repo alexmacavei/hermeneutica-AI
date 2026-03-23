@@ -58,7 +58,13 @@ import { SlicePipe } from '@angular/common';
       <!-- Navbar -->
       <header class="top-bar">
         <div class="brand">
-          <span class="brand-cross">&#10013;</span>
+          <!-- Orthodox three-bar cross (suppedaneum tilted: right side up, left side down) -->
+          <svg class="brand-cross" viewBox="0 0 100 135" aria-hidden="true">
+            <rect x="43" y="0" width="14" height="135"/>
+            <rect x="30" y="13" width="40" height="13"/>
+            <rect x="2" y="48" width="96" height="15"/>
+            <polygon points="21,107 79,94 79,108 21,121"/>
+          </svg>
           <span class="brand-title">AI Hermeneutica Orthodoxa</span>
         </div>
         <app-bible-selector
@@ -241,7 +247,10 @@ import { SlicePipe } from '@angular/common';
       }
       .brand-cross {
         color: var(--gold);
-        font-size: 1.8rem;
+        fill: var(--gold);
+        width: 1.4rem;
+        height: 1.9rem;
+        flex-shrink: 0;
       }
       .brand-title {
         color: var(--text-light);
