@@ -5,6 +5,10 @@ import * as fs from 'fs';
 import * as path from 'path';
 import * as yaml from 'js-yaml';
 
+/** Fallback text for the philosophy card when the AI is unavailable. */
+const PHILOSOPHY_ENRICHED_FALLBACK =
+  'Analiza influențelor filozofice este temporar indisponibilă. Vă rugăm configurați OPENAI_API_KEY.';
+
 export interface HermeneuticaCards {
   hermeneutics: string;
   philosophy: string;
@@ -27,6 +31,10 @@ interface HermeneuticaPromptConfig {
     hermeneutics: CardPrompt;
     philosophy: CardPrompt;
     philology: CardPrompt;
+  };
+  philosophy_enriched: {
+    system: string;
+    user_template: string;
   };
   patristic_rag: {
     system: string;
@@ -189,6 +197,40 @@ export class AiService {
       );
       return text;
     }
+  }
+
+  /**
+   * Generates the enriched "Influențe Filozofice" card using context assembled
+   * from BiblIndex, Wikidata (P737) and the Philosophers API.
+   *
+   * @param reference          Human-readable verse reference (e.g. „Ioan 1:1").
+   * @param verseText          Plain-text content of the Bible verse.
+   * @param fathersContext     Comma-separated list of Church Fathers (BiblIndex).
+   * @param philosophersContext Bullet-list of philosophers and their key ideas
+   *                            (Wikidata P737 + Philosophers API).
+   */
+  async generatePhilosophySummary(
+    reference: string,
+    verseText: string,
+    fathersContext: string,
+    philosophersContext: string,
+  ): Promise<string> {
+    const systemPrompt = this.prompts.philosophy_enriched.system;
+    const userMessage = this.prompts.philosophy_enriched.user_template
+      .replace('{reference}', reference)
+      .replace('{verse_text}', verseText)
+      .replace('{fathers_context}', fathersContext)
+      .replace('{philosophers_context}', philosophersContext);
+
+    const result = await this.chat(
+      [
+        { role: 'system', content: systemPrompt },
+        { role: 'user', content: userMessage },
+      ],
+      { temperature: 0.5, max_tokens: 700 },
+    );
+
+    return result || PHILOSOPHY_ENRICHED_FALLBACK;
   }
 
   /**

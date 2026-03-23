@@ -2,6 +2,7 @@ import { Test, TestingModule } from '@nestjs/testing';
 import { AnalyzeService } from './analyze.service';
 import { AiService } from '../ai/ai.service';
 import { PatristicRagService } from '../patristic/patristic-rag.service';
+import { PhilosophyEnrichmentService } from '../philosophy/philosophy-enrichment.service';
 import { AnalyzeDto } from './dto/analyze.dto';
 
 describe('AnalyzeService', () => {
@@ -16,12 +17,17 @@ describe('AnalyzeService', () => {
     buildPatristicSummary: jest.fn(),
   };
 
+  const mockPhilosophyEnrichmentService = {
+    buildPhilosophySummary: jest.fn(),
+  };
+
   beforeEach(async () => {
     const module: TestingModule = await Test.createTestingModule({
       providers: [
         AnalyzeService,
         { provide: AiService, useValue: mockAiService },
         { provide: PatristicRagService, useValue: mockPatristicRagService },
+        { provide: PhilosophyEnrichmentService, useValue: mockPhilosophyEnrichmentService },
       ],
     }).compile();
 
@@ -41,9 +47,12 @@ describe('AnalyzeService', () => {
         philology: 'πτωχοί (ptōchoi): cerșetor total, Strong\'s G4434',
       };
       const ragPatristics = 'Ioan Gură de Aur – Omilii la Ioan: Comentariu patristic RAG.';
+      const enrichedPhilosophy =
+        'Platonism: teoria formelor influențează hermeneutica alegorică.\n\nNeoplatonism: Plotin și conceptul de Unul.';
 
       mockAiService.generateThreeCards.mockResolvedValue(mockThreeCards);
       mockPatristicRagService.buildPatristicSummary.mockResolvedValue(ragPatristics);
+      mockPhilosophyEnrichmentService.buildPhilosophySummary.mockResolvedValue(enrichedPhilosophy);
 
       const dto: AnalyzeDto = {
         text: 'Fericiți cei săraci cu duhul, că a lor este Împărăția cerurilor.',
@@ -58,8 +67,9 @@ describe('AnalyzeService', () => {
       expect(result.text).toBe(dto.text);
       // The patristics field must come exclusively from the RAG service
       expect(result.cards.patristics).toBe(ragPatristics);
+      // The philosophy field must come from the enrichment service (overriding threeCards)
+      expect(result.cards.philosophy).toBe(enrichedPhilosophy);
       expect(result.cards.hermeneutics).toBe(mockThreeCards.hermeneutics);
-      expect(result.cards.philosophy).toBe(mockThreeCards.philosophy);
       expect(result.cards.philology).toBe(mockThreeCards.philology);
       expect(result.timestamp).toBeDefined();
     });
@@ -71,6 +81,7 @@ describe('AnalyzeService', () => {
         philology: 'test',
       });
       mockPatristicRagService.buildPatristicSummary.mockResolvedValue('rag patristics');
+      mockPhilosophyEnrichmentService.buildPhilosophySummary.mockResolvedValue('enriched philosophy');
 
       const dto: AnalyzeDto = {
         text: 'Fericiți cei săraci cu duhul',
@@ -88,6 +99,7 @@ describe('AnalyzeService', () => {
         philology: '',
       });
       mockPatristicRagService.buildPatristicSummary.mockResolvedValue('');
+      mockPhilosophyEnrichmentService.buildPhilosophySummary.mockResolvedValue('');
 
       const dto: AnalyzeDto = {
         text: 'La început era Cuvântul',
@@ -111,6 +123,7 @@ describe('AnalyzeService', () => {
         philology: '',
       });
       mockPatristicRagService.buildPatristicSummary.mockResolvedValue('patristic result');
+      mockPhilosophyEnrichmentService.buildPhilosophySummary.mockResolvedValue('');
 
       const dto: AnalyzeDto = {
         text: 'Căci atât de mult a iubit Dumnezeu lumea',
@@ -128,6 +141,29 @@ describe('AnalyzeService', () => {
       );
     });
 
+    it('should call philosophyEnrichmentService.buildPhilosophySummary with text and range', async () => {
+      mockAiService.generateThreeCards.mockResolvedValue({
+        hermeneutics: '',
+        philosophy: '',
+        philology: '',
+      });
+      mockPatristicRagService.buildPatristicSummary.mockResolvedValue('');
+      mockPhilosophyEnrichmentService.buildPhilosophySummary.mockResolvedValue('enriched');
+
+      const dto: AnalyzeDto = {
+        text: 'La început era Cuvântul',
+        range: 'Ioan 1:1',
+        language: 'Sinodală Română',
+      };
+
+      await service.analyze(dto);
+
+      expect(mockPhilosophyEnrichmentService.buildPhilosophySummary).toHaveBeenCalledWith(
+        'La început era Cuvântul',
+        'Ioan 1:1',
+      );
+    });
+
     it('should return timestamp in ISO format', async () => {
       mockAiService.generateThreeCards.mockResolvedValue({
         hermeneutics: '',
@@ -135,6 +171,7 @@ describe('AnalyzeService', () => {
         philology: '',
       });
       mockPatristicRagService.buildPatristicSummary.mockResolvedValue('');
+      mockPhilosophyEnrichmentService.buildPhilosophySummary.mockResolvedValue('');
 
       const dto: AnalyzeDto = {
         text: 'Test text',
