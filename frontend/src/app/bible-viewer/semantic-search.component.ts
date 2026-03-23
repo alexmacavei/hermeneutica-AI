@@ -75,11 +75,11 @@ export interface SearchNavigateEvent {
                   (click)="onResultClick(r)"
                   [title]="r.reference"
                 >
-                  <span class="result-ref">{{ r.reference }}</span>
-                  <span class="result-text">{{ r.verseText | slice:0:90 }}{{ r.verseText.length > 90 ? '…' : '' }}</span>
-                  <span class="result-score" title="Relevanță semantică">
-                    {{ (r.similarity * 100).toFixed(0) }}%
-                  </span>
+                  <div class="result-item-header">
+                    <span class="result-ref">{{ r.reference }}</span>
+                    <span class="result-score" title="Relevanță semantică">{{ (r.similarity * 100).toFixed(0) }}%</span>
+                  </div>
+                  <span class="result-text">{{ r.verseText | slice:0:120 }}{{ r.verseText.length > 120 ? '…' : '' }}</span>
                 </li>
               }
             </ul>
@@ -135,13 +135,15 @@ export interface SearchNavigateEvent {
       position: absolute;
       top: calc(100% + 6px);
       left: 0;
-      right: 0;
+      min-width: 100%;
+      width: max-content;
+      max-width: min(560px, 90vw);
       background: #0d0d2e;
       border: 1px solid rgba(121, 134, 203, 0.3);
       border-radius: 10px;
       box-shadow: 0 8px 24px rgba(0,0,0,0.5);
       z-index: 1000;
-      max-height: 360px;
+      max-height: 380px;
       overflow-y: auto;
     }
     .results-empty, .results-loading {
@@ -158,33 +160,57 @@ export interface SearchNavigateEvent {
       padding: 6px 0;
     }
     .result-item {
-      display: grid;
-      grid-template-columns: auto 1fr auto;
-      align-items: baseline;
-      gap: 8px;
-      padding: 9px 14px;
+      display: flex;
+      flex-direction: column;
+      gap: 4px;
+      padding: 10px 14px;
       cursor: pointer;
-      border-bottom: 1px solid rgba(255,255,255,0.04);
+      border-bottom: 1px solid rgba(255,255,255,0.05);
       transition: background 0.15s;
     }
     .result-item:last-child { border-bottom: none; }
-    .result-item:hover { background: rgba(198, 40, 40, 0.12); }
+    .result-item:hover { background: rgba(121, 134, 203, 0.1); }
+    .result-item-header {
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      gap: 10px;
+    }
     .result-ref {
       color: var(--gold);
-      font-size: 0.78rem;
+      font-size: 0.8rem;
       font-weight: 600;
       white-space: nowrap;
-      min-width: 80px;
-    }
-    .result-text {
-      color: var(--text-light);
-      font-size: 0.8rem;
-      line-height: 1.4;
+      overflow: hidden;
+      text-overflow: ellipsis;
+      max-width: calc(100% - 44px);
     }
     .result-score {
       color: var(--text-muted);
       font-size: 0.72rem;
       white-space: nowrap;
+      flex-shrink: 0;
+      background: rgba(121, 134, 203, 0.15);
+      padding: 1px 6px;
+      border-radius: 8px;
+    }
+    .result-text {
+      color: #b0bec5;
+      font-size: 0.8rem;
+      line-height: 1.45;
+    }
+    @media (max-width: 640px) {
+      .search-wrapper {
+        min-width: 0;
+        max-width: none;
+      }
+      .search-results {
+        left: 0;
+        right: 0;
+        width: auto;
+        min-width: 0;
+        max-width: none;
+      }
     }
   `],
 })

@@ -58,13 +58,20 @@ import { SlicePipe } from '@angular/common';
       <!-- Navbar -->
       <header class="top-bar">
         <div class="brand">
-          <span class="brand-cross">&#10013;</span>
+          <!-- Orthodox three-bar cross (suppedaneum tilted: right side up, left side down) -->
+          <svg class="brand-cross" viewBox="0 0 100 135" aria-hidden="true">
+            <rect x="43" y="0" width="14" height="135"/>
+            <rect x="30" y="13" width="40" height="13"/>
+            <rect x="2" y="48" width="96" height="15"/>
+            <polygon points="21,107 79,94 79,108 21,121"/>
+          </svg>
           <span class="brand-title">AI Hermeneutica Orthodoxa</span>
         </div>
         <app-bible-selector
           (navigate)="store.navigate($event)"
         ></app-bible-selector>
         <app-semantic-search
+          style="flex: 2"
           [translationId]="store.currentNav()?.translationId ?? ''"
           (navigateTo)="store.navigateFromSearch($event)"
         ></app-semantic-search>
@@ -240,7 +247,10 @@ import { SlicePipe } from '@angular/common';
       }
       .brand-cross {
         color: var(--gold);
-        font-size: 1.8rem;
+        fill: var(--gold);
+        width: 1.4rem;
+        height: 1.9rem;
+        flex-shrink: 0;
       }
       .brand-title {
         color: var(--text-light);
@@ -322,6 +332,7 @@ import { SlicePipe } from '@angular/common';
         padding: 10px 28px;
         border-radius: 24px;
         height: 46px;
+        gap: 0.5rem;
       }
       :host ::ng-deep .analyze-btn .p-button:not(:disabled):hover {
         background: #b71c1c;
@@ -332,27 +343,28 @@ import { SlicePipe } from '@angular/common';
         border-color: rgba(198, 40, 40, 0.3);
         color: rgba(255, 255, 255, 0.4);
       }
-      :host ::ng-deep .parallel-btn.p-button {
+      :host ::ng-deep .parallel-btn .p-button {
         background: rgba(26, 35, 126, 0.5);
-        border-color: rgba(121, 134, 203, 0.5);
+        border: 1px solid rgba(121, 134, 203, 0.5);
         color: #9fa8da;
         font-size: 1rem;
         font-weight: 600;
         padding: 10px 22px;
         border-radius: 24px;
         height: 46px;
+        gap: 0.5rem;
       }
-      :host ::ng-deep .parallel-btn.p-button:not(:disabled):hover {
+      :host ::ng-deep .parallel-btn .p-button:not(:disabled):hover {
         background: rgba(26, 35, 126, 0.7);
         border-color: rgba(121, 134, 203, 0.8);
         color: #c5cae9;
       }
-      :host ::ng-deep .parallel-btn.parallel-btn-active.p-button {
+      :host ::ng-deep .parallel-btn.parallel-btn-active .p-button {
         background: rgba(26, 35, 126, 0.8);
         border-color: #7986cb;
         color: #e8eaf6;
       }
-      :host ::ng-deep .parallel-btn.p-button:disabled {
+      :host ::ng-deep .parallel-btn .p-button:disabled {
         background: rgba(26, 35, 126, 0.2);
         border-color: rgba(121, 134, 203, 0.2);
         color: rgba(159, 168, 218, 0.4);
@@ -390,13 +402,16 @@ import { SlicePipe } from '@angular/common';
         color: var(--text-muted, #90a4ae);
         font-size: 0.9rem;
         gap: 6px;
-        padding: 6px 12px;
-      }
-      :host ::ng-deep .auth-menu-btn .p-button .p-button-icon {
-        margin-right: 0;
+        padding: 6px 14px;
+        border-radius: 20px;
+        border: 1px solid rgba(121, 134, 203, 0.25);
+        background: rgba(26, 35, 126, 0.2);
+        transition: background 0.2s, border-color 0.2s, color 0.2s;
       }
       :host ::ng-deep .auth-menu-btn .p-button:hover {
         color: var(--text-light, #eceff1);
+        background: rgba(26, 35, 126, 0.4);
+        border-color: rgba(121, 134, 203, 0.5);
       }
       .user-avatar-area {
         cursor: pointer;
@@ -428,16 +443,73 @@ import { SlicePipe } from '@angular/common';
       @media (max-width: 768px) {
         .main-layout {
           flex-direction: column;
+          overflow: visible;
+        }
+        .bible-panel {
+          max-height: none;
+          overflow-y: visible;
         }
         .analysis-panel {
           width: 100%;
+          min-width: 0;
           border-left: none;
           border-top: 1px solid rgba(121, 134, 203, 0.2);
+          max-height: none;
+          overflow-y: visible;
         }
         .parallel-panel {
           width: 100%;
+          min-width: 0;
           border-left: none;
           border-top: 1px solid rgba(121, 134, 203, 0.2);
+          max-height: none;
+          overflow-y: visible;
+        }
+        .viewer-shell {
+          overflow-y: auto;
+          height: auto;
+        }
+        .analyze-bar {
+          gap: 10px;
+          padding: 10px 14px;
+        }
+        .selection-preview {
+          font-size: 0.82rem;
+          flex-basis: 100%;
+          order: 10;
+        }
+      }
+      @media (max-width: 540px) {
+        .brand {
+          padding: 10px 14px;
+          flex: 1;
+        }
+        .brand-title {
+          font-size: 0.9rem;
+        }
+        .auth-area {
+          padding-right: 10px;
+        }
+        :host ::ng-deep .analyze-btn .p-button {
+          padding: 8px 16px !important;
+          height: 40px !important;
+          font-size: 0.9rem !important;
+        }
+        :host ::ng-deep .parallel-btn .p-button {
+          padding: 8px 14px !important;
+          height: 40px !important;
+          font-size: 0.9rem !important;
+        }
+      }
+      @media (max-width: 420px) {
+        .brand-title {
+          display: none;
+        }
+        .analyze-bar {
+          padding: 8px 12px;
+        }
+        .verse-footer {
+          padding: 8px 12px;
         }
       }
     `,

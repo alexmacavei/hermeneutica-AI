@@ -39,7 +39,7 @@ import { VerseHighlightDirective, VerseSelection } from './verse-highlighter.dir
 
       @if (verses().length === 0) {
         <div class="empty-state">
-          <span class="material-icons">menu_book</span>
+          <i class="pi pi-book"></i>
           <p>Selectează un capitol pentru a vedea textul biblic.</p>
         </div>
       }
@@ -113,7 +113,7 @@ import { VerseHighlightDirective, VerseSelection } from './verse-highlighter.dir
       padding: 60px 20px;
       color: var(--text-muted);
 
-      .material-icons {
+      .pi {
         font-size: 4rem;
         margin-bottom: 16px;
         display: block;

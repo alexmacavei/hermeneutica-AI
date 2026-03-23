@@ -9,6 +9,8 @@
   --text-muted: #9fa8da;
   --gold: #ffd700;
   --cross-red: #c62828;
+  --dialog-bg: #12122a;
+  --dialog-content-bg: #1a1a2e;
 }
 
 html, body {
@@ -52,42 +54,323 @@ h1, h2, h3 { font-family: 'Palatino Linotype', 'Georgia', serif; }
 }
 .analyze-btn-pulse { animation: pulse 2s infinite; }
 
-/* Auth dropdown menu (appendTo="body" – must be global) */
+/* ============================================================
+   PrimeNG – Global dark-theme overrides
+   (appendTo="body" elements must be styled globally)
+   ============================================================ */
+
+/* ── Dialog ── */
+.p-dialog {
+  background: var(--dialog-bg) !important;
+  border: 1px solid rgba(121, 134, 203, 0.35) !important;
+  border-radius: 10px !important;
+  box-shadow: 0 8px 32px rgba(0, 0, 0, 0.75) !important;
+}
+.p-dialog .p-dialog-header {
+  background: var(--dialog-bg) !important;
+  color: var(--text-light, #e8eaf6) !important;
+  border-bottom: 1px solid rgba(121, 134, 203, 0.2) !important;
+  padding: 16px 20px 14px !important;
+  border-radius: 10px 10px 0 0 !important;
+}
+.p-dialog .p-dialog-header .p-dialog-title {
+  color: var(--text-light, #e8eaf6) !important;
+  font-family: 'Palatino Linotype', serif !important;
+  font-size: 1.1rem !important;
+  font-weight: 600 !important;
+  letter-spacing: 0.02em !important;
+}
+.p-dialog .p-dialog-header .p-dialog-close-button {
+  color: var(--text-muted, #9fa8da) !important;
+  border-radius: 50% !important;
+  transition: background 0.2s, color 0.2s !important;
+}
+.p-dialog .p-dialog-header .p-dialog-close-button:hover {
+  color: var(--text-light, #e8eaf6) !important;
+  background: rgba(121, 134, 203, 0.15) !important;
+}
+.p-dialog .p-dialog-content {
+  background: var(--dialog-content-bg) !important;
+  color: var(--text-light, #e8eaf6) !important;
+  padding: 20px !important;
+  border-radius: 0 0 10px 10px !important;
+}
+.p-dialog-mask {
+  background: rgba(0, 0, 0, 0.65) !important;
+}
+
+/* ── Input text (inside dialogs and everywhere) ── */
+.p-inputtext {
+  background: #0d0d1a !important;
+  border: 1px solid rgba(121, 134, 203, 0.35) !important;
+  color: var(--text-light, #e8eaf6) !important;
+  border-radius: 6px !important;
+}
+.p-inputtext::placeholder {
+  color: var(--text-muted, #9fa8da) !important;
+  opacity: 0.8 !important;
+}
+.p-inputtext:focus,
+.p-inputtext:enabled:focus {
+  border-color: rgba(121, 134, 203, 0.7) !important;
+  box-shadow: 0 0 0 2px rgba(121, 134, 203, 0.2) !important;
+  outline: none !important;
+}
+.p-inputtext:hover:not(:disabled) {
+  border-color: rgba(121, 134, 203, 0.55) !important;
+}
+
+/* ── Textarea ── */
+.p-textarea {
+  background: #0d0d1a !important;
+  border: 1px solid rgba(121, 134, 203, 0.35) !important;
+  color: var(--text-light, #e8eaf6) !important;
+  border-radius: 6px !important;
+}
+.p-textarea::placeholder {
+  color: var(--text-muted, #9fa8da) !important;
+  opacity: 0.8 !important;
+}
+.p-textarea:focus {
+  border-color: rgba(121, 134, 203, 0.7) !important;
+  box-shadow: 0 0 0 2px rgba(121, 134, 203, 0.2) !important;
+  outline: none !important;
+}
+
+/* ── Password input ── */
+.p-password {
+  display: flex !important;
+  width: 100%;
+}
+.p-password input.p-inputtext,
+.p-password-input {
+  background: #0d0d1a !important;
+  border: 1px solid rgba(121, 134, 203, 0.35) !important;
+  color: var(--text-light, #e8eaf6) !important;
+  border-radius: 6px !important;
+  width: 100% !important;
+}
+.p-password input.p-inputtext::placeholder {
+  color: var(--text-muted, #9fa8da) !important;
+  opacity: 0.8 !important;
+}
+.p-password .p-password-toggle-mask-icon,
+.p-password .p-password-toggle-button,
+.p-password-toggle {
+  color: var(--text-muted, #9fa8da) !important;
+}
+.p-password .p-password-toggle-button:hover {
+  color: var(--text-light, #e8eaf6) !important;
+  background: transparent !important;
+}
+
+/* ── Button ── */
+.p-button {
+  gap: 0.5rem !important;
+}
+.p-button .p-button-icon + .p-button-label,
+.p-button .p-button-label + .p-button-icon {
+  margin: 0 !important;
+}
+
+/* Primary button */
+.p-button:not(.p-button-outlined):not(.p-button-text):not(.p-button-link):not([severity]) {
+  background: var(--cross-red, #c62828) !important;
+  border-color: var(--cross-red, #c62828) !important;
+  color: #fff !important;
+}
+.p-button:not(.p-button-outlined):not(.p-button-text):not(.p-button-link):not([severity]):not(:disabled):hover {
+  background: #b71c1c !important;
+  border-color: #b71c1c !important;
+}
+
+/* Secondary button */
+.p-button[severity="secondary"],
+.p-button.p-button-secondary {
+  background: rgba(26, 35, 126, 0.5) !important;
+  border-color: rgba(121, 134, 203, 0.5) !important;
+  color: var(--text-muted, #9fa8da) !important;
+}
+.p-button[severity="secondary"]:not(:disabled):hover,
+.p-button.p-button-secondary:not(:disabled):hover {
+  background: rgba(26, 35, 126, 0.7) !important;
+  border-color: rgba(121, 134, 203, 0.8) !important;
+  color: var(--text-light, #e8eaf6) !important;
+}
+
+/* Text button */
+.p-button.p-button-text,
+.p-button[variant="text"] {
+  background: transparent !important;
+  border-color: transparent !important;
+}
+
+/* Disabled */
+.p-button:disabled {
+  opacity: 0.45 !important;
+  cursor: not-allowed !important;
+}
+
+/* ── Select (dropdown) ── */
+.p-select {
+  background: #1e1e3c !important;
+  border: 1px solid rgba(121, 134, 203, 0.4) !important;
+  border-radius: 6px !important;
+}
+.p-select .p-select-label {
+  color: var(--text-light, #e8eaf6) !important;
+  font-size: 0.9rem !important;
+}
+.p-select .p-select-label.p-placeholder {
+  color: var(--text-muted, #9fa8da) !important;
+}
+.p-select .p-select-dropdown {
+  color: var(--text-muted, #9fa8da) !important;
+}
+.p-select:hover:not(.p-disabled) {
+  border-color: rgba(121, 134, 203, 0.65) !important;
+}
+.p-select:focus-within {
+  box-shadow: 0 0 0 2px rgba(121, 134, 203, 0.2) !important;
+  border-color: rgba(121, 134, 203, 0.7) !important;
+}
+.p-select-overlay {
+  background: #1e1e3c !important;
+  border: 1px solid rgba(121, 134, 203, 0.3) !important;
+  box-shadow: 0 6px 20px rgba(0,0,0,0.6) !important;
+  border-radius: 8px !important;
+}
+.p-select-list-container {
+  background: #1e1e3c !important;
+}
+.p-select-option {
+  color: var(--text-light, #e8eaf6) !important;
+  font-size: 0.9rem !important;
+}
+.p-select-option:not(.p-disabled):hover,
+.p-select-option.p-select-option-selected {
+  background: rgba(26, 35, 126, 0.5) !important;
+}
+.p-select-filter-container .p-inputtext,
+.p-select-filter {
+  background: #16162e !important;
+  color: var(--text-light, #e8eaf6) !important;
+  border-color: rgba(121, 134, 203, 0.4) !important;
+}
+
+/* ── Auth dropdown menu (appendTo="body") ── */
 .p-menu {
-  background: #1a1a2e;
-  border: 1px solid rgba(121, 134, 203, 0.35);
-  border-radius: 8px;
-  box-shadow: 0 6px 24px rgba(0, 0, 0, 0.6);
-  min-width: 180px;
+  background: #1a1a2e !important;
+  border: 1px solid rgba(121, 134, 203, 0.35) !important;
+  border-radius: 8px !important;
+  box-shadow: 0 6px 24px rgba(0, 0, 0, 0.6) !important;
+  min-width: 180px !important;
+  padding: 4px !important;
 }
 .p-menu .p-menu-list {
-  padding: 4px;
+  padding: 2px 0 !important;
+}
+.p-menu .p-menuitem {
+  margin: 2px 0 !important;
+}
+.p-menu .p-menuitem > .p-menuitem-content {
+  border-radius: 6px !important;
+  margin: 0 2px !important;
 }
 .p-menu .p-menuitem > .p-menuitem-content .p-menuitem-link {
-  color: var(--text-light, #e8eaf6);
-  border-radius: 6px;
-  padding: 8px 14px;
-  gap: 10px;
+  color: var(--text-light, #e8eaf6) !important;
+  padding: 9px 14px !important;
+  display: flex !important;
+  align-items: center !important;
+  gap: 10px !important;
+  border-radius: 6px !important;
+  transition: background 0.18s, color 0.18s !important;
+  text-decoration: none !important;
 }
 .p-menu .p-menuitem > .p-menuitem-content .p-menuitem-link:not(.p-disabled):hover {
-  background: rgba(26, 35, 126, 0.4);
-  color: var(--text-light, #e8eaf6);
+  background: rgba(26, 35, 126, 0.5) !important;
 }
 .p-menu .p-menuitem > .p-menuitem-content .p-menuitem-link .p-menuitem-icon {
-  color: var(--text-muted, #9fa8da);
+  color: var(--text-muted, #9fa8da) !important;
+  font-size: 0.95rem !important;
 }
 .p-menu .p-menuitem > .p-menuitem-content .p-menuitem-link:not(.p-disabled):hover .p-menuitem-icon {
-  color: var(--gold, #ffd700);
+  color: var(--gold, #ffd700) !important;
+}
+.p-menu .p-menuitem > .p-menuitem-content .p-menuitem-link .p-menuitem-text {
+  font-size: 0.9rem !important;
 }
 .p-menu .p-menuitem-separator {
-  border-top-color: rgba(121, 134, 203, 0.2);
-  margin: 4px 0;
+  border-top: 1px solid rgba(121, 134, 203, 0.2) !important;
+  margin: 4px 0 !important;
 }
-.p-menu .auth-menu-email .p-menuitem-link {
-  opacity: 0.75;
-  cursor: default;
+.p-menu .auth-menu-email > .p-menuitem-content .p-menuitem-link {
+  opacity: 0.75 !important;
+  cursor: default !important;
 }
-.p-menu .auth-menu-email .p-menuitem-link .p-menuitem-text {
-  font-size: 0.8rem;
-  color: var(--text-muted, #9fa8da);
+.p-menu .auth-menu-email > .p-menuitem-content .p-menuitem-link .p-menuitem-text {
+  font-size: 0.8rem !important;
+  color: var(--text-muted, #9fa8da) !important;
 }
+
+/* ── Accordion (notes dialog) ── */
+.p-accordionpanel {
+  border: 1px solid rgba(121, 134, 203, 0.2) !important;
+  border-radius: 6px !important;
+  margin-bottom: 6px !important;
+  overflow: hidden !important;
+  background: rgba(10, 10, 30, 0.4) !important;
+}
+.p-accordionheader {
+  background: rgba(26, 35, 126, 0.2) !important;
+  padding: 10px 14px !important;
+  color: var(--text-light, #eceff1) !important;
+  border: none !important;
+  transition: background 0.2s !important;
+}
+.p-accordionheader:hover {
+  background: rgba(26, 35, 126, 0.35) !important;
+}
+.p-accordioncontent-content {
+  padding: 10px 14px !important;
+  background: rgba(10, 10, 30, 0.3) !important;
+  color: var(--text-light, #e8eaf6) !important;
+}
+
+/* ── Toast notifications ── */
+.p-toast .p-toast-message {
+  background: #1a1a2e !important;
+  border: 1px solid rgba(121, 134, 203, 0.3) !important;
+  color: var(--text-light, #e8eaf6) !important;
+  border-radius: 8px !important;
+}
+.p-toast .p-toast-message .p-toast-message-text {
+  color: var(--text-light, #e8eaf6) !important;
+}
+
+/* ── Message (inline error/warning) ── */
+.p-message {
+  border-radius: 6px !important;
+}
+.p-message.p-message-error {
+  background: rgba(183, 28, 28, 0.2) !important;
+  border: 1px solid rgba(183, 28, 28, 0.4) !important;
+  color: #ef9a9a !important;
+}
+
+/* ── Mobile / Responsive ── */
+@media (max-width: 480px) {
+  /* Dialogs should not overflow the viewport */
+  .p-dialog {
+    max-width: 95vw !important;
+  }
+  /* Select overlays should not overflow the viewport */
+  .p-select-overlay {
+    max-width: 92vw !important;
+  }
+  /* Menu dropdown shouldn't overflow on small screens */
+  .p-menu {
+    max-width: 90vw !important;
+  }
+}
+
