@@ -65,6 +65,7 @@ import { SlicePipe } from '@angular/common';
           (navigate)="store.navigate($event)"
         ></app-bible-selector>
         <app-semantic-search
+          style="flex: 2"
           [translationId]="store.currentNav()?.translationId ?? ''"
           (navigateTo)="store.navigateFromSearch($event)"
         ></app-semantic-search>
