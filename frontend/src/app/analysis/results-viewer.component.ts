@@ -4,6 +4,7 @@ import { CardModule } from 'primeng/card';
 import { ProgressSpinnerModule } from 'primeng/progressspinner';
 import { AnalysisResult } from '../services/analysis.service';
 import { NotesDialogComponent } from './notes-dialog.component';
+import { FormatCardPipe } from './format-card.pipe';
 
 interface AnalysisCard {
   key: keyof AnalysisResult['cards'];
@@ -16,7 +17,7 @@ interface AnalysisCard {
   selector: 'app-results-viewer',
   standalone: true,
   changeDetection: ChangeDetectionStrategy.OnPush,
-  imports: [CardModule, ProgressSpinnerModule, SlicePipe, NotesDialogComponent],
+  imports: [CardModule, ProgressSpinnerModule, SlicePipe, NotesDialogComponent, FormatCardPipe],
   template: `
     @if (result() || loading()) {
       <div class="results-section">
@@ -55,7 +56,7 @@ interface AnalysisCard {
                     <span class="card-title">{{ card.title }}</span>
                   </div>
                 </ng-template>
-                <p class="card-content-text">{{ result()!.cards[card.key] }}</p>
+                <p class="card-content-text" [innerHTML]="result()!.cards[card.key] | formatCard"></p>
               </p-card>
             }
           </div>
@@ -176,7 +177,6 @@ interface AnalysisCard {
       color: #b0bec5;
       line-height: 1.7;
       font-size: 0.88rem;
-      white-space: pre-line;
       margin: 0;
     }
   `],

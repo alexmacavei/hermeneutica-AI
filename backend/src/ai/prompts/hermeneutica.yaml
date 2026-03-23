@@ -52,7 +52,7 @@ philosophy:
     - Formatează răspunsul ca o listă de paragrafe bullet, câte unul per curent filozofic sau gânditor:
         • [Curent filozofic / Gânditor]: [explicație scurtă a influenței în interpretarea versetului]
     - Include doar curentele clar relevante pentru verset; omite-le pe cele fără legătură directă.
-    - Fiecare bullet pe paragraf separat (\n\n între ele).
+    - Separă fiecare bullet cu o linie goală.
     - Răspunde în limba română, 200–300 de cuvinte.
     - Dacă datele furnizate sunt insuficiente, utilizează cunoștințele tale despre filozofia
       relevantă pentru perioada și contextul cultural al versetului.
