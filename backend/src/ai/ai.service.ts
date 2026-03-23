@@ -31,7 +31,7 @@ interface HermeneuticaPromptConfig {
     hermeneutics: CardPrompt;
     philology: CardPrompt;
   };
-  philosophy_enriched: {
+  philosophy: {
     system: string;
     user_template: string;
   };
@@ -214,8 +214,8 @@ export class AiService {
     fathersContext: string,
     philosophersContext: string,
   ): Promise<string> {
-    const systemPrompt = this.prompts.philosophy_enriched.system;
-    const userMessage = this.prompts.philosophy_enriched.user_template
+    const systemPrompt = this.prompts.philosophy.system;
+    const userMessage = this.prompts.philosophy.user_template
       .replace('{reference}', reference)
       .replace('{verse_text}', verseText)
       .replace('{fathers_context}', fathersContext)
