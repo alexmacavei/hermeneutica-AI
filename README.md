@@ -3,9 +3,10 @@
 <div align="center">
 
 [![NestJS](https://img.shields.io/badge/NestJS-10+-E0234E?style=for-the-badge&logo=nestjs)](https://nestjs.com)
-[![Angular](https://img.shields.io/badge/Angular-19.2-DD0031?style=for-the-badge&logo=angular)](https://angular.io)
-[![TypeScript](https://img.shields.io/badge/TypeScript-5.7+-3178C6?style=for-the-badge&logo=typescript)](https://www.typescriptlang.org)
-[![PrimeNG](https://img.shields.io/badge/PrimeNG-19-4CAF50?style=for-the-badge)](https://primeng.org)
+[![Angular](https://img.shields.io/badge/Angular-21.2-DD0031?style=for-the-badge&logo=angular)](https://angular.io)
+[![TypeScript](https://img.shields.io/badge/TypeScript-5.9+-3178C6?style=for-the-badge&logo=typescript)](https://www.typescriptlang.org)
+[![PrimeNG](https://img.shields.io/badge/PrimeNG-21-4CAF50?style=for-the-badge)](https://primeng.org)
+[![NgRx Signals](https://img.shields.io/badge/%40ngrx%2Fsignals-21-BA2BD2?style=for-the-badge)](https://ngrx.io/guide/signals)
 [![Podman](https://img.shields.io/badge/Podman-compose-892CA0?style=for-the-badge&logo=podman)](https://podman.io)
 [![PostgreSQL](https://img.shields.io/badge/PostgreSQL-pgvector-336791?style=for-the-badge&logo=postgresql)](https://github.com/pgvector/pgvector)
 [![License: MIT](https://img.shields.io/badge/License-MIT-yellow.svg?style=for-the-badge)](LICENSE)
@@ -23,7 +24,7 @@
 
 ## 📖 Descriere / Description
 
-**RO:** AI Hermeneutica Orthodoxa este o aplicație web full-stack care permite navigarea textului biblic – via API [helloao.org](https://bible.helloao.org) pentru traducerile remote și local pentru **Biblia Sinodală Română** și **Biblia Anania** – și oferă analiză hermeneutică ortodoxă prin modele OpenAI, precum și studiu biblic paralel între toate traducerile disponibile.
+**RO:** AI Hermeneutica Orthodoxa este o aplicație web full-stack care permite navigarea textului biblic – via API [helloao.org](https://bible.helloao.org) pentru traducerile remote și local pentru **Biblia Sinodală Română** și **Biblia Anania** – și oferă analiză hermeneutică ortodoxă prin modele OpenAI, studiu biblic paralel între toate traducerile disponibile, **căutare semantică vectorială** în textul biblic (pgvector), **autentificare utilizator** (JWT) și **notițe personale** per verset.
 
 Analiza unui verset generează 4 carduri:
 
@@ -35,7 +36,7 @@ Analiza unui verset generează 4 carduri:
 | 🔤 **Analiză Filologică** | Greacă/Ebraică biblică, Strong's, LXX, morfologie | OpenAI (LLM) |
 | 📚 **Studiu Paralel** | Versetul selectat afișat simultan în toate traducerile disponibile (N/A pentru traduceri cu canon diferit) | bible.helloao.org |
 
-**EN:** AI Hermeneutica Orthodoxa is a full-stack web application for navigating Biblical text (via helloao.org API), receiving AI-powered orthodox hermeneutic analysis using OpenAI models, and comparing selected verses side-by-side across all available translations.
+**EN:** AI Hermeneutica Orthodoxa is a full-stack web application for navigating Biblical text (via helloao.org API), receiving AI-powered orthodox hermeneutic analysis using OpenAI models, comparing selected verses side-by-side across all available translations, **semantic search** over Bible verses (pgvector), **user authentication** (JWT), and **personal notes** per verse.
 
 ---
 
@@ -86,19 +87,34 @@ Utilizator selectează: "Fiindcă Dumnezeu aşa a iubit lumea, că pe Fiul Său 
                                        │ HTTPS
 ┌───────────────────────┐              │              ┌────────────────────────┐
 │   Browser / Frontend  │  HTTP REST   │              │  bible.helloao.org     │
-│   (Angular 19 SPA)    │◄────────────►│              │  (traduceri remote)    │
+│   (Angular 21 SPA)    │◄────────────►│              │  (traduceri remote)    │
 │                       │  :3001       │              └────────────┬───────────┘
 │   • Navigare biblică  │              │                           │ HTTPS
 │   • Studiu Paralel    │   ┌──────────▼──────────────────────────▼──────────┐
 │   • 4 Carduri AI      │   │           NestJS Backend (:3001)               │
-└───────────────────────┘   │                                                │
-                            │  POST /api/analyze                             │
-                            │   ├─ 3 carduri hermeneutice   → OpenAI LLM    │
+│   • Căutare semantică │   │                                                │
+│   • Autentificare JWT │   │  POST /api/analyze          (JWT required)     │
+│   • Notițe personale  │   │   ├─ 2 carduri LLM (hermeneutică+filologie)   │
+└───────────────────────┘   │   │                             → OpenAI LLM    │
+                            │   ├─ card filozofie (RAG ext) → BiblIndex /    │
+                            │   │                              Wikidata /     │
+                            │   │                              Philosophers   │
                             │   └─ card patristic RAG:                       │
                             │       ├─ traducere EN          → OpenAI LLM    │
                             │       ├─ embedding query       → OpenAI API    │
                             │       ├─ căutare vectorială    → pgvector DB   │
                             │       └─ sinteză citate        → OpenAI LLM    │
+                            │                                                │
+                            │  POST /api/auth/register                       │
+                            │  POST /api/auth/login                          │
+                            │                                                │
+                            │  GET /api/notes             (JWT required)     │
+                            │  POST /api/notes            (JWT required)     │
+                            │  PUT  /api/notes/:id        (JWT required)     │
+                            │  DELETE /api/notes/:id      (JWT required)     │
+                            │                                                │
+                            │  GET /api/search                               │
+                            │  POST /api/search/ingest/:tr/:book/:ch         │
                             │                                                │
                             │  GET /api/bible/*                              │
                             │   ├─ traduceri remote          → helloao.org   │
@@ -109,6 +125,8 @@ Utilizator selectează: "Fiindcă Dumnezeu aşa a iubit lumea, că pe Fiul Său 
                             │         PostgreSQL 16 + pgvector               │
                             │   patristic_chunks  (embeddings New Advent)    │
                             │   verse_embeddings  (semantic search)          │
+                            │   users             (autentificare)            │
+                            │   user_notes        (notițe personale)         │
                             └────────────────────────────────────────────────┘
 
     ┌─────────────────────────────────────────────────┐
@@ -195,6 +213,7 @@ Key environment variables for local dev (`.env`):
 |----------|----------------|---------------------|
 | `DATABASE_URL` | `postgresql://...@localhost:5432/hermeneutica` | `postgresql://...@postgres:5432/hermeneutica` |
 | `DATA_DIR` | `../data` | `./data` |
+| `JWT_SECRET` | orice string lung, aleator | același string în producție |
 
 ### Variabile de Mediu / Environment Variables
 
@@ -209,6 +228,9 @@ OPENAI_MODEL=gpt-4o
 # Backend
 PORT=3001
 FRONTEND_URL=http://localhost:4200
+
+# JWT – schimbă această valoare cu un string aleator lung în producție!
+JWT_SECRET=changeme-set-a-strong-random-secret-here
 
 # PostgreSQL
 # Local dev (npm run dev): backend se conectează la postgres din Podman via localhost
@@ -230,7 +252,39 @@ DATA_DIR=../data
 
 ## 📡 API Reference
 
-### `POST /api/analyze`
+### `POST /api/auth/register`
+
+Înregistrează un utilizator nou. Returnează un token JWT.
+
+**Request:**
+```json
+{ "email": "user@example.com", "password": "secret123" }
+```
+
+**Response:**
+```json
+{ "token": "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9..." }
+```
+
+### `POST /api/auth/login`
+
+Autentifică un utilizator existent. Returnează un token JWT.
+
+**Request:**
+```json
+{ "email": "user@example.com", "password": "secret123" }
+```
+
+**Response:**
+```json
+{ "token": "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9..." }
+```
+
+---
+
+### `POST /api/analyze` 🔒
+
+> **Autentificare necesară:** trimite token-ul JWT în header-ul `Authorization: Bearer <token>`.
 
 Analizează un fragment biblic și returnează 4 carduri hermeneutice.
 
@@ -266,6 +320,76 @@ Analizează un fragment biblic și returnează 4 carduri hermeneutice.
 
 > **Notă:** Câmpul `patristics` este generat prin RAG (Retrieval-Augmented Generation)
 > din corpusul New Advent indexat local, nu direct de la modelul AI.
+
+---
+
+### `GET /api/notes` 🔒
+### `POST /api/notes` 🔒
+### `PUT /api/notes/:id` 🔒
+### `DELETE /api/notes/:id` 🔒
+
+> **Autentificare necesară:** trimite token-ul JWT în header-ul `Authorization: Bearer <token>`.
+
+Gestionează notițele personale ale utilizatorului per verset.
+
+**GET** – returnează notițele pentru un verset:
+```bash
+GET /api/notes?verse_reference=Ioan+3:16
+```
+
+**POST** – creează o notiță nouă:
+```json
+{
+  "verse_reference": "Ioan 3:16",
+  "note_title": "Titlu opțional",
+  "note_text": "Reflecția mea despre acest verset..."
+}
+```
+
+**PUT** – actualizează o notiță existentă:
+```json
+{ "note_title": "Titlu actualizat", "note_text": "Text actualizat..." }
+```
+
+**DELETE** – șterge o notiță: `DELETE /api/notes/42`
+
+---
+
+### `GET /api/search`
+
+Căutare semantică în versetele biblice indexate. Versetele sunt indexate lazy prin `POST /api/search/ingest` pe măsură ce utilizatorul navighează.
+
+**Query params:**
+- `q` *(obligatoriu)* – termenul de căutare (ex. `mântuire`, `pocăință`)
+- `translationId` *(obligatoriu)* – ID-ul traducerii (ex. `ro_sinodala`)
+- `limit` *(opțional)* – număr maxim de rezultate (implicit: 10)
+
+```bash
+GET /api/search?q=iubire&translationId=ro_sinodala&limit=10
+```
+
+**Response:**
+```json
+{
+  "query": "iubire",
+  "translationId": "ro_sinodala",
+  "results": [
+    {
+      "translationId": "ro_sinodala",
+      "bookId": "JHN",
+      "bookName": "Ioan",
+      "chapter": 3,
+      "verseNumber": 16,
+      "verseText": "Fiindcă Dumnezeu aşa a iubit lumea...",
+      "similarity": 0.92,
+      "reference": "Ioan 3:16"
+    }
+  ],
+  "total": 1
+}
+```
+
+---
 
 ### `GET /api/bible/parallel/:bookId/:chapter`
 
@@ -334,11 +458,12 @@ GET /api/bible/grc_byz/JHN/3
 
 | Layer | Tehnologie |
 |-------|-----------|
-| **Backend** | NestJS 10, TypeScript 5.7 |
+| **Backend** | NestJS 10, TypeScript 5.9 |
 | **AI** | OpenAI API (modele configurabile: LLM pentru carduri hermeneutice, `gpt-4o-mini` pentru traducere, `text-embedding-3-small` pentru embeddings), Prompt YAML |
-| **Frontend** | Angular 19.2, PrimeNG 19.1 |
-| **Styling** | SCSS, PrimeIcons |
-| **Database** | PostgreSQL 16 + pgvector (căutare semantică vectorială) |
+| **Frontend** | Angular 21.2.5, PrimeNG 21.1.3, @ngrx/signals 21.0.1 |
+| **Styling** | SCSS, PrimeIcons 7 |
+| **Database** | PostgreSQL 16 + pgvector (căutare semantică vectorială); tabele: `verse_embeddings`, `patristic_chunks`, `users`, `user_notes` |
+| **Auth** | JWT (NestJS Passport + `@nestjs/jwt`) |
 | **Data Source** | bible.helloao.org (External API) + `ro_sinodala.json` (local) + `ro_anania.json` (local, opțional) + New Advent corpus (local, opțional) |
 | **DevOps** | Podman, Podman Compose |
 | **CI/CD** | GitHub Actions |
@@ -426,6 +551,8 @@ Arii de contribuție:
 - [x] Căutare semantică (pgvector) – implementată
 - [x] Studiu paralel (comparare versete între traduceri) – implementat
 - [x] Comentarii patristice prin RAG (New Advent) – implementat
+- [x] Autentificare utilizator (JWT register/login) – implementată
+- [x] Notițe personale per verset – implementate
 - [ ] Export PDF analize
 - [ ] Traducere interfață în alte limbi (i18n)
 

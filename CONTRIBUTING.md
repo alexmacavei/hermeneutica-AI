@@ -16,6 +16,8 @@
 - ESLint + Prettier (configurate în proiect)
 - Teste Jest pentru logica backend (target: 80% coverage)
 - Commits în format [Conventional Commits](https://www.conventionalcommits.org/)
+- Angular Signals & standalone components (fără NgModules clasice)
+- `@ngrx/signals` SignalStore pentru state management în frontend
 
 ### Tipuri de contribuții
 
@@ -24,6 +26,9 @@
 - 🎨 **UI/UX** – Îmbunătățiri vizuale Angular
 - 🔧 **Backend** – Noi endpoint-uri, performanță
 - 🌍 **Localizare** – Traduceri interfață
+- 🔒 **Autentificare** – Îmbunătățiri sistem JWT, securitate
+- 📝 **Notițe** – Funcționalități suplimentare pentru notițele personale
+- 🔍 **Căutare semantică** – Îmbunătățiri indexare și ranking pgvector
 
 ---
 
@@ -43,6 +48,8 @@
 - ESLint + Prettier (project-configured)
 - Jest tests for backend logic (target: 80% coverage)
 - [Conventional Commits](https://www.conventionalcommits.org/) format
+- Angular Signals & standalone components (no classic NgModules)
+- `@ngrx/signals` SignalStore for frontend state management
 
 ### Contribution areas
 
@@ -51,6 +58,9 @@
 - 🎨 **UI/UX** – Angular visual improvements
 - 🔧 **Backend** – New endpoints, performance
 - 🌍 **Localization** – UI translations
+- 🔒 **Authentication** – JWT security improvements
+- 📝 **Notes** – Additional user notes features
+- 🔍 **Semantic search** – pgvector indexing and ranking improvements
 
 ---
 
