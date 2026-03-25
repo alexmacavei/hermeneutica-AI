@@ -125,5 +125,35 @@ describe('ChatService', () => {
         5,
       );
     });
+
+    it('should include off-topic redirection instruction in the system prompt', async () => {
+      mockPatristicRagService.findRelevantChunksForVerse.mockResolvedValue([]);
+      mockAiService.chat.mockResolvedValue('Răspuns.');
+
+      await service.sendMessage('Care este rețeta pentru clătite?', []);
+
+      const chatCall = mockAiService.chat.mock.calls[0][0] as Array<{
+        role: string;
+        content: string;
+      }>;
+      const systemMsg = chatCall.find((m) => m.role === 'system');
+      expect(systemMsg?.content).toContain('nu pot răspunde la această întrebare');
+      expect(systemMsg?.content).toContain('asistent teologic dedicat');
+    });
+
+    it('should return the LLM off-topic redirection reply when the LLM honors the instruction', async () => {
+      const redirectionReply =
+        'Îmi pare rău, dar nu pot răspunde la această întrebare. Sunt un asistent teologic dedicat ' +
+        'studiului Sfintei Scripturi, comentariilor patristice și hermeneuticii ortodoxe. ' +
+        'Vă invit să adresați o întrebare din aceste domenii — sunt aici să vă ajut!';
+
+      mockPatristicRagService.findRelevantChunksForVerse.mockResolvedValue([]);
+      mockAiService.chat.mockResolvedValue(redirectionReply);
+
+      const reply = await service.sendMessage('Care este capitala Franței?', []);
+
+      expect(reply).toContain('asistent teologic dedicat');
+      expect(reply).toContain('hermeneuticii ortodoxe');
+    });
   });
 });
