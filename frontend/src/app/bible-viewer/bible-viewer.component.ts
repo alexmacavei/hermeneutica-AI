@@ -22,6 +22,7 @@ import { ParallelViewerComponent } from './parallel-viewer.component';
 import { AuthDialogComponent } from '../auth/auth-dialog.component';
 import { AuthService } from '../services/auth.service';
 import { SlicePipe } from '@angular/common';
+import { ChatComponent } from '../chat/chat.component';
 
 @Component({
   selector: 'app-bible-viewer',
@@ -40,6 +41,7 @@ import { SlicePipe } from '@angular/common';
     ParallelViewerComponent,
     AuthDialogComponent,
     SlicePipe,
+    ChatComponent,
   ],
   providers: [BibleStore, MessageService],
   template: `
@@ -78,6 +80,19 @@ import { SlicePipe } from '@angular/common';
 
         <!-- Auth area – single dropdown button -->
         <div class="auth-area">
+          @if (authService.isLoggedIn()) {
+            <p-button
+              icon="pi pi-comments"
+              label="Chat"
+              severity="secondary"
+              [text]="true"
+              [class.chat-btn-active]="showChat()"
+              class="chat-nav-btn"
+              pTooltip="Chat teologic cu IA"
+              tooltipPosition="bottom"
+              (click)="toggleChat()"
+            ></p-button>
+          }
           @if (!authService.currentUser()) {
             <p-button
               icon="pi pi-user"
@@ -106,6 +121,12 @@ import { SlicePipe } from '@angular/common';
       </header>
 
       <!-- Main Layout -->
+      @if (showChat()) {
+        <!-- Chat Page (replaces main layout for logged-in users) -->
+        <main class="chat-page">
+          <app-chat></app-chat>
+        </main>
+      } @else {
       <main class="main-layout">
         <!-- Bible Text Panel -->
         <section class="bible-panel">
@@ -220,6 +241,7 @@ import { SlicePipe } from '@angular/common';
           </span>
         }
       </div>
+      }
     </div>
   `,
   styles: [
@@ -262,6 +284,12 @@ import { SlicePipe } from '@angular/common';
         flex: 1;
         display: flex;
         overflow: hidden;
+      }
+      .chat-page {
+        flex: 1;
+        display: flex;
+        overflow: hidden;
+        max-height: calc(100vh - 60px);
       }
       .bible-panel {
         flex: 1;
@@ -397,6 +425,27 @@ import { SlicePipe } from '@angular/common';
         padding-right: 16px;
         display: flex;
         align-items: center;
+        gap: 8px;
+      }
+      :host ::ng-deep .chat-nav-btn .p-button {
+        color: var(--text-muted, #90a4ae);
+        font-size: 0.9rem;
+        gap: 6px;
+        padding: 6px 14px;
+        border-radius: 20px;
+        border: 1px solid rgba(121, 134, 203, 0.25);
+        background: rgba(26, 35, 126, 0.2);
+        transition: background 0.2s, border-color 0.2s, color 0.2s;
+      }
+      :host ::ng-deep .chat-nav-btn .p-button:hover {
+        color: var(--text-light, #eceff1);
+        background: rgba(26, 35, 126, 0.4);
+        border-color: rgba(121, 134, 203, 0.5);
+      }
+      :host ::ng-deep .chat-nav-btn.chat-btn-active .p-button {
+        color: var(--gold, #fdd835);
+        background: rgba(26, 35, 126, 0.5);
+        border-color: rgba(253, 216, 53, 0.5);
       }
       :host ::ng-deep .auth-menu-btn .p-button {
         color: var(--text-muted, #90a4ae);
@@ -521,6 +570,7 @@ export class BibleViewerComponent {
 
   readonly authDialogVisible = signal(false);
   readonly authDialogMode = signal<'login' | 'register'>('login');
+  readonly showChat = signal(false);
 
   private readonly authMenu = viewChild.required<Menu>('authMenu');
 
@@ -568,5 +618,9 @@ export class BibleViewerComponent {
   openAuthFromPrompt(event: Event, mode: 'login' | 'register'): void {
     event.preventDefault();
     this.openAuth(mode);
+  }
+
+  toggleChat(): void {
+    this.showChat.update((v) => !v);
   }
 }
