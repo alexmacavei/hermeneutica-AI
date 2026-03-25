@@ -4,6 +4,7 @@ import {
   Component,
   ElementRef,
   inject,
+  output,
   signal,
   viewChild,
 } from '@angular/core';
@@ -24,6 +25,14 @@ const MAX_HISTORY_MESSAGES = 40;
   template: `
     <div class="chat-container">
       <div class="chat-header">
+        <p-button
+          icon="pi pi-arrow-left"
+          class="back-btn"
+          [text]="true"
+          pTooltip="Înapoi la vizualizarea biblică"
+          tooltipPosition="bottom"
+          (click)="close.emit()"
+        ></p-button>
         <i class="pi pi-comments chat-icon"></i>
         <span class="chat-title">Chat Teologic</span>
         <span class="chat-subtitle">Asistent bazat pe patrologie și Sfânta Scriptură</span>
@@ -106,6 +115,13 @@ const MAX_HISTORY_MESSAGES = 40;
   `,
   styles: [
     `
+      :host {
+        flex: 1;
+        display: flex;
+        flex-direction: column;
+        min-height: 0;
+      }
+
       .chat-container {
         display: flex;
         flex-direction: column;
@@ -118,10 +134,22 @@ const MAX_HISTORY_MESSAGES = 40;
         display: flex;
         align-items: center;
         gap: 10px;
-        padding: 16px 20px;
+        padding: 10px 16px;
         border-bottom: 1px solid rgba(121, 134, 203, 0.2);
         background: rgba(26, 35, 126, 0.1);
         flex-shrink: 0;
+      }
+
+      :host ::ng-deep .back-btn .p-button {
+        color: var(--text-muted, #9fa8da);
+        padding: 4px 6px;
+        border-radius: 6px;
+        transition: color 0.2s, background 0.2s;
+      }
+
+      :host ::ng-deep .back-btn .p-button:hover {
+        color: var(--text-light, #eceff1);
+        background: rgba(121, 134, 203, 0.15);
       }
 
       .chat-icon {
@@ -385,6 +413,8 @@ const MAX_HISTORY_MESSAGES = 40;
   ],
 })
 export class ChatComponent implements AfterViewChecked {
+  readonly close = output<void>();
+
   private readonly chatService = inject(ChatService);
   private readonly messagesArea = viewChild<ElementRef<HTMLDivElement>>('messagesArea');
 

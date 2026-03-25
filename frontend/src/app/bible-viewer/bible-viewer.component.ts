@@ -124,7 +124,7 @@ import { ChatComponent } from '../chat/chat.component';
       @if (showChat()) {
         <!-- Chat Page (replaces main layout for logged-in users) -->
         <main class="chat-page">
-          <app-chat></app-chat>
+          <app-chat (close)="showChat.set(false)"></app-chat>
         </main>
       } @else {
       <main class="main-layout">
