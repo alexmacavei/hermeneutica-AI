@@ -1,0 +1,74 @@
+import { Injectable, Logger } from '@nestjs/common';
+import { AiService } from '../ai/ai.service';
+import { PatristicRagService } from '../patristic/patristic-rag.service';
+import { ChatMessageDto } from './chat.dto';
+
+const CHAT_FALLBACK_RESPONSE =
+  'Serviciul de chat nu este disponibil momentan. Vă rugăm configurați OPENAI_API_KEY.';
+
+/**
+ * Service that powers the chatbot feature.
+ *
+ * For each user message it:
+ *  1. Searches the patristic corpus for relevant chunks via RAG.
+ *  2. Injects those chunks as context into the system prompt (loaded from hermeneutica.yaml).
+ *  3. Sends the full conversation history + new message to the LLM.
+ */
+@Injectable()
+export class ChatService {
+  private readonly logger = new Logger(ChatService.name);
+
+  constructor(
+    private readonly aiService: AiService,
+    private readonly patristicRagService: PatristicRagService,
+  ) {}
+
+  async sendMessage(
+    message: string,
+    history: ChatMessageDto[] = [],
+  ): Promise<string> {
+    if (!this.aiService.hasApiKey) {
+      return CHAT_FALLBACK_RESPONSE;
+    }
+
+    // Retrieve patristic context relevant to the user's question
+    const contextBlocks = await this.patristicRagService.findRelevantChunksForVerse(
+      message,
+      '',
+      5,
+    );
+
+    // Build an enriched system prompt with any retrieved patristic fragments
+    let systemPrompt = this.aiService.chatSystemPrompt;
+    if (contextBlocks.length > 0) {
+      const contextText = contextBlocks
+        .map(
+          (c, i) =>
+            `[${i + 1}] ${c.author} – ${c.work}${c.chapter ? `, ${c.chapter}` : ''}: «${c.chunkText}»`,
+        )
+        .join('\n\n');
+      systemPrompt += `\n\n## Fragmente patristice relevante:\n${contextText}`;
+    }
+
+    // Build the messages array: system + conversation history + new user message
+    const messages: Array<{ role: 'system' | 'user' | 'assistant'; content: string }> = [
+      { role: 'system', content: systemPrompt },
+      ...history.map((h) => ({
+        role: h.role as 'user' | 'assistant',
+        content: h.content,
+      })),
+      { role: 'user', content: message },
+    ];
+
+    try {
+      const reply = await this.aiService.chat(messages, {
+        temperature: 0.7,
+        max_tokens: 1500,
+      });
+      return reply || CHAT_FALLBACK_RESPONSE;
+    } catch (error) {
+      this.logger.error('Chat completion error', error);
+      return CHAT_FALLBACK_RESPONSE;
+    }
+  }
+}

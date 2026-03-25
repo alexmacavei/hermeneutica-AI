@@ -24,7 +24,7 @@
 
 ## 📖 Descriere / Description
 
-**RO:** AI Hermeneutica Orthodoxa este o aplicație web full-stack care permite navigarea textului biblic – via API [helloao.org](https://bible.helloao.org) pentru traducerile remote și local pentru **Biblia Sinodală Română** și **Biblia Anania** – și oferă analiză hermeneutică ortodoxă prin modele OpenAI, studiu biblic paralel între toate traducerile disponibile, **căutare semantică vectorială** în textul biblic (pgvector), **autentificare utilizator** (JWT) și **notițe personale** per verset.
+**RO:** AI Hermeneutica Orthodoxa este o aplicație web full-stack care permite navigarea textului biblic – via API [helloao.org](https://bible.helloao.org) pentru traducerile remote și local pentru **Biblia Sinodală Română** și **Biblia Anania** – și oferă analiză hermeneutică ortodoxă prin modele OpenAI, studiu biblic paralel între toate traducerile disponibile, **căutare semantică vectorială** în textul biblic (pgvector), **autentificare utilizator** (JWT), **notițe personale** per verset și un **chatbot teologic RAG** accesibil utilizatorilor autentificați.
 
 Analiza unui verset generează 4 carduri:
 
@@ -35,8 +35,9 @@ Analiza unui verset generează 4 carduri:
 | ⛪ **Comentarii Patristice** | Citații din Părinții Bisericii (ex. Sf. Ioan Gură de Aur, Vasile cel Mare etc.) extrase din corpus **New Advent** prin căutare semantică RAG | New Advent + OpenAI Embeddings |
 | 🔤 **Analiză Filologică** | Greacă/Ebraică biblică, Strong's, LXX, morfologie | OpenAI (LLM) |
 | 📚 **Studiu Paralel** | Versetul selectat afișat simultan în toate traducerile disponibile (N/A pentru traduceri cu canon diferit) | bible.helloao.org |
+| 💬 **Chat Teologic** | Conversație liberă cu asistentul AI, fundamentată pe corpusul patristic RAG și traducerile biblice disponibile (doar utilizatori autentificați) | New Advent RAG + OpenAI LLM |
 
-**EN:** AI Hermeneutica Orthodoxa is a full-stack web application for navigating Biblical text (via helloao.org API), receiving AI-powered orthodox hermeneutic analysis using OpenAI models, comparing selected verses side-by-side across all available translations, **semantic search** over Bible verses (pgvector), **user authentication** (JWT), and **personal notes** per verse.
+**EN:** AI Hermeneutica Orthodoxa is a full-stack web application for navigating Biblical text (via helloao.org API), receiving AI-powered orthodox hermeneutic analysis using OpenAI models, comparing selected verses side-by-side across all available translations, **semantic search** over Bible verses (pgvector), **user authentication** (JWT), **personal notes** per verse, and a **RAG-based theological chatbot** for authenticated users.
 
 ---
 
@@ -95,8 +96,8 @@ Utilizator selectează: "Fiindcă Dumnezeu aşa a iubit lumea, că pe Fiul Său 
 │   • Căutare semantică │   │                                                │
 │   • Autentificare JWT │   │  POST /api/analyze          (JWT required)     │
 │   • Notițe personale  │   │   ├─ 2 carduri LLM (hermeneutică+filologie)   │
-└───────────────────────┘   │   │                             → OpenAI LLM    │
-                            │   ├─ card filozofie (RAG ext) → BiblIndex /    │
+│   • Chat teologic     │   │   │                             → OpenAI LLM    │
+└───────────────────────┘   │   ├─ card filozofie (RAG ext) → BiblIndex /    │
                             │   │                              Wikidata /     │
                             │   │                              Philosophers   │
                             │   └─ card patristic RAG:                       │
@@ -104,6 +105,10 @@ Utilizator selectează: "Fiindcă Dumnezeu aşa a iubit lumea, că pe Fiul Său 
                             │       ├─ embedding query       → OpenAI API    │
                             │       ├─ căutare vectorială    → pgvector DB   │
                             │       └─ sinteză citate        → OpenAI LLM    │
+                            │                                                │
+                            │  POST /api/chat/message     (JWT required)     │
+                            │   ├─ RAG top-5 chunks        → pgvector DB    │
+                            │   └─ răspuns conversațional  → OpenAI LLM     │
                             │                                                │
                             │  POST /api/auth/register                       │
                             │  POST /api/auth/login                          │
@@ -355,6 +360,32 @@ GET /api/notes?verse_reference=Ioan+3:16
 
 ---
 
+### `POST /api/chat/message` 🔒
+
+> **Autentificare necesară:** trimite token-ul JWT în header-ul `Authorization: Bearer <token>`.
+
+Trimite un mesaj către asistentul teologic AI și primește un răspuns fundamentat pe corpusul patristic RAG. La fiecare mesaj, se execută o căutare de similaritate vectorială (top-5 fragmente patristice relevante) care este injectată în system prompt-ul AI.
+
+**Request:**
+```json
+{
+  "message": "Ce spun Sfinții Părinți despre Ioan 3:16?",
+  "history": [
+    { "role": "user",      "content": "Bună ziua!" },
+    { "role": "assistant", "content": "Bună ziua! Cum vă pot ajuta?" }
+  ]
+}
+```
+
+> **Notă:** `history` este opțional (array gol pentru prima întrebare). Câmpul `role` acceptă doar valorile `"user"` sau `"assistant"`. Istoricul conversației este limitat la ultimele 40 de mesaje pe frontend.
+
+**Response:**
+```json
+{ "reply": "Sfântul Ioan Gură de Aur comentează în Omilii la Ioan..." }
+```
+
+---
+
 ### `GET /api/search`
 
 Căutare semantică în versetele biblice indexate. Versetele sunt indexate lazy prin `POST /api/search/ingest` pe măsură ce utilizatorul navighează.
@@ -553,6 +584,7 @@ Arii de contribuție:
 - [x] Comentarii patristice prin RAG (New Advent) – implementat
 - [x] Autentificare utilizator (JWT register/login) – implementată
 - [x] Notițe personale per verset – implementate
+- [x] Chatbot teologic RAG (conversație bazată pe corpusul patristic) – implementat
 - [ ] Export PDF analize
 - [ ] Traducere interfață în alte limbi (i18n)
 
