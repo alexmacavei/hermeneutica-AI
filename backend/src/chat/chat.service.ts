@@ -3,22 +3,6 @@ import { AiService } from '../ai/ai.service';
 import { PatristicRagService } from '../patristic/patristic-rag.service';
 import { ChatMessageDto } from './chat.dto';
 
-const CHAT_SYSTEM_PROMPT = `Ești un asistent teologic ortodox specializat în hermeneutică biblică, 
-patrologie și filozofie creștină. Ai acces la un corpus de texte patristice și biblice.
-
-Răspunde în română, cu claritate și profunzime teologică. Când există fragmente patristice relevante 
-furnizate în context, folosește-le pentru a-ți fundamenta răspunsul și citează autorul și lucrarea. 
-Dacă nu există context patristic, răspunde pe baza cunoștințelor tale teologice generale.
-
-Fii respectuos, academic și fidel Tradiției ortodoxe. Nu inventa citate sau referințe patristice.
-
-Dacă utilizatorul adresează o întrebare care nu ține de domeniul teologiei, al Sfintei Scripturi, 
-al Sfinților Părinți, al spiritualității ortodoxe, al hermeneuticii sau al filozofiei creștine, 
-declină cu smerenie și redirecționează-l astfel:
-„Îmi pare rău, dar nu pot răspunde la această întrebare. Sunt un asistent teologic dedicat 
-studiului Sfintei Scripturi, comentariilor patristice și hermeneuticii ortodoxe. 
-Vă invit să adresați o întrebare din aceste domenii — sunt aici să vă ajut!"`;
-
 const CHAT_FALLBACK_RESPONSE =
   'Serviciul de chat nu este disponibil momentan. Vă rugăm configurați OPENAI_API_KEY.';
 
@@ -27,7 +11,7 @@ const CHAT_FALLBACK_RESPONSE =
  *
  * For each user message it:
  *  1. Searches the patristic corpus for relevant chunks via RAG.
- *  2. Injects those chunks as context into the system prompt.
+ *  2. Injects those chunks as context into the system prompt (loaded from hermeneutica.yaml).
  *  3. Sends the full conversation history + new message to the LLM.
  */
 @Injectable()
@@ -55,7 +39,7 @@ export class ChatService {
     );
 
     // Build an enriched system prompt with any retrieved patristic fragments
-    let systemPrompt = CHAT_SYSTEM_PROMPT;
+    let systemPrompt = this.aiService.chatSystemPrompt;
     if (contextBlocks.length > 0) {
       const contextText = contextBlocks
         .map(

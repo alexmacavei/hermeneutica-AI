@@ -7,9 +7,18 @@ import { ChatMessageDto } from './chat.dto';
 describe('ChatService', () => {
   let service: ChatService;
 
+  const MOCK_CHAT_SYSTEM_PROMPT =
+    'Ești un asistent teologic ortodox. ' +
+    'Dacă utilizatorul adresează o întrebare care nu ține de teologie, ' +
+    'declină: „nu pot răspunde la această întrebare. Sunt un asistent teologic dedicat ' +
+    'studiului Sfintei Scripturi, comentariilor patristice și hermeneuticii ortodoxe."';
+
   const mockAiService = {
     hasApiKey: true,
     chat: jest.fn(),
+    get chatSystemPrompt() {
+      return MOCK_CHAT_SYSTEM_PROMPT;
+    },
   };
 
   const mockPatristicRagService = {

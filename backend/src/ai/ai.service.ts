@@ -39,6 +39,9 @@ interface HermeneuticaPromptConfig {
     system: string;
     user_template: string;
   };
+  chat: {
+    system: string;
+  };
 }
 
 @Injectable()
@@ -50,6 +53,10 @@ export class AiService {
   readonly hasApiKey: boolean;
   private readonly systemMessage: string;
   private readonly embeddingModel = 'text-embedding-3-small';
+
+  get chatSystemPrompt(): string {
+    return this.prompts.chat.system;
+  }
 
   constructor(private readonly configService: ConfigService) {
     const apiKey = this.configService.get<string>('openai.apiKey') ?? '';
