@@ -13,6 +13,9 @@ import { InputTextModule } from 'primeng/inputtext';
 import { catchError, of } from 'rxjs';
 import { ChatMessage, ChatService } from '../services/chat.service';
 
+/** Maximum number of previous messages sent to the AI as conversation context. */
+const MAX_HISTORY_MESSAGES = 40;
+
 @Component({
   selector: 'app-chat',
   standalone: true,
@@ -416,8 +419,8 @@ export class ChatComponent implements AfterViewChecked {
     this.shouldScroll = true;
     this.loading.set(true);
 
-    // Keep last 20 exchanges (40 messages) for context to avoid huge payloads
-    const history = this.messages().slice(-40, -1);
+    // Send all previous messages (before the new one) as history context
+    const history = this.messages().slice(-MAX_HISTORY_MESSAGES, -1);
 
     this.chatService
       .sendMessage(text, history)

@@ -1,9 +1,10 @@
-import { IsArray, IsNotEmpty, IsOptional, IsString, ValidateNested } from 'class-validator';
+import { IsArray, IsIn, IsNotEmpty, IsOptional, IsString, ValidateNested } from 'class-validator';
 import { Type } from 'class-transformer';
 
 export class ChatMessageDto {
   @IsString()
   @IsNotEmpty()
+  @IsIn(['user', 'assistant'])
   role!: 'user' | 'assistant';
 
   @IsString()
