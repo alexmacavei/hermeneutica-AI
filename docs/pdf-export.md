@@ -64,7 +64,10 @@ The service:
    - Because the browser's own font stack renders the HTML, **Romanian diacritics** (ă, â, î,
      ș, ț) and all other Unicode characters are displayed correctly.
    - Text wraps naturally according to CSS `word-wrap: break-word`.
-3. Uses `autoPaging: 'text'` to avoid slicing through lines on page breaks.
+3. Uses `autoPaging: 'slice'` to render the HTML as image slices via html2canvas, ensuring
+   the browser's own font stack is used. This is what makes Romanian diacritics (ă, â, î,
+   ș, ț) render correctly — `autoPaging: 'text'` would use jsPDF's internal Helvetica font
+   which does not cover Latin Extended-A characters.
 4. Calls `doc.save(filename)` to trigger the browser download.
 
 Markdown bold markers (`**...**`) are converted to `<strong>` tags via `markdownToHtml()`.

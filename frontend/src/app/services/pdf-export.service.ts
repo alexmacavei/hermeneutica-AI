@@ -47,9 +47,10 @@ export class PdfExportService {
    * Generates and downloads a PDF with the full hermeneutical analysis for a
    * Scripture verse, including all analysis cards and the user's personal notes.
    *
-   * Uses jsPDF's html() method (backed by html2canvas) so that the browser's own
-   * font stack is used for rendering – this ensures Romanian diacritics (ă, â, î,
-   * ș, ț) and all other Unicode characters are displayed correctly.
+   * Uses jsPDF's html() method with `autoPaging: 'slice'` (backed by html2canvas) so
+   * that the browser's own font stack renders the HTML as image slices – this ensures
+   * Romanian diacritics (ă, â, î, ș, ț) and all other Unicode characters are displayed
+   * correctly without relying on jsPDF's built-in Helvetica font encoding.
    *
    * Returns a Promise that resolves once the PDF has been saved.
    *
@@ -64,8 +65,10 @@ export class PdfExportService {
       callback: (pdf) => pdf.save(`analiza-${safeName}.pdf`),
       // 15 mm margins on all sides; content occupies 180 mm of A4's 210 mm width.
       margin: [15, 15, 15, 15],
-      // 'text' mode avoids slicing through lines when adding new pages.
-      autoPaging: 'text',
+      // 'slice' renders the HTML via html2canvas as image slices, so the browser's
+      // own font stack is used – all Unicode characters (including Romanian diacritics)
+      // render correctly. 'text' mode re-renders with jsPDF's Helvetica and breaks them.
+      autoPaging: 'slice',
       width: 180,
       // Virtual browser window width in CSS px; scale = 180 mm / 700 px ≈ 0.257 mm/px.
       // At this scale a 14 px body font ≈ 3.6 mm ≈ 10 pt in the PDF.
