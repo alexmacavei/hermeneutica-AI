@@ -10,7 +10,7 @@ import { ProgressSpinnerModule } from 'primeng/progressspinner';
 import { ButtonModule } from 'primeng/button';
 import { TooltipModule } from 'primeng/tooltip';
 import { MessageService } from 'primeng/api';
-import { catchError, of } from 'rxjs';
+import { catchError, from, of, switchMap } from 'rxjs';
 import { AnalysisResult } from '../services/analysis.service';
 import { NotesService } from '../services/notes.service';
 import { AuthService } from '../services/auth.service';
@@ -229,11 +229,22 @@ export class ResultsViewerComponent {
     this.exportingPdf.set(true);
     this.notesService
       .getNotesForVerse(currentResult.reference)
-      .pipe(catchError(() => of([])))
-      .subscribe((notes) => {
-        this.pdfExportService.exportAnalysis(currentResult, notes);
-        this.exportingPdf.set(false);
-      });
+      .pipe(
+        catchError(() => of([])),
+        switchMap((notes) =>
+          from(this.pdfExportService.exportAnalysis(currentResult, notes)),
+        ),
+        catchError(() => {
+          this.messageService.add({
+            severity: 'error',
+            summary: 'Eroare',
+            detail: 'PDF-ul nu a putut fi generat.',
+            life: 3000,
+          });
+          return of(undefined);
+        }),
+      )
+      .subscribe(() => this.exportingPdf.set(false));
   }
 
   readonly cardDefs: AnalysisCard[] = [

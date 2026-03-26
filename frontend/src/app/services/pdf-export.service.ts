@@ -15,15 +15,30 @@ const CARD_DEFS: CardDef[] = [
   { key: 'philology', title: 'Analiză Filologică' },
 ];
 
-/** Converts AI markdown card text to plain text suitable for PDF output. */
-function stripMarkdown(text: string): string {
+/** Escapes special HTML characters to prevent injection into the PDF template. */
+function escapeHtml(text: string): string {
   return text
+    .replace(/&/g, '&amp;')
+    .replace(/</g, '&lt;')
+    .replace(/>/g, '&gt;')
+    .replace(/"/g, '&quot;');
+}
+
+/**
+ * Converts AI markdown card text to safe HTML for embedding in the PDF template.
+ * - Escapes HTML special characters first
+ * - Replaces LLM literal \\n\\n sequences with real newlines
+ * - Converts **bold** markers to <strong> tags
+ * - Converts newlines to <br>
+ */
+function markdownToHtml(text: string): string {
+  if (!text) return '';
+  return escapeHtml(text)
     // LLM output contains the literal two-character sequence "\n" (backslash + n) twice;
     // replace those with a real newline before further processing.
     .replace(/\\n\\n/g, '\n')
-    .replace(/\*\*([^*]+)\*\*/g, '$1')
-    .replace(/\n{3,}/g, '\n\n')
-    .trim();
+    .replace(/\*\*([^*]+)\*\*/g, '<strong>$1</strong>')
+    .replace(/\n/g, '<br>');
 }
 
 @Injectable({ providedIn: 'root' })
@@ -32,137 +47,110 @@ export class PdfExportService {
    * Generates and downloads a PDF with the full hermeneutical analysis for a
    * Scripture verse, including all analysis cards and the user's personal notes.
    *
+   * Uses jsPDF's html() method (backed by html2canvas) so that the browser's own
+   * font stack is used for rendering – this ensures Romanian diacritics (ă, â, î,
+   * ș, ț) and all other Unicode characters are displayed correctly.
+   *
+   * Returns a Promise that resolves once the PDF has been saved.
+   *
    * @param result  The analysis result returned by the backend.
    * @param notes   The current user's notes for the analysed verse (may be empty).
    */
-  exportAnalysis(result: AnalysisResult, notes: UserNote[]): void {
+  exportAnalysis(result: AnalysisResult, notes: UserNote[]): Promise<void> {
     const doc = new jsPDF({ orientation: 'portrait', unit: 'mm', format: 'a4' });
+    const safeName = result.reference.replace(/[^a-zA-Z0-9_-]/g, '_');
 
-    const pageWidth = doc.internal.pageSize.getWidth();
-    const pageHeight = doc.internal.pageSize.getHeight();
-    const marginX = 20;
-    const contentWidth = pageWidth - marginX * 2;
-    let y = 20;
+    return doc.html(this.buildHtml(result, notes), {
+      callback: (pdf) => pdf.save(`analiza-${safeName}.pdf`),
+      // 15 mm margins on all sides; content occupies 180 mm of A4's 210 mm width.
+      margin: [15, 15, 15, 15],
+      // 'text' mode avoids slicing through lines when adding new pages.
+      autoPaging: 'text',
+      width: 180,
+      // Virtual browser window width in CSS px; scale = 180 mm / 700 px ≈ 0.257 mm/px.
+      // At this scale a 14 px body font ≈ 3.6 mm ≈ 10 pt in the PDF.
+      windowWidth: 700,
+    }).then(() => {});
+  }
 
-    /** Adds wrapped text and returns the new y position. */
-    const addWrappedText = (
-      text: string,
-      fontSize: number,
-      fontStyle: 'normal' | 'bold' = 'normal',
-    ): void => {
-      doc.setFontSize(fontSize);
-      doc.setFont('helvetica', fontStyle);
-      const lineHeight = fontSize * 0.353 * 1.4;
-      const lines: string[] = doc.splitTextToSize(text, contentWidth);
-      for (const line of lines) {
-        if (y > pageHeight - 20) {
-          doc.addPage();
-          y = 20;
-        }
-        doc.text(line, marginX, y);
-        y += lineHeight;
-      }
-    };
-
-    /** Draws a horizontal rule and advances y. */
-    const addHRule = (thickness = 0.3): void => {
-      if (y > pageHeight - 25) {
-        doc.addPage();
-        y = 20;
-      }
-      doc.setDrawColor(120, 120, 160);
-      doc.setLineWidth(thickness);
-      doc.line(marginX, y, pageWidth - marginX, y);
-      y += 4;
-    };
-
-    /** Advances y by a fixed gap. */
-    const addGap = (mm = 4): void => {
-      y += mm;
-      if (y > pageHeight - 20) {
-        doc.addPage();
-        y = 20;
-      }
-    };
-
-    // ── 1. Document title ────────────────────────────────────────────────────
-    doc.setTextColor(30, 30, 60);
-    addWrappedText('Analiză Hermeneutică', 18, 'bold');
-    addWrappedText(result.reference, 13, 'bold');
-
-    doc.setFontSize(9);
-    doc.setFont('helvetica', 'normal');
-    doc.setTextColor(120, 120, 140);
+  private buildHtml(result: AnalysisResult, notes: UserNote[]): string {
     const date = new Date(result.timestamp).toLocaleDateString('ro-RO', {
       day: '2-digit',
       month: 'long',
       year: 'numeric',
     });
-    if (y <= pageHeight - 20) {
-      doc.text(`Generat: ${date}`, marginX, y);
-      y += 5;
-    }
 
-    addGap(3);
-    addHRule(0.5);
+    const cardsHtml = CARD_DEFS.filter((c) => result.cards[c.key]?.trim())
+      .map(
+        (c) => `
+        <div style="margin-bottom:16px;">
+          <h4 style="font-size:15px;color:#323264;font-weight:bold;margin:0 0 6px 0;
+                     padding-bottom:4px;border-bottom:1px solid #d0d0e0;">
+            ${escapeHtml(c.title)}
+          </h4>
+          <p style="font-size:14px;color:#464660;margin:0;line-height:1.6;word-wrap:break-word;">
+            ${markdownToHtml(result.cards[c.key])}
+          </p>
+        </div>`,
+      )
+      .join('');
 
-    // ── 2. Scripture verse ───────────────────────────────────────────────────
-    doc.setTextColor(30, 30, 60);
-    addWrappedText('Pasaj Biblic', 13, 'bold');
-    addGap(2);
-
-    doc.setTextColor(60, 60, 90);
-    addWrappedText(result.text, 11);
-
-    addGap(5);
-    addHRule();
-
-    // ── 3. Analysis cards ────────────────────────────────────────────────────
-    doc.setTextColor(30, 30, 60);
-    addWrappedText('Analiza Hermeneutică', 13, 'bold');
-    addGap(3);
-
-    for (const card of CARD_DEFS) {
-      const cardText = result.cards[card.key];
-      if (!cardText?.trim()) continue;
-
-      doc.setTextColor(50, 50, 100);
-      addWrappedText(card.title, 11, 'bold');
-      addGap(2);
-
-      doc.setTextColor(70, 70, 90);
-      addWrappedText(stripMarkdown(cardText), 10);
-      addGap(5);
-    }
-
-    // ── 4. User notes ────────────────────────────────────────────────────────
+    let notesSection = '';
     if (notes.length > 0) {
-      addHRule();
-      doc.setTextColor(30, 30, 60);
-      addWrappedText('Notițe personale', 13, 'bold');
-      addGap(3);
+      const noteItems = notes
+        .map((n) => {
+          const title = n.note_title?.trim()
+            ? escapeHtml(n.note_title.trim())
+            : `Notiță din ${new Date(n.created_at).toLocaleDateString('ro-RO', {
+                day: '2-digit',
+                month: 'short',
+                year: 'numeric',
+              })}`;
+          return `
+            <div style="margin-bottom:12px;padding:10px;background:#f0f0ff;
+                        border-left:3px solid #7878c8;border-radius:4px;">
+              <div style="font-size:14px;font-weight:bold;color:#323264;margin-bottom:4px;">${title}</div>
+              <div style="font-size:14px;color:#464660;line-height:1.6;">
+                ${markdownToHtml(n.note_text)}
+              </div>
+            </div>`;
+        })
+        .join('');
 
-      for (const note of notes) {
-        const title = note.note_title?.trim()
-          ? note.note_title.trim()
-          : `Notiță din ${new Date(note.created_at).toLocaleDateString('ro-RO', {
-              day: '2-digit',
-              month: 'short',
-              year: 'numeric',
-            })}`;
-
-        doc.setTextColor(50, 50, 100);
-        addWrappedText(title, 10, 'bold');
-        addGap(1);
-
-        doc.setTextColor(70, 70, 90);
-        addWrappedText(note.note_text, 10);
-        addGap(4);
-      }
+      notesSection = `
+        <hr style="border:none;border-top:1px solid #c0c0d0;margin:16px 0;"/>
+        <h3 style="font-size:18px;color:#1e1e3c;font-weight:bold;margin:0 0 12px 0;">
+          Notițe personale
+        </h3>
+        ${noteItems}`;
     }
 
-    // ── Save ─────────────────────────────────────────────────────────────────
-    const safeName = result.reference.replace(/[^a-zA-Z0-9_-]/g, '_');
-    doc.save(`analiza-${safeName}.pdf`);
+    return `
+      <div style="font-family:Arial,Helvetica,sans-serif;color:#1e1e3c;
+                  margin:0;padding:0;width:700px;word-wrap:break-word;overflow-wrap:break-word;">
+        <h1 style="font-size:25px;color:#1e1e3c;margin:0 0 8px 0;font-weight:bold;">
+          Analiză Hermeneutică
+        </h1>
+        <h2 style="font-size:18px;color:#1e1e3c;margin:0 0 6px 0;font-weight:bold;">
+          ${escapeHtml(result.reference)}
+        </h2>
+        <p style="font-size:12px;color:#888888;margin:0 0 16px 0;">Generat: ${date}</p>
+        <hr style="border:none;border-top:1.5px solid #7878a0;margin:0 0 16px 0;"/>
+
+        <h3 style="font-size:18px;color:#1e1e3c;font-weight:bold;margin:0 0 8px 0;">
+          Pasaj Biblic
+        </h3>
+        <p style="font-size:15px;color:#3c3c5a;margin:0 0 20px 0;line-height:1.6;
+                  font-style:italic;word-wrap:break-word;">
+          ${escapeHtml(result.text)}
+        </p>
+        <hr style="border:none;border-top:1px solid #c0c0d0;margin:0 0 16px 0;"/>
+
+        <h3 style="font-size:18px;color:#1e1e3c;font-weight:bold;margin:0 0 16px 0;">
+          Analiza Hermeneutică
+        </h3>
+        ${cardsHtml}
+        ${notesSection}
+      </div>`;
   }
 }

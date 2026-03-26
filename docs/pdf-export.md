@@ -38,13 +38,13 @@ The exported PDF is an A4 portrait document with the following sections:
 
 | File | Role |
 |------|------|
-| `frontend/src/app/services/pdf-export.service.ts` | Injectable service that builds and downloads the PDF using [jsPDF](https://github.com/parallax/jsPDF). |
+| `frontend/src/app/services/pdf-export.service.ts` | Injectable service that builds and downloads the PDF using [jsPDF](https://github.com/parallax/jsPDF)'s `html()` method backed by [html2canvas](https://html2canvas.hertzen.com/). |
 | `frontend/src/app/analysis/results-viewer.component.ts` | Hosts the export button; injects `PdfExportService`, `NotesService`, and `AuthService`. |
 
 ### Dependencies
 
 ```
-jspdf@4.2.1   (added to frontend/package.json)
+jspdf@4.2.1   (added to frontend/package.json; html2canvas is bundled with jsPDF)
 ```
 
 ### `PdfExportService.exportAnalysis(result, notes)`
@@ -54,15 +54,19 @@ jspdf@4.2.1   (added to frontend/package.json)
 | `result` | `AnalysisResult` | Full analysis result from the backend. |
 | `notes` | `UserNote[]` | User notes for the verse (may be an empty array). |
 
+Returns `Promise<void>` that resolves once the PDF has been saved.
+
 The service:
 
-1. Creates a new `jsPDF` A4 document.
-2. Renders the document title, date, and horizontal rule.
-3. Renders the full Scripture verse text.
-4. Iterates over the four `CARD_DEFS` and renders each non-empty card as a labelled section.
-5. If `notes.length > 0`, appends a "Notițe personale" section listing each note with its title
-   and text.
-6. Calls `doc.save(filename)` to trigger browser download.
+1. Builds an HTML string (`buildHtml`) with inline styles.
+2. Calls `jsPDF.html()`, which uses html2canvas to render the HTML in a hidden browser
+   element and capture it to canvas images embedded in the PDF.
+   - Because the browser's own font stack renders the HTML, **Romanian diacritics** (ă, â, î,
+     ș, ț) and all other Unicode characters are displayed correctly.
+   - Text wraps naturally according to CSS `word-wrap: break-word`.
+3. Uses `autoPaging: 'text'` to avoid slicing through lines on page breaks.
+4. Calls `doc.save(filename)` to trigger the browser download.
 
-Markdown bold markers (`**...**`) and literal `\n\n` escape sequences from the LLM output are
-stripped before writing to the PDF via the internal `stripMarkdown()` helper.
+Markdown bold markers (`**...**`) are converted to `<strong>` tags via `markdownToHtml()`.
+LLM literal `\n\n` escape sequences are converted to real newlines before further processing.
+All user-supplied content is HTML-escaped via `escapeHtml()` before insertion into the template.
