@@ -1,7 +1,20 @@
-import { ChangeDetectionStrategy, Component, input } from '@angular/core';
+import {
+  ChangeDetectionStrategy,
+  Component,
+  inject,
+  input,
+  signal,
+} from '@angular/core';
 import { SlicePipe } from '@angular/common';
 import { ProgressSpinnerModule } from 'primeng/progressspinner';
+import { ButtonModule } from 'primeng/button';
+import { TooltipModule } from 'primeng/tooltip';
+import { MessageService } from 'primeng/api';
+import { catchError, of } from 'rxjs';
 import { AnalysisResult } from '../services/analysis.service';
+import { NotesService } from '../services/notes.service';
+import { AuthService } from '../services/auth.service';
+import { PdfExportService } from '../services/pdf-export.service';
 import { NotesDialogComponent } from './notes-dialog.component';
 import { FormatCardPipe } from './format-card.pipe';
 
@@ -16,7 +29,7 @@ interface AnalysisCard {
   selector: 'app-results-viewer',
   standalone: true,
   changeDetection: ChangeDetectionStrategy.OnPush,
-  imports: [ProgressSpinnerModule, SlicePipe, NotesDialogComponent, FormatCardPipe],
+  imports: [ProgressSpinnerModule, SlicePipe, ButtonModule, TooltipModule, NotesDialogComponent, FormatCardPipe],
   template: `
     @if (result() || loading()) {
       <div class="results-section">
@@ -30,6 +43,17 @@ interface AnalysisCard {
             </div>
             <span class="language-badge">{{ result()!.language }}</span>
             <app-notes-dialog [verseReference]="result()!.reference"></app-notes-dialog>
+            <p-button
+              icon="pi pi-file-pdf"
+              severity="secondary"
+              [rounded]="true"
+              [text]="true"
+              pTooltip="Exportă analiza în PDF"
+              tooltipPosition="left"
+              (click)="exportPdf()"
+              [loading]="exportingPdf()"
+              styleClass="export-pdf-btn"
+            ></p-button>
           </div>
         }
 
@@ -180,6 +204,37 @@ interface AnalysisCard {
 export class ResultsViewerComponent {
   readonly result = input<AnalysisResult | null>(null);
   readonly loading = input(false);
+
+  private readonly notesService = inject(NotesService);
+  private readonly authService = inject(AuthService);
+  private readonly pdfExportService = inject(PdfExportService);
+  private readonly messageService = inject(MessageService);
+
+  readonly exportingPdf = signal(false);
+
+  exportPdf(): void {
+    const currentResult = this.result();
+    if (!currentResult) return;
+
+    if (!this.authService.isLoggedIn()) {
+      this.messageService.add({
+        severity: 'warn',
+        summary: 'Autentificare necesară',
+        detail: 'Trebuie să fii autentificat pentru a exporta analiza în PDF.',
+        life: 4000,
+      });
+      return;
+    }
+
+    this.exportingPdf.set(true);
+    this.notesService
+      .getNotesForVerse(currentResult.reference)
+      .pipe(catchError(() => of([])))
+      .subscribe((notes) => {
+        this.pdfExportService.exportAnalysis(currentResult, notes);
+        this.exportingPdf.set(false);
+      });
+  }
 
   readonly cardDefs: AnalysisCard[] = [
     {
