@@ -10,6 +10,7 @@ import { AuthModule } from './auth/auth.module';
 import { UsersModule } from './users/users.module';
 import { NotesModule } from './notes/notes.module';
 import { ChatModule } from './chat/chat.module';
+import { PdfModule } from './pdf/pdf.module';
 import configuration from './config/configuration';
 
 @Module({
@@ -28,6 +29,7 @@ import configuration from './config/configuration';
     UsersModule,
     NotesModule,
     ChatModule,
+    PdfModule,
   ],
 })
 export class AppModule {}

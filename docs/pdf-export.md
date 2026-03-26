@@ -9,9 +9,8 @@ formatted PDF file.
 2. Select a Scripture passage and run an analysis from the **Bible Viewer**.
 3. Once the analysis results appear, click the **📄 PDF export** button (file-pdf icon) in the
    results header, next to the notes button.
-4. The application fetches your personal notes for that verse and then generates the PDF.
-5. The browser's **print dialog** opens — choose **"Save as PDF"** (available on all modern
-   browsers) and click **Save**.
+4. The application fetches your personal notes for that verse, sends them to the backend, and
+   the PDF is automatically downloaded to your device.
 
 > **Note:** You must be authenticated to export. If you are not logged in, a warning toast is
 > displayed instead.
@@ -39,20 +38,56 @@ The exported PDF is an A4 portrait document with the following sections:
 
 | File | Role |
 |------|------|
-| `frontend/src/app/services/pdf-export.service.ts` | Injectable service that builds a complete HTML document and triggers the browser's native print dialog via a hidden `<iframe>`. |
+| `backend/src/pdf/pdf.service.ts` | Builds the HTML document and renders it to PDF via Puppeteer (headless Chromium). |
+| `backend/src/pdf/pdf.controller.ts` | Exposes `POST /api/pdf/export` (JWT-protected). Returns the PDF binary as `application/pdf`. |
+| `backend/src/pdf/pdf.module.ts` | NestJS module that wires the controller and service. |
+| `frontend/src/app/services/pdf-export.service.ts` | Sends the analysis payload to the backend and triggers a browser file download. |
 | `frontend/src/app/analysis/results-viewer.component.ts` | Hosts the export button; injects `PdfExportService`, `NotesService`, and `AuthService`. |
 
-### No external PDF library required
+### Backend rendering with Puppeteer
 
-PDF generation uses the browser's native print API (`window.print()`) rather than a third-party
-library such as jsPDF. This approach:
+PDF generation is done server-side using [Puppeteer](https://pptr.dev/) with the system Chromium
+binary. This approach:
 
-- **Correct Unicode rendering** — the browser's own font stack handles all characters including
+- **Correct Unicode rendering** — Chromium's font stack handles all characters including
   Romanian diacritics (ă, â, î, ș, ț) without any font-encoding workarounds.
-- **Proper text wrapping** — the browser's layout engine wraps text to the page width exactly as
-  it would render any HTML page.
-- **Smaller bundle** — no jsPDF (~370 KB) or html2canvas (~400 KB) in the build output.
-- **Crisp vector text** — the PDF contains real selectable text, not rasterised canvas images.
+- **Proper text wrapping** — the browser layout engine wraps text to the A4 page width correctly.
+- **No user interaction** — the PDF is generated silently and downloaded directly; no print
+  dialog is shown to the user.
+- **Consistent output** — identical PDF layout across all client browsers and operating systems.
+
+### Docker / deployment
+
+The backend `Dockerfile` installs the `chromium` package from the Alpine package registry.
+The `PUPPETEER_EXECUTABLE_PATH` environment variable is set to `/usr/bin/chromium-browser`.
+
+For local development outside Docker, install Chromium or Google Chrome and ensure it is
+accessible at one of the standard paths (`/usr/bin/chromium-browser`, `/usr/bin/chromium`, etc.).
+
+### API endpoint
+
+`POST /api/pdf/export`  
+Requires a valid JWT (Bearer token). Returns `application/pdf`.
+
+**Request body:**
+
+```json
+{
+  "reference": "Facerea 1:1",
+  "language": "ro",
+  "text": "La început a făcut Dumnezeu cerul și pământul.",
+  "cards": {
+    "hermeneutics": "...",
+    "philosophy": "...",
+    "patristics": "...",
+    "philology": "..."
+  },
+  "timestamp": "2026-03-26T12:00:00.000Z",
+  "notes": [
+    { "note_title": "Titlu", "note_text": "...", "created_at": "2026-03-20T10:00:00.000Z" }
+  ]
+}
+```
 
 ### `PdfExportService.exportAnalysis(result, notes)`
 
@@ -61,17 +96,8 @@ library such as jsPDF. This approach:
 | `result` | `AnalysisResult` | Full analysis result from the backend. |
 | `notes` | `UserNote[]` | User notes for the verse (may be an empty array). |
 
-Returns `Promise<void>` that resolves once the print dialog has been triggered.
+Returns `Promise<void>` that resolves once the download has been triggered.
 
-The service:
+The service POSTs the analysis payload to `/api/pdf/export` with `responseType: 'blob'`, then
+creates an object URL and programmatically clicks an `<a download>` anchor to save the file.
 
-1. Builds a complete `<!DOCTYPE html>` document string (`buildPrintHtml`) with embedded CSS,
-   including `@page { size: A4; margin: 15mm; }` and `@media print` colour rules.
-2. Creates a `Blob` from the HTML string and a `URL.createObjectURL` URL.
-3. Injects a hidden `<iframe>` (positioned off-screen) and sets its `src` to the blob URL.
-4. On `iframe.onload`, calls `iframe.contentWindow.print()` to open the browser's print dialog.
-5. After 500 ms, removes the iframe and revokes the blob URL.
-
-Markdown bold markers (`**...**`) are converted to `<strong>` tags via `markdownToHtml()`.
-LLM literal `\n\n` escape sequences are converted to real newlines before further processing.
-All user-supplied content is HTML-escaped via `escapeHtml()` before insertion into the template.
