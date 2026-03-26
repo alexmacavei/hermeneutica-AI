@@ -1,5 +1,4 @@
 import { Injectable } from '@angular/core';
-import jsPDF from 'jspdf';
 import { AnalysisResult } from './analysis.service';
 import { UserNote } from './notes.service';
 
@@ -44,39 +43,51 @@ function markdownToHtml(text: string): string {
 @Injectable({ providedIn: 'root' })
 export class PdfExportService {
   /**
-   * Generates and downloads a PDF with the full hermeneutical analysis for a
-   * Scripture verse, including all analysis cards and the user's personal notes.
+   * Generates a PDF by rendering the analysis into a full HTML document and
+   * opening the browser's native print dialog (which offers "Save as PDF" on
+   * all modern browsers).
    *
-   * Uses jsPDF's html() method with `autoPaging: 'slice'` (backed by html2canvas) so
-   * that the browser's own font stack renders the HTML as image slices – this ensures
-   * Romanian diacritics (ă, â, î, ș, ț) and all other Unicode characters are displayed
-   * correctly without relying on jsPDF's built-in Helvetica font encoding.
+   * A hidden `<iframe>` is used so the current page is not disrupted. The
+   * browser's own rendering engine handles all layout, text wrapping, and
+   * Unicode characters (including Romanian diacritics) correctly.
    *
-   * Returns a Promise that resolves once the PDF has been saved.
+   * Returns a Promise that resolves once the print dialog has been triggered.
    *
    * @param result  The analysis result returned by the backend.
    * @param notes   The current user's notes for the analysed verse (may be empty).
    */
   exportAnalysis(result: AnalysisResult, notes: UserNote[]): Promise<void> {
-    const doc = new jsPDF({ orientation: 'portrait', unit: 'mm', format: 'a4' });
-    const safeName = result.reference.replace(/[^a-zA-Z0-9_-]/g, '_');
+    // Delay (ms) between calling print() and cleaning up the iframe/blob URL.
+    // The print dialog must have time to capture the document before the iframe
+    // is removed from the DOM and the blob URL is revoked.
+    const PRINT_DIALOG_DELAY_MS = 500;
 
-    return doc.html(this.buildHtml(result, notes), {
-      callback: (pdf) => pdf.save(`analiza-${safeName}.pdf`),
-      // 15 mm margins on all sides; content occupies 180 mm of A4's 210 mm width.
-      margin: [15, 15, 15, 15],
-      // 'slice' renders the HTML via html2canvas as image slices, so the browser's
-      // own font stack is used – all Unicode characters (including Romanian diacritics)
-      // render correctly. 'text' mode re-renders with jsPDF's Helvetica and breaks them.
-      autoPaging: 'slice',
-      width: 180,
-      // Virtual browser window width in CSS px; scale = 180 mm / 700 px ≈ 0.257 mm/px.
-      // At this scale a 14 px body font ≈ 3.6 mm ≈ 10 pt in the PDF.
-      windowWidth: 700,
-    }).then(() => {});
+    return new Promise<void>((resolve) => {
+      const html = this.buildPrintHtml(result, notes);
+      const blob = new Blob([html], { type: 'text/html;charset=utf-8' });
+      const url = URL.createObjectURL(blob);
+
+      const iframe = document.createElement('iframe');
+      iframe.style.cssText =
+        'position:fixed;top:-9999px;left:-9999px;width:1px;height:1px;border:0;';
+
+      iframe.onload = () => {
+        iframe.contentWindow!.focus();
+        iframe.contentWindow!.print();
+        // Give the print dialog time to open before cleaning up the iframe/URL.
+        setTimeout(() => {
+          document.body.removeChild(iframe);
+          URL.revokeObjectURL(url);
+          resolve();
+        }, PRINT_DIALOG_DELAY_MS);
+      };
+
+      document.body.appendChild(iframe);
+      iframe.src = url;
+    });
   }
 
-  private buildHtml(result: AnalysisResult, notes: UserNote[]): string {
+  private buildPrintHtml(result: AnalysisResult, notes: UserNote[]): string {
     const date = new Date(result.timestamp).toLocaleDateString('ro-RO', {
       day: '2-digit',
       month: 'long',
@@ -86,14 +97,9 @@ export class PdfExportService {
     const cardsHtml = CARD_DEFS.filter((c) => result.cards[c.key]?.trim())
       .map(
         (c) => `
-        <div style="margin-bottom:16px;">
-          <h4 style="font-size:15px;color:#323264;font-weight:bold;margin:0 0 6px 0;
-                     padding-bottom:4px;border-bottom:1px solid #d0d0e0;">
-            ${escapeHtml(c.title)}
-          </h4>
-          <p style="font-size:14px;color:#464660;margin:0;line-height:1.6;word-wrap:break-word;">
-            ${markdownToHtml(result.cards[c.key])}
-          </p>
+        <div class="card-section">
+          <h4 class="card-title">${escapeHtml(c.title)}</h4>
+          <p class="card-text">${markdownToHtml(result.cards[c.key])}</p>
         </div>`,
       )
       .join('');
@@ -110,50 +116,107 @@ export class PdfExportService {
                 year: 'numeric',
               })}`;
           return `
-            <div style="margin-bottom:12px;padding:10px;background:#f0f0ff;
-                        border-left:3px solid #7878c8;border-radius:4px;">
-              <div style="font-size:14px;font-weight:bold;color:#323264;margin-bottom:4px;">${title}</div>
-              <div style="font-size:14px;color:#464660;line-height:1.6;">
-                ${markdownToHtml(n.note_text)}
-              </div>
+            <div class="note-item">
+              <div class="note-title">${title}</div>
+              <div class="note-text">${markdownToHtml(n.note_text)}</div>
             </div>`;
         })
         .join('');
 
       notesSection = `
-        <hr style="border:none;border-top:1px solid #c0c0d0;margin:16px 0;"/>
-        <h3 style="font-size:18px;color:#1e1e3c;font-weight:bold;margin:0 0 12px 0;">
-          Notițe personale
-        </h3>
+        <hr class="section-rule">
+        <h3 class="section-title">Notițe personale</h3>
         ${noteItems}`;
     }
 
-    return `
-      <div style="font-family:Arial,Helvetica,sans-serif;color:#1e1e3c;
-                  margin:0;padding:0;width:700px;word-wrap:break-word;overflow-wrap:break-word;">
-        <h1 style="font-size:25px;color:#1e1e3c;margin:0 0 8px 0;font-weight:bold;">
-          Analiză Hermeneutică
-        </h1>
-        <h2 style="font-size:18px;color:#1e1e3c;margin:0 0 6px 0;font-weight:bold;">
-          ${escapeHtml(result.reference)}
-        </h2>
-        <p style="font-size:12px;color:#888888;margin:0 0 16px 0;">Generat: ${date}</p>
-        <hr style="border:none;border-top:1.5px solid #7878a0;margin:0 0 16px 0;"/>
+    return `<!DOCTYPE html>
+<html lang="ro">
+<head>
+  <meta charset="utf-8">
+  <title>Analiză Hermeneutică – ${escapeHtml(result.reference)}</title>
+  <style>
+    @page { size: A4; margin: 15mm; }
+    * { box-sizing: border-box; margin: 0; padding: 0; }
 
-        <h3 style="font-size:18px;color:#1e1e3c;font-weight:bold;margin:0 0 8px 0;">
-          Pasaj Biblic
-        </h3>
-        <p style="font-size:15px;color:#3c3c5a;margin:0 0 20px 0;line-height:1.6;
-                  font-style:italic;word-wrap:break-word;">
-          ${escapeHtml(result.text)}
-        </p>
-        <hr style="border:none;border-top:1px solid #c0c0d0;margin:0 0 16px 0;"/>
+    body {
+      font-family: Arial, Helvetica, sans-serif;
+      font-size: 11pt;
+      line-height: 1.6;
+      color: #1e1e3c;
+    }
 
-        <h3 style="font-size:18px;color:#1e1e3c;font-weight:bold;margin:0 0 16px 0;">
-          Analiza Hermeneutică
-        </h3>
-        ${cardsHtml}
-        ${notesSection}
-      </div>`;
+    h1 { font-size: 22pt; font-weight: bold; margin-bottom: 6pt; }
+    h2 { font-size: 14pt; font-weight: bold; margin-bottom: 4pt; }
+
+    .section-title {
+      font-size: 14pt;
+      font-weight: bold;
+      margin-bottom: 10pt;
+    }
+
+    .card-title {
+      font-size: 11pt;
+      color: #323264;
+      font-weight: bold;
+      margin-bottom: 4pt;
+      padding-bottom: 3pt;
+      border-bottom: 1px solid #d0d0e0;
+    }
+
+    .meta { font-size: 9pt; color: #888; margin-bottom: 12pt; }
+
+    .header-rule {
+      border: none;
+      border-top: 1.5pt solid #7878a0;
+      margin: 12pt 0;
+    }
+
+    .section-rule {
+      border: none;
+      border-top: 1pt solid #c0c0d0;
+      margin: 12pt 0;
+    }
+
+    .verse-text {
+      font-size: 11pt;
+      color: #3c3c5a;
+      font-style: italic;
+      margin-bottom: 14pt;
+    }
+
+    .card-section { margin-bottom: 14pt; }
+    .card-text { font-size: 10pt; color: #464660; }
+
+    .note-item {
+      margin-bottom: 10pt;
+      padding: 8pt;
+      background: #f0f0ff;
+      border-left: 3pt solid #7878c8;
+      border-radius: 3pt;
+    }
+
+    .note-title { font-size: 10pt; font-weight: bold; color: #323264; margin-bottom: 3pt; }
+    .note-text { font-size: 10pt; color: #464660; }
+
+    @media print {
+      body { -webkit-print-color-adjust: exact; print-color-adjust: exact; }
+    }
+  </style>
+</head>
+<body>
+  <h1>Analiză Hermeneutică</h1>
+  <h2>${escapeHtml(result.reference)}</h2>
+  <p class="meta">Generat: ${date}</p>
+  <hr class="header-rule">
+
+  <h3 class="section-title">Pasaj Biblic</h3>
+  <p class="verse-text">${escapeHtml(result.text)}</p>
+  <hr class="section-rule">
+
+  <h3 class="section-title">Analiza Hermeneutică</h3>
+  ${cardsHtml}
+  ${notesSection}
+</body>
+</html>`;
   }
 }
