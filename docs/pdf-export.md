@@ -59,10 +59,41 @@ binary. This approach:
 ### Docker / deployment
 
 The backend `Dockerfile` installs the `chromium` package from the Alpine package registry.
-The `PUPPETEER_EXECUTABLE_PATH` environment variable is set to `/usr/bin/chromium-browser`.
+The `PUPPETEER_EXECUTABLE_PATH` environment variable is set to `/usr/bin/chromium-browser`
+inside the container — no further configuration is required when running via Docker Compose.
 
-For local development outside Docker, install Chromium or Google Chrome and ensure it is
-accessible at one of the standard paths (`/usr/bin/chromium-browser`, `/usr/bin/chromium`, etc.).
+### Local development setup
+
+When running the backend outside Docker (`npm run start:dev`), Puppeteer needs access to a
+local Chrome or Chromium binary.
+
+**Step 1 – Install Chrome or Chromium on your machine** (if you haven't already):
+
+| OS | Recommended option |
+|----|--------------------|
+| macOS | [Google Chrome](https://www.google.com/chrome/) or `brew install chromium` |
+| Ubuntu/Debian | `sudo apt install chromium-browser` or `google-chrome-stable` |
+| Windows | [Google Chrome](https://www.google.com/chrome/) |
+
+**Step 2 – Set `PUPPETEER_EXECUTABLE_PATH` in your `.env` file:**
+
+```dotenv
+# macOS – Google Chrome (typical install path)
+PUPPETEER_EXECUTABLE_PATH=/Applications/Google Chrome.app/Contents/MacOS/Google Chrome
+
+# macOS – Chromium (Homebrew)
+PUPPETEER_EXECUTABLE_PATH=/Applications/Chromium.app/Contents/MacOS/Chromium
+
+# Ubuntu / Debian
+PUPPETEER_EXECUTABLE_PATH=/usr/bin/google-chrome-stable
+
+# Windows
+PUPPETEER_EXECUTABLE_PATH=C:\Program Files\Google\Chrome\Application\chrome.exe
+```
+
+> **Note:** If Chrome or Chromium is installed at one of the standard paths above, it will be
+> detected automatically and you do not need to set `PUPPETEER_EXECUTABLE_PATH` at all.
+> The variable is only needed when your binary lives in a non-standard location.
 
 ### API endpoint
 

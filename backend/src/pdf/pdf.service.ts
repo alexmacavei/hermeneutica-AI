@@ -62,14 +62,36 @@ function markdownToHtml(text: string): string {
 export class PdfService {
   private readonly logger = new Logger(PdfService.name);
 
-  /** Returns the path to the system Chromium binary, or undefined to let puppeteer find it. */
+  /**
+   * Returns the path to the Chromium/Chrome binary to use.
+   *
+   * Resolution order:
+   *  1. `PUPPETEER_EXECUTABLE_PATH` environment variable (explicit override).
+   *  2. Well-known system paths for Alpine/Debian Linux, macOS, and Windows.
+   *
+   * Set `PUPPETEER_EXECUTABLE_PATH` in your `.env` file for local development
+   * when Chrome/Chromium is installed in a non-standard location.
+   */
   private getChromiumExecutablePath(): string | undefined {
-    // Common paths for system Chromium (Alpine/Debian Linux, macOS)
+    // 1. Honour explicit env var override (standard Puppeteer convention).
+    const envPath = process.env['PUPPETEER_EXECUTABLE_PATH'];
+    if (envPath?.trim()) return envPath.trim();
+
+    // 2. Well-known paths for common OS / package installations.
     const candidates = [
-      '/usr/bin/chromium-browser', // Alpine Linux
-      '/usr/bin/chromium', // Debian/Ubuntu
-      '/usr/bin/google-chrome-stable', // Chrome on Debian
-      '/Applications/Google Chrome.app/Contents/MacOS/Google Chrome', // macOS
+      // Alpine Linux (used in the Docker image)
+      '/usr/bin/chromium-browser',
+      // Debian/Ubuntu
+      '/usr/bin/chromium',
+      '/usr/bin/google-chrome-stable',
+      '/usr/bin/google-chrome',
+      // macOS – Google Chrome
+      '/Applications/Google Chrome.app/Contents/MacOS/Google Chrome',
+      // macOS – Chromium
+      '/Applications/Chromium.app/Contents/MacOS/Chromium',
+      // Windows – Google Chrome (typical paths)
+      'C:\\Program Files\\Google\\Chrome\\Application\\chrome.exe',
+      'C:\\Program Files (x86)\\Google\\Chrome\\Application\\chrome.exe',
     ];
     const fs = require('fs') as typeof import('fs');
     return candidates.find((p) => {
@@ -85,7 +107,10 @@ export class PdfService {
     const executablePath = this.getChromiumExecutablePath();
     if (!executablePath) {
       throw new Error(
-        'Chromium not found. Install chromium-browser on the server or set PUPPETEER_EXECUTABLE_PATH.',
+        'Chromium executable not found. ' +
+          'Set PUPPETEER_EXECUTABLE_PATH in your .env file to the path of your ' +
+          'Chrome or Chromium binary. ' +
+          'See docs/pdf-export.md for setup instructions.',
       );
     }
 
