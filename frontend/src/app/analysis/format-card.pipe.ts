@@ -5,6 +5,7 @@ import { DomSanitizer } from '@angular/platform-browser';
  * Converts AI-generated card text to safe HTML:
  * - Converts **bold** markdown to <strong> tags
  * - Converts literal \n\n strings (from LLM output) and real newlines to <br>
+ * - Collapses consecutive blank lines into a single line break
  * - Sanitizes output via Angular's DomSanitizer to prevent XSS
  */
 @Pipe({
@@ -19,7 +20,9 @@ export class FormatCardPipe implements PipeTransform {
 
     const html = value
       .replace(/\\n\\n/g, '\n')
+      .replace(/\\n/g, '\n')
       .replace(/\*\*([^*]+)\*\*/g, '<strong>$1</strong>')
+      .replace(/\n{2,}/g, '\n') // collapse multiple blank lines into a single line break
       .replace(/\n/g, '<br>');
 
     return this.sanitizer.sanitize(SecurityContext.HTML, html) ?? '';
