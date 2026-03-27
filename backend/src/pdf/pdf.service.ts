@@ -130,7 +130,9 @@ export class PdfService {
 
       const page = await browser.newPage();
       const html = this.buildHtml(data);
-      await page.setContent(html, { waitUntil: 'networkidle0' });
+      // The HTML template is self-contained (no external resources), so
+      // 'domcontentloaded' is sufficient and avoids the 30 s networkidle0 timeout.
+      await page.setContent(html, { waitUntil: 'domcontentloaded' });
 
       const pdfBuffer = await page.pdf({
         format: 'A4',
