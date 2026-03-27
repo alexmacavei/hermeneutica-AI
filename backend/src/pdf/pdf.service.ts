@@ -55,6 +55,7 @@ function markdownToHtml(text: string): string {
     .replace(/\\n\\n/g, '\n')
     .replace(/\\n/g, '\n')
     .replace(/\*\*([^*]+)\*\*/g, '<strong>$1</strong>')
+    .replace(/\n{2,}/g, '\n') // collapse multiple blank lines into a single line break
     .replace(/\n/g, '<br>');
 }
 
