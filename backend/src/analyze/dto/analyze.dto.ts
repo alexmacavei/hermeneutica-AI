@@ -16,4 +16,8 @@ export class AnalyzeDto {
   @IsOptional()
   @IsString()
   translationId?: string;
+
+  @IsOptional()
+  @IsString()
+  bookId?: string;
 }
