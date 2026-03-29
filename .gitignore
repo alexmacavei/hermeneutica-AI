@@ -49,5 +49,8 @@ patristic-data/
 scripts/package-lock.json
 package-lock.json
 
-# Claude
+# AI
 .claude
+docs/superpowers/**
+AGENTS.md
+/docs/**

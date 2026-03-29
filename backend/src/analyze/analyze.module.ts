@@ -4,9 +4,10 @@ import { AnalyzeService } from './analyze.service';
 import { AiModule } from '../ai/ai.module';
 import { PatristicModule } from '../patristic/patristic.module';
 import { PhilosophyModule } from '../philosophy/philosophy.module';
+import { ConcordanceModule } from '../concordance/concordance.module';
 
 @Module({
-  imports: [AiModule, PatristicModule, PhilosophyModule],
+  imports: [AiModule, PatristicModule, PhilosophyModule, ConcordanceModule],
   controllers: [AnalyzeController],
   providers: [AnalyzeService],
 })

@@ -122,6 +122,7 @@ export const BibleStore = signalStore(
               range: selection.range,
               language: nav.translationName,
               translationId: nav.translationId,
+              bookId: nav.bookId,
             })
             .pipe(
               catchError(() => {

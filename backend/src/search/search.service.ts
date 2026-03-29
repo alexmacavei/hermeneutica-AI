@@ -1,4 +1,5 @@
 import { Injectable, Logger } from '@nestjs/common';
+import { getSearchResults } from 'biblesdk';
 import { AiService } from '../ai/ai.service';
 import { DatabaseService } from '../database/database.service';
 import {
@@ -16,6 +17,7 @@ export interface SearchResult {
   verseText: string;
   similarity: number;
   reference: string;
+  consensusBoost: boolean;
 }
 
 export interface SearchResponse {
@@ -75,12 +77,15 @@ export class SearchService {
       const embedding = await this.aiService.generateEmbedding(query);
       const vectorStr = `[${embedding.join(',')}]`;
 
-      const { rows } = await pool.query<VerseRow>(
-        SEARCH_VERSES_BY_EMBEDDING,
-        [vectorStr, translationId, limit],
-      );
+      const [pgResult, sdkResult] = await Promise.all([
+        pool.query<VerseRow>(SEARCH_VERSES_BY_EMBEDDING, [vectorStr, translationId, limit]),
+        getSearchResults(query).catch((err) => {
+          this.logger.warn(`biblesdk search failed, falling back to local only: ${(err as Error)?.message ?? err}`);
+          return [];
+        }),
+      ]);
 
-      const results: SearchResult[] = rows.map((row) => ({
+      const localResults: SearchResult[] = pgResult.rows.map((row) => ({
         translationId: row.translation_id,
         bookId: row.book_id,
         bookName: row.book_name,
@@ -89,13 +94,44 @@ export class SearchService {
         verseText: row.verse_text,
         similarity: Number(row.similarity),
         reference: `${row.book_name} ${row.chapter_number}:${row.verse_number}`,
+        consensusBoost: false,
       }));
+
+      const results = this.mergeWithSdkResults(localResults, sdkResult);
 
       return { query, translationId, results, total: results.length };
     } catch (error) {
       this.logger.error('Error performing semantic search', error);
       return { query, translationId, results: [], total: 0 };
     }
+  }
+
+  /**
+   * Merges local pgvector results with SDK results, applying a consensus boost
+   * (+0.08, capped at 1.0) to verses found in both result sets, then returns
+   * the merged list sorted by descending similarity.
+   */
+  private mergeWithSdkResults(
+    localResults: SearchResult[],
+    sdkResults: Array<{ book: string; chapter: number; verse: number; score: number }>,
+  ): SearchResult[] {
+    const sdkKeys = new Set(
+      sdkResults.map((r) => `${r.book}:${r.chapter}:${r.verse}`),
+    );
+
+    const merged = localResults.map((r) => {
+      const key = `${r.bookId}:${r.chapter}:${r.verseNumber}`;
+      if (sdkKeys.has(key)) {
+        return {
+          ...r,
+          consensusBoost: true,
+          similarity: Math.min(1.0, r.similarity + 0.08),
+        };
+      }
+      return { ...r };
+    });
+
+    return merged.sort((a, b) => b.similarity - a.similarity);
   }
 
   /**

@@ -45,3 +45,4 @@ export const UPSERT_VERSE_EMBEDDING = `
   ON CONFLICT (translation_id, book_id, chapter_number, verse_number)
   DO NOTHING
 `;
+

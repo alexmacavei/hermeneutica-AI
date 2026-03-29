@@ -10,6 +10,7 @@ import {
 import { SlicePipe } from '@angular/common';
 import { FormsModule } from '@angular/forms';
 import { ButtonModule } from 'primeng/button';
+import { TooltipModule } from 'primeng/tooltip';
 import { EMPTY, Subject } from 'rxjs';
 import { debounceTime, distinctUntilChanged, switchMap } from 'rxjs/operators';
 import { takeUntilDestroyed } from '@angular/core/rxjs-interop';
@@ -26,7 +27,7 @@ export interface SearchNavigateEvent {
   selector: 'app-semantic-search',
   standalone: true,
   changeDetection: ChangeDetectionStrategy.OnPush,
-  imports: [FormsModule, ButtonModule, SlicePipe],
+  imports: [FormsModule, ButtonModule, SlicePipe, TooltipModule],
   template: `
     <div class="search-wrapper">
       <div class="search-input-row">
@@ -77,7 +78,27 @@ export interface SearchNavigateEvent {
                 >
                   <div class="result-item-header">
                     <span class="result-ref">{{ r.reference }}</span>
-                    <span class="result-score" title="Relevanță semantică">{{ (r.similarity * 100).toFixed(0) }}%</span>
+                    <div class="result-score-area">
+                      @if (r.consensusBoost) {
+                        <span
+                          class="consensus-badge"
+                          pTooltip="✦ Confirmat atât în indexul local cât și în biblesdk"
+                          tooltipPosition="top"
+                        >
+                          ✦
+                        </span>
+                      }
+
+                      <span
+                        class="pip-bar"
+                        [pTooltip]="'Relevanță semantică: ' + (r.similarity * 100).toFixed(0) + '%'"
+                        tooltipPosition="top"
+                      >
+                        <span [class]="'pip ' + pipClass(r.similarity)"></span>
+                        <span [class]="'pip ' + pip2Class(r.similarity)"></span>
+                        <span [class]="'pip ' + pip3Class(r.similarity)"></span>
+                      </span>
+                    </div>
                   </div>
                   <span class="result-text">{{ r.verseText | slice:0:120 }}{{ r.verseText.length > 120 ? '…' : '' }}</span>
                 </li>
@@ -98,7 +119,7 @@ export interface SearchNavigateEvent {
     .search-input-row {
       display: flex;
       align-items: center;
-      background: rgba(255,255,255,0.06);
+      background: rgba(255, 255, 255, 0.06);
       border: 1px solid rgba(121, 134, 203, 0.35);
       border-radius: 22px;
       padding: 0 12px;
@@ -138,7 +159,7 @@ export interface SearchNavigateEvent {
       min-width: 100%;
       width: max-content;
       max-width: min(560px, 90vw);
-      background: #0d0d2e;
+      background: var(--bg-card);
       border: 1px solid rgba(121, 134, 203, 0.3);
       border-radius: 10px;
       box-shadow: 0 8px 24px rgba(0,0,0,0.5);
@@ -165,7 +186,7 @@ export interface SearchNavigateEvent {
       gap: 4px;
       padding: 10px 14px;
       cursor: pointer;
-      border-bottom: 1px solid rgba(255,255,255,0.05);
+      border-bottom: 1px solid rgba(121, 134, 203, 0.16);
       transition: background 0.15s;
     }
     .result-item:last-child { border-bottom: none; }
@@ -185,19 +206,61 @@ export interface SearchNavigateEvent {
       text-overflow: ellipsis;
       max-width: calc(100% - 44px);
     }
-    .result-score {
-      color: var(--text-muted);
-      font-size: 0.72rem;
-      white-space: nowrap;
+    .result-score-area {
+      display: flex;
+      align-items: center;
+      gap: 8px;
       flex-shrink: 0;
+    }
+    .pip-bar {
+      display: inline-flex;
+      align-items: center;
+      gap: 3px;
+      padding: 2px 6px;
+      border-radius: 10px;
       background: rgba(121, 134, 203, 0.15);
-      padding: 1px 6px;
-      border-radius: 8px;
+    }
+    .pip {
+      width: 6px;
+      height: 6px;
+      border-radius: 50%;
+      background: rgba(255, 255, 255, 0.2);
+      display: inline-block;
+    }
+    .pip-high { background: #81c784; }
+    .pip-mid { background: #ffb74d; }
+    .pip-low { background: #7986cb; }
+    .pip-empty { background: rgba(255, 255, 255, 0.2); }
+    .consensus-badge {
+      color: var(--gold);
+      font-size: 0.8rem;
+      line-height: 1;
+      user-select: none;
     }
     .result-text {
-      color: #b0bec5;
+      color: var(--text-muted);
       font-size: 0.8rem;
       line-height: 1.45;
+    }
+    :host-context(html.light) .search-input-row {
+      background: rgba(255, 255, 255, 0.9);
+      border-color: rgba(63, 81, 181, 0.25);
+    }
+    :host-context(html.light) .search-results {
+      border-color: rgba(63, 81, 181, 0.22);
+      box-shadow: 0 8px 24px rgba(0, 0, 0, 0.14);
+    }
+    :host-context(html.light) .result-item {
+      border-bottom-color: rgba(63, 81, 181, 0.14);
+    }
+    :host-context(html.light) .result-item:hover {
+      background: rgba(63, 81, 181, 0.08);
+    }
+    :host-context(html.light) .pip-bar {
+      background: rgba(63, 81, 181, 0.12);
+    }
+    :host-context(html.light) .pip-empty {
+      background: rgba(63, 81, 181, 0.25);
     }
     @media (max-width: 640px) {
       .search-wrapper {
@@ -286,5 +349,23 @@ export class SemanticSearchComponent {
       verseNumber: result.verseNumber,
     });
     this.clearSearch();
+  }
+
+  protected pipClass(similarity: number): string {
+    if (similarity >= 0.75) {
+      return similarity >= 0.85 ? 'pip-high' : 'pip-mid';
+    }
+    return 'pip-low';
+  }
+
+  protected pip2Class(similarity: number): string {
+    if (similarity >= 0.75) {
+      return similarity >= 0.85 ? 'pip-high' : 'pip-mid';
+    }
+    return 'pip-empty';
+  }
+
+  protected pip3Class(similarity: number): string {
+    return similarity >= 0.85 ? 'pip-high' : 'pip-empty';
   }
 }

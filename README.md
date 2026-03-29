@@ -33,11 +33,11 @@ Analiza unui verset generează 4 carduri:
 | 📖 **Principii Hermeneutice** | Interpretare în 4 sensuri: literal, tropologic, alegoric, anagogic | OpenAI (LLM) |
 | 🧠 **Influențe Filozofice** | Platonism creștin, Neoplatonism, Stoicism patristic | OpenAI (LLM) |
 | ⛪ **Comentarii Patristice** | Citații din Părinții Bisericii (ex. Sf. Ioan Gură de Aur, Vasile cel Mare etc.) extrase din corpus **New Advent** prin căutare semantică RAG | New Advent + OpenAI Embeddings |
-| 🔤 **Analiză Filologică** | Greacă/Ebraică biblică, Strong's, LXX, morfologie | OpenAI (LLM) |
+| 🔤 **Analiză Filologică** | Greacă/Ebraică biblică, Strong's (date reale via biblesdk.com), LXX, morfologie | OpenAI (LLM) + biblesdk |
 | 📚 **Studiu Paralel** | Versetul selectat afișat simultan în toate traducerile disponibile (N/A pentru traduceri cu canon diferit) | bible.helloao.org |
 | 💬 **Chat Teologic** | Conversație liberă cu asistentul AI, fundamentată pe corpusul patristic RAG și traducerile biblice disponibile (doar utilizatori autentificați) | New Advent RAG + OpenAI LLM |
 
-**EN:** AI Hermeneutica Orthodoxa is a full-stack web application for navigating Biblical text (via helloao.org API), receiving AI-powered orthodox hermeneutic analysis using OpenAI models, comparing selected verses side-by-side across all available translations, **semantic search** over Bible verses (pgvector), **user authentication** (JWT), **personal notes** per verse, and a **RAG-based theological chatbot** for authenticated users.
+**EN:** AI Hermeneutica Orthodoxa is a full-stack web application for navigating Biblical text (via helloao.org API), receiving AI-powered orthodox hermeneutic analysis using OpenAI models, comparing selected verses side-by-side across all available translations, **dual-layer semantic search** over Bible verses (local pgvector + biblesdk.com cross-reference, with consensus boosting), **user authentication** (JWT), **personal notes** per verse, and a **RAG-based theological chatbot** for authenticated users.
 
 ---
 
@@ -274,7 +274,7 @@ Endpoint-urile marcate **🔒** necesită un JWT valid în header-ul `Authorizat
 | `/api/notes` | GET / POST | 🔒 | Listează / creează notițe personale per verset |
 | `/api/notes/:id` | PUT / DELETE | 🔒 | Actualizează / șterge o notiță |
 | `/api/chat/message` | POST | 🔒 | Trimite mesaj chatbot teologic RAG |
-| `/api/search` | GET | – | Căutare semantică în versetele indexate |
+| `/api/search` | GET | – | Căutare semantică duală: pgvector local + biblesdk cross-reference, cu consensus boost |
 | `/api/bible/translations` | GET | – | Listează traducerile disponibile |
 | `/api/bible/:tr/books` | GET | – | Listează cărțile pentru o traducere |
 | `/api/bible/:tr/:book/:ch` | GET | – | Returnează versetele unui capitol |

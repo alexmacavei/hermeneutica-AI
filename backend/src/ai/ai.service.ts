@@ -85,15 +85,21 @@ export class AiService {
     text: string,
     reference: string,
     language: string = 'Sinodală Română',
+    concordanceContext?: string,
   ): Promise<TwoCards> {
     if (!this.hasApiKey) {
       return this.getFallbackCards(reference, text);
     }
 
-    const userMessage = this.prompts.user_template
+    let userMessage = this.prompts.user_template
       .replace('{reference}', reference)
       .replace('{language}', language)
       .replace('{text}', text);
+
+    if (concordanceContext) {
+      userMessage +=
+        `\n\nDate Strong's Concordance pentru acest verset (sursă: biblesdk.com — date reale, verificate):\n${concordanceContext}`;
+    }
 
     try {
       const completion = await this.openai.chat.completions.create({
