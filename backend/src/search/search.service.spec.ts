@@ -1,5 +1,5 @@
 import { Test, TestingModule } from '@nestjs/testing';
-import { SearchService } from './search.service';
+import { SearchResult, SearchService } from './search.service';
 import { AiService } from '../ai/ai.service';
 import { DatabaseService } from '../database/database.service';
 
@@ -126,6 +126,89 @@ describe('SearchService', () => {
         results: [],
         total: 0,
       });
+    });
+  });
+
+  describe('mergeWithSdkResults()', () => {
+    const makeLocalResult = (
+      bookId: string,
+      chapter: number,
+      verseNumber: number,
+      similarity: number,
+    ): SearchResult => ({
+      translationId: 'BSR',
+      bookId,
+      bookName: bookId,
+      chapter,
+      verseNumber,
+      verseText: 'text',
+      similarity,
+      reference: `${bookId} ${chapter}:${verseNumber}`,
+      consensusBoost: false,
+    });
+
+    it('Test 1 — empty SDK results: no change, no boost', () => {
+      const localResults = [makeLocalResult('JHN', 3, 16, 0.9)];
+      const sdkResults: Array<{ book: string; chapter: number; verse: number; score: number }> = [];
+
+      const result = (service as any).mergeWithSdkResults(localResults, sdkResults);
+
+      expect(result[0].consensusBoost).toBe(false);
+      expect(result[0].similarity).toBe(0.9);
+    });
+
+    it('Test 2 — consensus boost applied', () => {
+      const localResults = [makeLocalResult('JHN', 3, 16, 0.85)];
+      const sdkResults = [{ book: 'JHN', chapter: 3, verse: 16, score: 0.9 }];
+
+      const result = (service as any).mergeWithSdkResults(localResults, sdkResults);
+
+      expect(result[0].consensusBoost).toBe(true);
+      expect(result[0].similarity).toBeCloseTo(0.93, 10);
+    });
+
+    it('Test 3 — similarity cap at 1.0', () => {
+      const localResults = [makeLocalResult('ROM', 5, 8, 0.96)];
+      const sdkResults = [{ book: 'ROM', chapter: 5, verse: 8, score: 0.8 }];
+
+      const result = (service as any).mergeWithSdkResults(localResults, sdkResults);
+
+      expect(result[0].consensusBoost).toBe(true);
+      expect(result[0].similarity).toBe(1.0);
+    });
+
+    it('Test 4 — SDK-only match (verse not in local) is ignored', () => {
+      const localResults = [makeLocalResult('GEN', 1, 1, 0.7)];
+      const sdkResults = [{ book: 'JHN', chapter: 3, verse: 16, score: 0.9 }];
+
+      const result = (service as any).mergeWithSdkResults(localResults, sdkResults);
+
+      expect(result).toHaveLength(1);
+      expect(result[0].bookId).toBe('GEN');
+      expect(result[0].consensusBoost).toBe(false);
+    });
+
+    it('Test 5 — sort order: boosted results appear first', () => {
+      const localResults = [
+        makeLocalResult('GEN', 1, 1, 0.8),
+        makeLocalResult('JHN', 3, 16, 0.85),
+      ];
+      const sdkResults = [{ book: 'JHN', chapter: 3, verse: 16, score: 0.9 }];
+
+      const result = (service as any).mergeWithSdkResults(localResults, sdkResults);
+
+      expect(result[0].bookId).toBe('JHN');
+      expect(result[0].similarity).toBeCloseTo(0.93, 10);
+      expect(result[1].bookId).toBe('GEN');
+    });
+
+    it('Test 6 — no mutation of input', () => {
+      const original = [makeLocalResult('JHN', 3, 16, 0.85)];
+      const originalSimilarity = original[0].similarity;
+
+      (service as any).mergeWithSdkResults(original, [{ book: 'JHN', chapter: 3, verse: 16, score: 0.9 }]);
+
+      expect(original[0].similarity).toBe(originalSimilarity);
     });
   });
 

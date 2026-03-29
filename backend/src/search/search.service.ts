@@ -101,6 +101,34 @@ export class SearchService {
   }
 
   /**
+   * Merges local pgvector results with SDK results, applying a consensus boost
+   * (+0.08, capped at 1.0) to verses found in both result sets, then returns
+   * the merged list sorted by descending similarity.
+   */
+  private mergeWithSdkResults(
+    localResults: SearchResult[],
+    sdkResults: Array<{ book: string; chapter: number; verse: number; score: number }>,
+  ): SearchResult[] {
+    const sdkKeys = new Set(
+      sdkResults.map((r) => `${r.book}:${r.chapter}:${r.verse}`),
+    );
+
+    const merged = localResults.map((r) => {
+      const key = `${r.bookId}:${r.chapter}:${r.verseNumber}`;
+      if (sdkKeys.has(key)) {
+        return {
+          ...r,
+          consensusBoost: true,
+          similarity: Math.min(1.0, r.similarity + 0.08),
+        };
+      }
+      return { ...r };
+    });
+
+    return merged.sort((a, b) => b.similarity - a.similarity);
+  }
+
+  /**
    * Generates and stores embeddings for all verses of a chapter.
    * Skips the chapter if its embeddings already exist.
    * Designed to be called fire-and-forget; errors are logged, not thrown.
