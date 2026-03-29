@@ -13,6 +13,7 @@ export interface SearchResult {
   verseText: string;
   similarity: number;
   reference: string;
+  consensusBoost: boolean;
 }
 
 export interface SearchResponse {
