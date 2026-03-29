@@ -11,6 +11,26 @@
   --cross-red: #c62828;
   --dialog-bg: #12122a;
   --dialog-content-bg: #1a1a2e;
+  --navbar-bg: #0a0a1f;     /* top-bar / footer / analyze-bar background */
+  --panel-bg: rgba(10, 10, 30, 0.5); /* analysis / parallel side panels */
+}
+
+/* ============================================================
+   Light mode – variable overrides
+   ============================================================ */
+html.light {
+  --primary: #3949ab;
+  --accent: #c62828;
+  --bg-dark: #f5f5f5;
+  --bg-card: #ffffff;
+  --text-light: #1a237e;
+  --text-muted: #5c6bc0;
+  --gold: #f9a825;
+  --cross-red: #c62828;
+  --dialog-bg: #ffffff;
+  --dialog-content-bg: #f8f9fa;
+  --navbar-bg: #e8eaf6;
+  --panel-bg: rgba(232, 234, 246, 0.5);
 }
 
 html, body {
@@ -373,4 +393,166 @@ h1, h2, h3 { font-family: 'Palatino Linotype', 'Georgia', serif; }
     max-width: 90vw !important;
   }
 }
+
+/* ============================================================
+   Light mode – PrimeNG & component overrides
+   ============================================================ */
+
+/* ── Input text ── */
+html.light .p-inputtext {
+  background: #ffffff !important;
+  border-color: rgba(63, 81, 181, 0.3) !important;
+  color: #1a237e !important;
+}
+html.light .p-inputtext::placeholder {
+  color: var(--text-muted, #5c6bc0) !important;
+}
+html.light .p-inputtext:focus,
+html.light .p-inputtext:enabled:focus {
+  border-color: rgba(63, 81, 181, 0.6) !important;
+  box-shadow: 0 0 0 2px rgba(63, 81, 181, 0.15) !important;
+}
+
+/* ── Textarea ── */
+html.light .p-textarea {
+  background: #ffffff !important;
+  border-color: rgba(63, 81, 181, 0.3) !important;
+  color: #1a237e !important;
+}
+
+/* ── Password ── */
+html.light .p-password input.p-inputtext,
+html.light .p-password-input {
+  background: #ffffff !important;
+  border-color: rgba(63, 81, 181, 0.3) !important;
+  color: #1a237e !important;
+}
+
+/* ── Select (dropdown) ── */
+html.light .p-select {
+  background: #f0f2ff !important;
+  border-color: rgba(63, 81, 181, 0.35) !important;
+}
+html.light .p-select .p-select-label {
+  color: #1a237e !important;
+}
+html.light .p-select .p-select-label.p-placeholder {
+  color: var(--text-muted, #5c6bc0) !important;
+}
+html.light .p-select .p-select-dropdown {
+  color: var(--text-muted, #5c6bc0) !important;
+}
+html.light .p-select-overlay,
+html.light .p-select-list-container {
+  background: #ffffff !important;
+  border-color: rgba(63, 81, 181, 0.2) !important;
+  box-shadow: 0 6px 20px rgba(0, 0, 0, 0.12) !important;
+}
+html.light .p-select-option {
+  color: #1a237e !important;
+}
+html.light .p-select-option:not(.p-disabled):hover,
+html.light .p-select-option.p-select-option-selected {
+  background: rgba(63, 81, 181, 0.1) !important;
+}
+html.light .p-select-filter-container .p-inputtext,
+html.light .p-select-filter {
+  background: #f0f2ff !important;
+  color: #1a237e !important;
+  border-color: rgba(63, 81, 181, 0.3) !important;
+}
+
+/* ── Auth dropdown menu ── */
+html.light .p-menu {
+  background: #ffffff !important;
+  border-color: rgba(63, 81, 181, 0.2) !important;
+  box-shadow: 0 6px 24px rgba(0, 0, 0, 0.12) !important;
+}
+html.light .p-menu .p-menuitem > .p-menuitem-content .p-menuitem-link {
+  color: #1a237e !important;
+}
+html.light .p-menu .p-menuitem > .p-menuitem-content .p-menuitem-link:not(.p-disabled):hover {
+  background: rgba(63, 81, 181, 0.1) !important;
+}
+html.light .p-menu .p-menuitem > .p-menuitem-content .p-menuitem-link .p-menuitem-icon {
+  color: var(--text-muted, #5c6bc0) !important;
+}
+html.light .p-menu .p-menuitem > .p-menuitem-content .p-menuitem-link:not(.p-disabled):hover .p-menuitem-icon {
+  color: var(--gold, #f9a825) !important;
+}
+html.light .p-menu .p-menuitem-separator {
+  border-top-color: rgba(63, 81, 181, 0.15) !important;
+}
+html.light .p-menu .auth-menu-email > .p-menuitem-content .p-menuitem-link .p-menuitem-text {
+  color: var(--text-muted, #5c6bc0) !important;
+}
+
+/* ── Secondary button ── */
+html.light .p-button[severity="secondary"],
+html.light .p-button.p-button-secondary {
+  background: rgba(63, 81, 181, 0.12) !important;
+  border-color: rgba(63, 81, 181, 0.35) !important;
+  color: #3949ab !important;
+}
+html.light .p-button[severity="secondary"]:not(:disabled):hover,
+html.light .p-button.p-button-secondary:not(:disabled):hover {
+  background: rgba(63, 81, 181, 0.22) !important;
+  border-color: rgba(63, 81, 181, 0.6) !important;
+  color: #1a237e !important;
+}
+
+/* ── Accordion ── */
+html.light .p-accordionpanel {
+  background: rgba(232, 234, 246, 0.4) !important;
+  border-color: rgba(63, 81, 181, 0.15) !important;
+}
+html.light .p-accordionheader {
+  background: rgba(63, 81, 181, 0.1) !important;
+  color: #1a237e !important;
+}
+html.light .p-accordionheader:hover {
+  background: rgba(63, 81, 181, 0.2) !important;
+}
+html.light .p-accordioncontent-content {
+  background: rgba(232, 234, 246, 0.2) !important;
+  color: #1a237e !important;
+}
+
+/* ── Toast ── */
+html.light .p-toast .p-toast-message {
+  background: #ffffff !important;
+  border-color: rgba(63, 81, 181, 0.2) !important;
+  color: #1a237e !important;
+}
+html.light .p-toast .p-toast-message .p-toast-message-text {
+  color: #1a237e !important;
+}
+
+/* ── Message (inline) ── */
+html.light .p-message.p-message-error {
+  background: rgba(183, 28, 28, 0.1) !important;
+  border-color: rgba(183, 28, 28, 0.3) !important;
+  color: #c62828 !important;
+}
+
+/* ── Results viewer (scoped component overrides) ── */
+html.light .results-header {
+  background: rgba(63, 81, 181, 0.1) !important;
+  border-color: rgba(63, 81, 181, 0.2) !important;
+}
+html.light .language-badge {
+  background: rgba(63, 81, 181, 0.15) !important;
+  color: #3949ab !important;
+  border-color: rgba(63, 81, 181, 0.3) !important;
+}
+html.light .card-header-row {
+  background: rgba(63, 81, 181, 0.08) !important;
+}
+html.light .card-content-text {
+  color: #37474f !important;
+}
+
+/* ── Scrollbar in light mode ── */
+html.light ::-webkit-scrollbar-track { background: #f5f5f5; }
+html.light ::-webkit-scrollbar-thumb { background: #9fa8da; }
 
