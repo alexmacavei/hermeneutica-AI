@@ -23,7 +23,9 @@ import { AuthDialogComponent } from '../auth/auth-dialog.component';
 import { AuthService } from '../services/auth.service';
 import { ThemeService } from '../services/theme.service';
 import { SlicePipe } from '@angular/common';
+import { FormsModule } from '@angular/forms';
 import { ChatComponent } from '../chat/chat.component';
+import { ToggleSwitch } from 'primeng/toggleswitch';
 
 @Component({
   selector: 'app-bible-viewer',
@@ -42,7 +44,9 @@ import { ChatComponent } from '../chat/chat.component';
     ParallelViewerComponent,
     AuthDialogComponent,
     SlicePipe,
+    FormsModule,
     ChatComponent,
+    ToggleSwitch,
   ],
   providers: [BibleStore, MessageService],
   template: `
@@ -55,7 +59,12 @@ import { ChatComponent } from '../chat/chat.component';
     ></app-auth-dialog>
 
     <!-- Auth dropdown menu -->
-    <p-menu #authMenu [model]="authMenuItems()" [popup]="true" appendTo="body"></p-menu>
+    <p-menu
+      #authMenu
+      [model]="authMenuItems()"
+      [popup]="true"
+      appendTo="body"
+    ></p-menu>
 
     <div class="viewer-shell">
       <!-- Navbar -->
@@ -63,10 +72,10 @@ import { ChatComponent } from '../chat/chat.component';
         <div class="brand">
           <!-- Orthodox three-bar cross (suppedaneum tilted: right side up, left side down) -->
           <svg class="brand-cross" viewBox="0 0 100 135" aria-hidden="true">
-            <rect x="43" y="0" width="14" height="135"/>
-            <rect x="30" y="13" width="40" height="13"/>
-            <rect x="2" y="48" width="96" height="15"/>
-            <polygon points="21,107 79,94 79,108 21,121"/>
+            <rect x="43" y="0" width="14" height="135" />
+            <rect x="30" y="13" width="40" height="13" />
+            <rect x="2" y="48" width="96" height="15" />
+            <polygon points="21,107 79,94 79,108 21,121" />
           </svg>
           <span class="brand-title">AI Hermeneutica Orthodoxa</span>
         </div>
@@ -82,15 +91,25 @@ import { ChatComponent } from '../chat/chat.component';
         <!-- Auth area – single dropdown button -->
         <div class="auth-area">
           <!-- Theme toggle -->
-          <p-button
-            [icon]="themeService.theme() === 'dark' ? 'pi pi-sun' : 'pi pi-moon'"
-            [pTooltip]="themeService.theme() === 'dark' ? 'Comută la modul luminos' : 'Comută la modul întunecat'"
+          <p-toggleswitch
+            class="theme-toggle-switch"
+            [ngModel]="themeService.theme() === 'dark'"
+            (ngModelChange)="onThemeToggle($event)"
+            [pTooltip]="
+              themeService.theme() === 'dark'
+                ? 'Comută la modul luminos'
+                : 'Comută la modul întunecat'
+            "
             tooltipPosition="bottom"
-            severity="secondary"
-            [text]="true"
-            class="theme-toggle-btn"
-            (click)="themeService.toggleTheme()"
-          ></p-button>
+          >
+            <ng-template #handle let-checked="checked">
+              <i
+                class="theme-toggle-icon pi"
+                [class.pi-moon]="checked"
+                [class.pi-sun]="!checked"
+              ></i>
+            </ng-template>
+          </p-toggleswitch>
           @if (authService.isLoggedIn()) {
             <p-button
               icon="pi pi-comments"
@@ -114,10 +133,7 @@ import { ChatComponent } from '../chat/chat.component';
               (click)="toggleAuthMenu($event)"
             ></p-button>
           } @else {
-            <div
-              class="user-avatar-area"
-              (click)="toggleAuthMenu($event)"
-            >
+            <div class="user-avatar-area" (click)="toggleAuthMenu($event)">
               <p-avatar
                 [label]="authService.currentUser()!.email[0].toUpperCase()"
                 shape="circle"
@@ -138,120 +154,126 @@ import { ChatComponent } from '../chat/chat.component';
           <app-chat (close)="showChat.set(false)"></app-chat>
         </main>
       } @else {
-      <main class="main-layout">
-        <!-- Bible Text Panel -->
-        <section class="bible-panel">
-          @if (store.loadingChapter()) {
-            <div class="loading-chapter">
-              <i class="pi pi-spin pi-spinner"></i> Se încarcă...
-            </div>
-          }
-
-          @if (!store.loadingChapter()) {
-            <app-bible-text
-              [bookName]="store.currentNav()?.bookName ?? ''"
-              [chapterNumber]="store.currentNav()?.chapter?.toString() ?? ''"
-              [verses]="store.currentVerses()"
-              [selectedVerses]="store.selectedVerseNumbers()"
-              (verseSelected)="store.selectVerse($event)"
-            ></app-bible-text>
-          }
-
-          <!-- Footer navigation -->
-          <footer class="verse-footer">
-            <p-button
-              icon="pi pi-chevron-left"
-              variant="text"
-              class="nav-btn"
-              (click)="store.prevChapter()"
-              [disabled]="!store.hasPrevChapter()"
-              [rounded]="true"
-            ></p-button>
-            @if (store.selectedSelection()) {
-              <span class="footer-ref">
-                &#128204; {{ store.selectedSelection()!.range }}
-              </span>
-            } @else {
-              <span class="footer-ref no-selection">
-                Selectează un verset pentru analiză
-              </span>
+        <main class="main-layout">
+          <!-- Bible Text Panel -->
+          <section class="bible-panel">
+            @if (store.loadingChapter()) {
+              <div class="loading-chapter">
+                <i class="pi pi-spin pi-spinner"></i> Se încarcă...
+              </div>
             }
+
+            @if (!store.loadingChapter()) {
+              <app-bible-text
+                [bookName]="store.currentNav()?.bookName ?? ''"
+                [chapterNumber]="store.currentNav()?.chapter?.toString() ?? ''"
+                [verses]="store.currentVerses()"
+                [selectedVerses]="store.selectedVerseNumbers()"
+                (verseSelected)="store.selectVerse($event)"
+              ></app-bible-text>
+            }
+
+            <!-- Footer navigation -->
+            <footer class="verse-footer">
+              <p-button
+                icon="pi pi-chevron-left"
+                variant="text"
+                class="nav-btn"
+                (click)="store.prevChapter()"
+                [disabled]="!store.hasPrevChapter()"
+                [rounded]="true"
+              ></p-button>
+              @if (store.selectedSelection()) {
+                <span class="footer-ref">
+                  &#128204; {{ store.selectedSelection()!.range }}
+                </span>
+              } @else {
+                <span class="footer-ref no-selection">
+                  Selectează un verset pentru analiză
+                </span>
+              }
+              <p-button
+                icon="pi pi-chevron-right"
+                variant="text"
+                class="nav-btn"
+                (click)="store.nextChapter()"
+                [disabled]="!store.hasNextChapter()"
+                [rounded]="true"
+              ></p-button>
+            </footer>
+          </section>
+
+          <!-- Analysis Panel -->
+          @if (store.analysisResult() || store.analyzing()) {
+            <aside class="analysis-panel">
+              <app-results-viewer
+                [result]="store.analysisResult()"
+                [loading]="store.analyzing()"
+              ></app-results-viewer>
+            </aside>
+          }
+
+          <!-- Parallel Study Panel -->
+          @if (store.showParallelView()) {
+            <aside class="parallel-panel">
+              <app-parallel-viewer
+                [translations]="store.parallelVerses()"
+                [loading]="store.loadingParallel()"
+                [reference]="store.selectedSelection()?.range ?? ''"
+                (close)="store.closeParallelView()"
+              ></app-parallel-viewer>
+            </aside>
+          }
+        </main>
+
+        <!-- Big Analyze Button -->
+        <div class="analyze-bar">
+          @if (authService.isLoggedIn()) {
             <p-button
-              icon="pi pi-chevron-right"
-              variant="text"
-              class="nav-btn"
-              (click)="store.nextChapter()"
-              [disabled]="!store.hasNextChapter()"
-              [rounded]="true"
-            ></p-button>
-          </footer>
-        </section>
-
-        <!-- Analysis Panel -->
-        @if (store.analysisResult() || store.analyzing()) {
-          <aside class="analysis-panel">
-            <app-results-viewer
-              [result]="store.analysisResult()"
+              class="analyze-btn"
+              [class.analyze-btn-pulse]="
+                !!store.selectedSelection() && !store.analyzing()
+              "
+              [disabled]="!store.selectedSelection() || store.analyzing()"
               [loading]="store.analyzing()"
-            ></app-results-viewer>
-          </aside>
-        }
+              (click)="store.analyze()"
+              icon="pi pi-search"
+              label="Analizează selecția"
+            >
+            </p-button>
+          } @else {
+            <span class="login-prompt">
+              <i class="pi pi-lock"></i>
+              Autentifică-te pentru a analiza versete.
+              <a href="#" (click)="openAuthFromPrompt($event, 'login')"
+                >Login</a
+              >
+              sau
+              <a href="#" (click)="openAuthFromPrompt($event, 'register')"
+                >Înregistrare</a
+              >
+            </span>
+          }
 
-        <!-- Parallel Study Panel -->
-        @if (store.showParallelView()) {
-          <aside class="parallel-panel">
-            <app-parallel-viewer
-              [translations]="store.parallelVerses()"
-              [loading]="store.loadingParallel()"
-              [reference]="store.selectedSelection()?.range ?? ''"
-              (close)="store.closeParallelView()"
-            ></app-parallel-viewer>
-          </aside>
-        }
-      </main>
-
-      <!-- Big Analyze Button -->
-      <div class="analyze-bar">
-        @if (authService.isLoggedIn()) {
           <p-button
-            class="analyze-btn"
-            [class.analyze-btn-pulse]="!!store.selectedSelection() && !store.analyzing()"
-            [disabled]="!store.selectedSelection() || store.analyzing()"
-            [loading]="store.analyzing()"
-            (click)="store.analyze()"
-            icon="pi pi-search"
-            label="Analizează selecția"
-          >
-          </p-button>
-        } @else {
-          <span class="login-prompt">
-            <i class="pi pi-lock"></i>
-            Autentifică-te pentru a analiza versete.
-            <a href="#" (click)="openAuthFromPrompt($event, 'login')">Login</a>
-            sau
-            <a href="#" (click)="openAuthFromPrompt($event, 'register')">Înregistrare</a>
-          </span>
-        }
+            label="Studiu Paralel"
+            icon="pi pi-book"
+            iconPos="left"
+            class="parallel-btn"
+            [class.parallel-btn-active]="store.showParallelView()"
+            [disabled]="!store.selectedSelection()"
+            [loading]="store.loadingParallel()"
+            (click)="store.toggleParallelView()"
+          ></p-button>
 
-        <p-button
-          label="Studiu Paralel"
-          icon="pi pi-book"
-          iconPos="left"
-          class="parallel-btn"
-          [class.parallel-btn-active]="store.showParallelView()"
-          [disabled]="!store.selectedSelection()"
-          [loading]="store.loadingParallel()"
-          (click)="store.toggleParallelView()"
-        ></p-button>
-
-        @if (store.selectedSelection()) {
-          <span class="selection-preview">
-            "{{ store.selectedSelection()!.text | slice: 0 : 60
-            }}{{ store.selectedSelection()!.text.length > 60 ? '…' : '' }}" —
-            <em>{{ store.selectedSelection()!.range }}</em>
-          </span>
-        }
-      </div>
+          @if (store.selectedSelection()) {
+            <span class="selection-preview">
+              "{{ store.selectedSelection()!.text | slice: 0 : 60
+              }}{{ store.selectedSelection()!.text.length > 60 ? '…' : '' }}" —
+              <em>{{ store.selectedSelection()!.range }}</em>
+            </span>
+          }
+        </div>
       }
     </div>
   `,
@@ -446,7 +468,10 @@ import { ChatComponent } from '../chat/chat.component';
         border-radius: 20px;
         border: 1px solid rgba(121, 134, 203, 0.25);
         background: rgba(26, 35, 126, 0.2);
-        transition: background 0.2s, border-color 0.2s, color 0.2s;
+        transition:
+          background 0.2s,
+          border-color 0.2s,
+          color 0.2s;
       }
       :host ::ng-deep .chat-nav-btn .p-button:hover {
         color: var(--text-light, #eceff1);
@@ -465,12 +490,52 @@ import { ChatComponent } from '../chat/chat.component';
         border-radius: 20px;
         border: 1px solid rgba(121, 134, 203, 0.25);
         background: rgba(26, 35, 126, 0.2);
-        transition: background 0.2s, border-color 0.2s, color 0.2s;
+        transition:
+          background 0.2s,
+          border-color 0.2s,
+          color 0.2s;
       }
       :host ::ng-deep .theme-toggle-btn .p-button:hover {
         color: var(--text-light, #eceff1);
         background: rgba(26, 35, 126, 0.4);
         border-color: rgba(121, 134, 203, 0.5);
+      }
+      :host ::ng-deep .theme-toggle-switch {
+        display: inline-flex;
+        align-items: center;
+      }
+      :host ::ng-deep .theme-toggle-switch .p-toggleswitch-slider {
+        background: rgba(26, 35, 126, 0.2);
+        border: 1px solid rgba(121, 134, 203, 0.35);
+      }
+      :host ::ng-deep .theme-toggle-switch.p-toggleswitch-checked .p-toggleswitch-slider {
+        background: rgba(26, 35, 126, 0.6);
+        border-color: rgba(121, 134, 203, 0.7);
+      }
+      :host ::ng-deep .theme-toggle-switch .p-toggleswitch-handle {
+        background: var(--text-light, #eceff1);
+      }
+      :host ::ng-deep .theme-toggle-switch .theme-toggle-icon {
+        font-size: 0.65rem;
+        color: #1a237e;
+        line-height: 1;
+      }
+      :host-context(html.light) ::ng-deep .theme-toggle-switch .p-toggleswitch-slider {
+        background: rgba(63, 81, 181, 0.12);
+        border-color: rgba(63, 81, 181, 0.35);
+      }
+      :host-context(html.light)
+        ::ng-deep
+        .theme-toggle-switch.p-toggleswitch-checked
+        .p-toggleswitch-slider {
+        background: rgba(63, 81, 181, 0.25);
+        border-color: rgba(63, 81, 181, 0.6);
+      }
+      :host-context(html.light) ::ng-deep .theme-toggle-switch .p-toggleswitch-handle {
+        background: #ffffff;
+      }
+      :host-context(html.light) ::ng-deep .theme-toggle-switch .theme-toggle-icon {
+        color: #3949ab;
       }
       :host ::ng-deep .auth-menu-btn .p-button {
         color: var(--text-muted, #90a4ae);
@@ -480,7 +545,10 @@ import { ChatComponent } from '../chat/chat.component';
         border-radius: 20px;
         border: 1px solid rgba(121, 134, 203, 0.25);
         background: rgba(26, 35, 126, 0.2);
-        transition: background 0.2s, border-color 0.2s, color 0.2s;
+        transition:
+          background 0.2s,
+          border-color 0.2s,
+          color 0.2s;
       }
       :host ::ng-deep .auth-menu-btn .p-button:hover {
         color: var(--text-light, #eceff1);
@@ -495,7 +563,9 @@ import { ChatComponent } from '../chat/chat.component';
         padding: 4px 8px;
         border-radius: 20px;
         border: 1px solid transparent;
-        transition: border-color 0.2s, background 0.2s;
+        transition:
+          border-color 0.2s,
+          background 0.2s;
       }
       .user-avatar-area:hover {
         background: rgba(26, 35, 126, 0.3);
@@ -648,5 +718,12 @@ export class BibleViewerComponent {
 
   toggleChat(): void {
     this.showChat.update((v) => !v);
+  }
+
+  onThemeToggle(checked: boolean): void {
+    const isDark = this.themeService.theme() === 'dark';
+    if (checked !== isDark) {
+      this.themeService.toggleTheme();
+    }
   }
 }

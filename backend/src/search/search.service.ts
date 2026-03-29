@@ -1,12 +1,20 @@
-import { Injectable, Logger } from '@nestjs/common';
+import { Injectable, Logger, OnModuleInit } from '@nestjs/common';
 import { getSearchResults } from 'biblesdk';
 import { AiService } from '../ai/ai.service';
+import { BibleService } from '../bible/bible.service';
 import { DatabaseService } from '../database/database.service';
 import {
   COUNT_INDEXED_VERSES,
   SEARCH_VERSES_BY_EMBEDDING,
   UPSERT_VERSE_EMBEDDING,
 } from './search.queries';
+
+/**
+ * Translation IDs whose source is a local JSON file on disk.
+ * These are pre-indexed at startup so semantic search works immediately,
+ * without requiring the user to browse every chapter first.
+ */
+const LOCAL_TRANSLATION_IDS = ['ro_sinodala', 'ro_anania'];
 
 export interface SearchResult {
   translationId: string;
@@ -46,17 +54,93 @@ interface CountRow {
  *
  * Verses are indexed lazily via `ingestChapter()` – called whenever a chapter
  * is loaded – so the embedding store builds up incrementally as users browse.
+ * Local translations (ro_sinodala, ro_anania) are also pre-indexed at startup
+ * so semantic search is fully functional without requiring prior browsing.
  * Both search and ingestion degrade gracefully when the database or the OpenAI
  * API key are unavailable.
  */
 @Injectable()
-export class SearchService {
+export class SearchService implements OnModuleInit {
   private readonly logger = new Logger(SearchService.name);
 
   constructor(
     private readonly aiService: AiService,
+    private readonly bibleService: BibleService,
     private readonly databaseService: DatabaseService,
   ) {}
+
+  /**
+   * Schedules background pre-indexing of local translations after startup.
+   * Runs fire-and-forget; errors are caught per-translation so one failure
+   * does not prevent the others from being indexed.
+   */
+  onModuleInit(): void {
+    if (!this.aiService.hasApiKey) return;
+    // Delay startup by 5 s to let the DB connection and schema init complete.
+    setTimeout(() => void this.warmUpLocalTranslations(), 5_000);
+  }
+
+  /** Pre-indexes all chapters of every local translation that are not yet in the DB. */
+  private async warmUpLocalTranslations(): Promise<void> {
+    for (const translationId of LOCAL_TRANSLATION_IDS) {
+      try {
+        await this.warmUpTranslation(translationId);
+      } catch (err) {
+        this.logger.warn(
+          `Background warmup failed for ${translationId}: ${(err as Error)?.message ?? err}`,
+        );
+      }
+    }
+  }
+
+  /**
+   * Iterates through every book/chapter of a translation and ingests any
+   * chapters that have not yet been indexed.  Processes chapters one at a
+   * time with a short pause to stay well within OpenAI rate limits.
+   */
+  private async warmUpTranslation(translationId: string): Promise<void> {
+    const pool = this.databaseService.getPool();
+    if (!pool) return;
+
+    const books = await this.bibleService.getBooks(translationId);
+    let newChapters = 0;
+
+    for (const book of books) {
+      for (let chapter = 1; chapter <= book.numChapters; chapter++) {
+        const { rows } = await pool.query<CountRow>(COUNT_INDEXED_VERSES, [
+          translationId,
+          book.id,
+          chapter,
+        ]);
+        if ((rows[0]?.count ?? 0) > 0) continue; // already indexed
+
+        const verses = await this.bibleService.getChapter(
+          translationId,
+          book.id,
+          chapter,
+        );
+        await this.ingestChapter(
+          translationId,
+          book.id,
+          book.name,
+          chapter,
+          verses.map((v) => ({ number: v.number, text: v.text })),
+        );
+        newChapters++;
+
+        // 50 ms breathing room between embedding API calls.
+        await new Promise<void>((resolve) => setTimeout(resolve, 50));
+      }
+    }
+
+    if (newChapters > 0) {
+      this.logger.log(
+        `Warmup complete for ${translationId}: ${newChapters} new chapters indexed.`,
+      );
+    } else {
+      this.logger.debug(`Warmup: ${translationId} was already fully indexed.`);
+    }
+  }
 
   /**
    * Searches for Bible verses semantically related to `query` within the
