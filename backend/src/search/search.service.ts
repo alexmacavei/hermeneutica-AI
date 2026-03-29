@@ -16,6 +16,7 @@ export interface SearchResult {
   verseText: string;
   similarity: number;
   reference: string;
+  consensusBoost: boolean;
 }
 
 export interface SearchResponse {
@@ -89,6 +90,7 @@ export class SearchService {
         verseText: row.verse_text,
         similarity: Number(row.similarity),
         reference: `${row.book_name} ${row.chapter_number}:${row.verse_number}`,
+        consensusBoost: false,
       }));
 
       return { query, translationId, results, total: results.length };

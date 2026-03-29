@@ -108,6 +108,7 @@ describe('SearchService', () => {
         verseNumber: 16,
         similarity: 0.85,
         reference: 'Ioan 3:16',
+        consensusBoost: false,
       });
     });
 
