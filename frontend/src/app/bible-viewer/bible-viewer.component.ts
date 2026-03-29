@@ -21,6 +21,7 @@ import { SemanticSearchComponent } from './semantic-search.component';
 import { ParallelViewerComponent } from './parallel-viewer.component';
 import { AuthDialogComponent } from '../auth/auth-dialog.component';
 import { AuthService } from '../services/auth.service';
+import { ThemeService } from '../services/theme.service';
 import { SlicePipe } from '@angular/common';
 import { ChatComponent } from '../chat/chat.component';
 
@@ -80,6 +81,16 @@ import { ChatComponent } from '../chat/chat.component';
 
         <!-- Auth area – single dropdown button -->
         <div class="auth-area">
+          <!-- Theme toggle -->
+          <p-button
+            [icon]="themeService.theme() === 'dark' ? 'pi pi-sun' : 'pi pi-moon'"
+            [pTooltip]="themeService.theme() === 'dark' ? 'Comută la modul luminos' : 'Comută la modul întunecat'"
+            tooltipPosition="bottom"
+            severity="secondary"
+            [text]="true"
+            class="theme-toggle-btn"
+            (click)="themeService.toggleTheme()"
+          ></p-button>
           @if (authService.isLoggedIn()) {
             <p-button
               icon="pi pi-comments"
@@ -253,7 +264,7 @@ import { ChatComponent } from '../chat/chat.component';
         background: var(--bg-dark);
       }
       .top-bar {
-        background: #0a0a1f;
+        background: var(--navbar-bg);
         border-bottom: 2px solid rgba(26, 35, 126, 0.6);
         display: flex;
         align-items: center;
@@ -304,7 +315,7 @@ import { ChatComponent } from '../chat/chat.component';
         border-left: 1px solid rgba(121, 134, 203, 0.2);
         overflow-y: auto;
         max-height: calc(100vh - 160px);
-        background: rgba(10, 10, 30, 0.5);
+        background: var(--panel-bg);
       }
       .parallel-panel {
         width: 40%;
@@ -312,7 +323,7 @@ import { ChatComponent } from '../chat/chat.component';
         border-left: 1px solid rgba(121, 134, 203, 0.2);
         overflow-y: auto;
         max-height: calc(100vh - 160px);
-        background: rgba(10, 10, 30, 0.5);
+        background: var(--panel-bg);
       }
       .loading-chapter {
         display: flex;
@@ -325,7 +336,7 @@ import { ChatComponent } from '../chat/chat.component';
       }
       .verse-footer {
         padding: 10px 24px;
-        background: #0a0a1f;
+        background: var(--navbar-bg);
         border-top: 1px solid rgba(26, 35, 126, 0.4);
         display: flex;
         align-items: center;
@@ -344,7 +355,7 @@ import { ChatComponent } from '../chat/chat.component';
       }
       .analyze-bar {
         padding: 14px 24px;
-        background: #0a0a1f;
+        background: var(--navbar-bg);
         border-top: 2px solid rgba(198, 40, 40, 0.4);
         display: flex;
         align-items: center;
@@ -446,6 +457,20 @@ import { ChatComponent } from '../chat/chat.component';
         color: var(--gold, #fdd835);
         background: rgba(26, 35, 126, 0.5);
         border-color: rgba(253, 216, 53, 0.5);
+      }
+      :host ::ng-deep .theme-toggle-btn .p-button {
+        color: var(--text-muted, #90a4ae);
+        font-size: 1rem;
+        padding: 6px 10px;
+        border-radius: 20px;
+        border: 1px solid rgba(121, 134, 203, 0.25);
+        background: rgba(26, 35, 126, 0.2);
+        transition: background 0.2s, border-color 0.2s, color 0.2s;
+      }
+      :host ::ng-deep .theme-toggle-btn .p-button:hover {
+        color: var(--text-light, #eceff1);
+        background: rgba(26, 35, 126, 0.4);
+        border-color: rgba(121, 134, 203, 0.5);
       }
       :host ::ng-deep .auth-menu-btn .p-button {
         color: var(--text-muted, #90a4ae);
@@ -567,6 +592,7 @@ import { ChatComponent } from '../chat/chat.component';
 export class BibleViewerComponent {
   protected readonly store = inject(BibleStore);
   protected readonly authService = inject(AuthService);
+  protected readonly themeService = inject(ThemeService);
 
   readonly authDialogVisible = signal(false);
   readonly authDialogMode = signal<'login' | 'register'>('login');
