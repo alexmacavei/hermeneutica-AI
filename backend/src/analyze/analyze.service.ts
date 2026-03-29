@@ -38,8 +38,8 @@ export class AnalyzeService {
     const language = dto.language ?? 'Sinodală Română';
 
     // Fetch Strong's concordance data for the selected verse when bookId is available.
-    // Runs in parallel with the other enrichment tasks; failures are swallowed inside
-    // ConcordanceService so this never blocks the overall analysis.
+    // Must complete before generateTwoCards() since it is passed as context to the LLM.
+    // Failures are swallowed inside ConcordanceService so they never abort the analysis.
     let concordanceContext: string | undefined;
     if (dto.bookId) {
       const { chapter, verse } = parseChapterVerse(dto.range);

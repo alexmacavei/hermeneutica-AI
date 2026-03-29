@@ -4,7 +4,6 @@ import { AiService } from '../ai/ai.service';
 import { DatabaseService } from '../database/database.service';
 import {
   COUNT_INDEXED_VERSES,
-  LOOKUP_VERSE_BY_COORDINATES,
   SEARCH_VERSES_BY_EMBEDDING,
   UPSERT_VERSE_EMBEDDING,
 } from './search.queries';
@@ -81,7 +80,7 @@ export class SearchService {
       const [pgResult, sdkResult] = await Promise.all([
         pool.query<VerseRow>(SEARCH_VERSES_BY_EMBEDDING, [vectorStr, translationId, limit]),
         getSearchResults(query).catch((err) => {
-          this.logger.warn('biblesdk search failed, falling back to local only', err);
+          this.logger.warn(`biblesdk search failed, falling back to local only: ${(err as Error)?.message ?? err}`);
           return [];
         }),
       ]);

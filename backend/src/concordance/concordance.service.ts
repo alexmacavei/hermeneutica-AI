@@ -38,7 +38,7 @@ export class ConcordanceService {
       this.cache.set(cacheKey, entries);
       return entries;
     } catch (error) {
-      this.logger.warn(`Concordance fetch failed for ${cacheKey}`, error);
+      this.logger.warn(`Concordance fetch failed for ${cacheKey}: ${(error as Error)?.message ?? error}`);
       return [];
     }
   }

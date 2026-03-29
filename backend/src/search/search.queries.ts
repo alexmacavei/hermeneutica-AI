@@ -46,17 +46,3 @@ export const UPSERT_VERSE_EMBEDDING = `
   DO NOTHING
 `;
 
-/**
- * Looks up a specific verse by translation and coordinates.
- *
- * Parameters: $1 = translationId, $2 = bookId, $3 = chapterNumber, $4 = verseNumber
- */
-export const LOOKUP_VERSE_BY_COORDINATES = `
-  SELECT book_id, book_name, chapter_number, verse_number, verse_text
-  FROM verse_embeddings
-  WHERE translation_id  = $1
-    AND book_id         = $2
-    AND chapter_number  = $3
-    AND verse_number    = $4
-  LIMIT 1
-`;
