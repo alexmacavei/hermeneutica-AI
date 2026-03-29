@@ -97,14 +97,17 @@ Utilizator selectează: "Fiindcă Dumnezeu aşa a iubit lumea, că pe Fiul Său 
 │   • Autentificare JWT │   │  POST /api/analyze          (JWT required)     │
 │   • Notițe personale  │   │   ├─ 2 carduri LLM (hermeneutică+filologie)   │
 │   • Chat teologic     │   │   │                             → OpenAI LLM    │
-└───────────────────────┘   │   ├─ card filozofie (RAG ext) → BiblIndex /    │
-                            │   │                              Wikidata /     │
+│   • Export PDF        │   │   ├─ card filozofie (RAG ext) → BiblIndex /    │
+└───────────────────────┘   │   │                              Wikidata /     │
                             │   │                              Philosophers   │
                             │   └─ card patristic RAG:                       │
                             │       ├─ traducere EN          → OpenAI LLM    │
                             │       ├─ embedding query       → OpenAI API    │
                             │       ├─ căutare vectorială    → pgvector DB   │
                             │       └─ sinteză citate        → OpenAI LLM    │
+                            │                                                │
+                            │  POST /api/pdf/export       (JWT required)     │
+                            │   └─ Puppeteer/Chromium → PDF binary           │
                             │                                                │
                             │  POST /api/chat/message     (JWT required)     │
                             │   ├─ RAG top-5 chunks        → pgvector DB    │
@@ -257,231 +260,27 @@ DATA_DIR=../data
 
 ## 📡 API Reference
 
-### `POST /api/auth/register`
+> **Documentație completă:** [docs/api-reference.md](docs/api-reference.md)
 
-Înregistrează un utilizator nou. Returnează un token JWT.
+Toate endpoint-urile sunt prefixate cu `/api` (ex. `http://localhost:3001/api`).
+Endpoint-urile marcate **🔒** necesită un JWT valid în header-ul `Authorization: Bearer <token>`.
 
-**Request:**
-```json
-{ "email": "user@example.com", "password": "secret123" }
-```
+| Endpoint | Metodă | Auth | Descriere |
+|----------|--------|------|-----------|
+| `/api/auth/register` | POST | – | Înregistrează utilizator, returnează JWT |
+| `/api/auth/login` | POST | – | Autentifică utilizator, returnează JWT |
+| `/api/analyze` | POST | 🔒 | Analizează un verset; returnează 4 carduri hermeneutice |
+| `/api/pdf/export` | POST | 🔒 | Generează PDF al analizei (Puppeteer/Chromium) |
+| `/api/notes` | GET / POST | 🔒 | Listează / creează notițe personale per verset |
+| `/api/notes/:id` | PUT / DELETE | 🔒 | Actualizează / șterge o notiță |
+| `/api/chat/message` | POST | 🔒 | Trimite mesaj chatbot teologic RAG |
+| `/api/search` | GET | – | Căutare semantică în versetele indexate |
+| `/api/bible/translations` | GET | – | Listează traducerile disponibile |
+| `/api/bible/:tr/books` | GET | – | Listează cărțile pentru o traducere |
+| `/api/bible/:tr/:book/:ch` | GET | – | Returnează versetele unui capitol |
+| `/api/bible/parallel/:book/:ch` | GET | – | Studiu paralel: verset în toate traducerile |
 
-**Response:**
-```json
-{ "token": "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9..." }
-```
-
-### `POST /api/auth/login`
-
-Autentifică un utilizator existent. Returnează un token JWT.
-
-**Request:**
-```json
-{ "email": "user@example.com", "password": "secret123" }
-```
-
-**Response:**
-```json
-{ "token": "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9..." }
-```
-
----
-
-### `POST /api/analyze` 🔒
-
-> **Autentificare necesară:** trimite token-ul JWT în header-ul `Authorization: Bearer <token>`.
-
-Analizează un fragment biblic și returnează 4 carduri hermeneutice.
-
-**Request:**
-```json
-{
-  "text": "Fiindcă Dumnezeu aşa a iubit lumea, că pe Fiul Său Cel Unul-Născut L-a dat...",
-  "range": "Ioan 3:16",
-  "language": "Sinodală Română",
-  "translationId": "ro_sinodala"
-}
-```
-
-> **Notă:** `translationId` este opțional. Dacă este furnizat și începe cu `eng_`
-> (ex. `eng_kja` pentru KJV), traducerea textului în engleză pentru embedding patristic
-> este omisă automat.
-
-**Response:**
-```json
-{
-  "reference": "Ioan 3:16",
-  "language": "Sinodală Română",
-  "text": "Fiindcă Dumnezeu aşa a iubit lumea...",
-  "cards": {
-    "hermeneutics": "Interpretare în 4 sensuri...",
-    "philosophy": "Neoplatonism: coborârea Logosului...",
-    "patristics": "Ioan Gură de Aur: «Priveşte înălţimea darului...» (Omilii la Ioan, 27)",
-    "philology": "ἠγάπησεν (ēgapēsen): aorist activ, Strong's G25..."
-  },
-  "timestamp": "2025-01-15T10:30:00.000Z"
-}
-```
-
-> **Notă:** Câmpul `patristics` este generat prin RAG (Retrieval-Augmented Generation)
-> din corpusul New Advent indexat local, nu direct de la modelul AI.
-
----
-
-### `GET /api/notes` 🔒
-### `POST /api/notes` 🔒
-### `PUT /api/notes/:id` 🔒
-### `DELETE /api/notes/:id` 🔒
-
-> **Autentificare necesară:** trimite token-ul JWT în header-ul `Authorization: Bearer <token>`.
-
-Gestionează notițele personale ale utilizatorului per verset.
-
-**GET** – returnează notițele pentru un verset:
-```bash
-GET /api/notes?verse_reference=Ioan+3:16
-```
-
-**POST** – creează o notiță nouă:
-```json
-{
-  "verse_reference": "Ioan 3:16",
-  "note_title": "Titlu opțional",
-  "note_text": "Reflecția mea despre acest verset..."
-}
-```
-
-**PUT** – actualizează o notiță existentă:
-```json
-{ "note_title": "Titlu actualizat", "note_text": "Text actualizat..." }
-```
-
-**DELETE** – șterge o notiță: `DELETE /api/notes/42`
-
----
-
-### `POST /api/chat/message` 🔒
-
-> **Autentificare necesară:** trimite token-ul JWT în header-ul `Authorization: Bearer <token>`.
-
-Trimite un mesaj către asistentul teologic AI și primește un răspuns fundamentat pe corpusul patristic RAG. La fiecare mesaj, se execută o căutare de similaritate vectorială (top-5 fragmente patristice relevante) care este injectată în system prompt-ul AI.
-
-**Request:**
-```json
-{
-  "message": "Ce spun Sfinții Părinți despre Ioan 3:16?",
-  "history": [
-    { "role": "user",      "content": "Bună ziua!" },
-    { "role": "assistant", "content": "Bună ziua! Cum vă pot ajuta?" }
-  ]
-}
-```
-
-> **Notă:** `history` este opțional (array gol pentru prima întrebare). Câmpul `role` acceptă doar valorile `"user"` sau `"assistant"`. Istoricul conversației este limitat la ultimele 40 de mesaje pe frontend.
-
-**Response:**
-```json
-{ "reply": "Sfântul Ioan Gură de Aur comentează în Omilii la Ioan..." }
-```
-
----
-
-### `GET /api/search`
-
-Căutare semantică în versetele biblice indexate. Versetele sunt indexate lazy prin `POST /api/search/ingest` pe măsură ce utilizatorul navighează.
-
-**Query params:**
-- `q` *(obligatoriu)* – termenul de căutare (ex. `mântuire`, `pocăință`)
-- `translationId` *(obligatoriu)* – ID-ul traducerii (ex. `ro_sinodala`)
-- `limit` *(opțional)* – număr maxim de rezultate (implicit: 10)
-
-```bash
-GET /api/search?q=iubire&translationId=ro_sinodala&limit=10
-```
-
-**Response:**
-```json
-{
-  "query": "iubire",
-  "translationId": "ro_sinodala",
-  "results": [
-    {
-      "translationId": "ro_sinodala",
-      "bookId": "JHN",
-      "bookName": "Ioan",
-      "chapter": 3,
-      "verseNumber": 16,
-      "verseText": "Fiindcă Dumnezeu aşa a iubit lumea...",
-      "similarity": 0.92,
-      "reference": "Ioan 3:16"
-    }
-  ],
-  "total": 1
-}
-```
-
----
-
-### `GET /api/bible/parallel/:bookId/:chapter`
-
-Returnează versetul/versetele selectate din toate traducerile disponibile (mai puțin traducerea curentă), în paralel. Folosit de panoul "Studiu Paralel".
-
-**Query params:**
-- `verseStart` *(obligatoriu)* – numărul primului verset
-- `verseEnd` *(opțional)* – numărul ultimului verset (implicit = `verseStart`)
-- `exclude` *(opțional)* – ID-ul traducerii active; aceasta va fi omisă din răspuns
-
-```bash
-GET /api/bible/parallel/JHN/3?verseStart=16&exclude=ro_sinodala
-```
-
-**Response:**
-```json
-[
-  { "translationId": "hbo_wlc",  "translationName": "Westminster Leningrad Codex", "available": false, "verses": [] },
-  { "translationId": "grc_bre",  "translationName": "Greek Bible (Brenton LXX)",   "available": false, "verses": [] },
-  { "translationId": "grc_byz",  "translationName": "Byzantine Greek NT",           "available": true,  "verses": [{ "number": "16", "text": "Οὕτως γὰρ ἠγάπησεν..." }] },
-  { "translationId": "eng_kja",  "translationName": "King James Version",           "available": true,  "verses": [{ "number": "16", "text": "For God so loved..."   }] }
-]
-```
-
-> **Notă:** Traducerile cu un canon diferit (ex. `hbo_wlc` – doar VT, `grc_byz` – doar NT) vor returna `available: false` și `verses: []` pentru versetele din afara canonului lor.
-
-### `GET /api/bible/translations`
-
-Listează traducerile biblice disponibile.
-
-Traducerile suportate / Supported translations:
-
-| ID | Nume / Name | Limbă / Language |
-|----|-------------|------------------|
-| `hbo_wlc` | Westminster Leningrad Codex | Ebraică / Hebrew |
-| `grc_bre` | Greek Bible (Brenton LXX) | Greacă / Greek |
-| `grc_byz` | Byzantine Greek NT | Greacă NT / Greek NT |
-| `eng_kja` | King James Version with Apocrypha | Engleză / English |
-| `ro_sinodala` | Biblia Sinodală Română | Română / Romanian |
-| `ro_anania` | Biblia Anania | Română / Romanian |
-
-> **Notă:** Traducerea `ro_sinodala` este disponibilă doar dacă fișierul local `data/bibles/ro_sinodala.json` a fost populat cu scriptul `scripts/biblia-pipeline.ts`. Traducerea `ro_anania` necesită `data/bibles/ro_anania.json` generat de `scripts/anania-pipeline.ts`. Vezi secțiunea [Date Biblice](#-date-biblice--biblical-data) de mai jos.
-
-### `GET /api/bible/:translationId/books`
-
-Listează cărțile disponibile pentru o anumită traducere.
-
-```bash
-GET /api/bible/ro_sinodala/books
-GET /api/bible/eng_kja/books
-```
-
-### `GET /api/bible/:translationId/:bookId/:chapter`
-
-Returnează versetele unui capitol biblic.
-
-```bash
-GET /api/bible/ro_sinodala/MAT/5
-GET /api/bible/eng_kja/JHN/3
-GET /api/bible/grc_byz/JHN/3
-```
+Pentru detalii complete (parametri, exemple request/response), consultați **[docs/api-reference.md](docs/api-reference.md)**.
 
 ---
 
@@ -495,6 +294,7 @@ GET /api/bible/grc_byz/JHN/3
 | **Styling** | SCSS, PrimeIcons 7 |
 | **Database** | PostgreSQL 16 + pgvector (căutare semantică vectorială); tabele: `verse_embeddings`, `patristic_chunks`, `users`, `user_notes` |
 | **Auth** | JWT (NestJS Passport + `@nestjs/jwt`) |
+| **PDF Export** | Puppeteer (`puppeteer-core`) + system Chromium – server-side PDF generation |
 | **Data Source** | bible.helloao.org (External API) + `ro_sinodala.json` (local) + `ro_anania.json` (local, opțional) + New Advent corpus (local, opțional) |
 | **DevOps** | Podman, Podman Compose |
 | **CI/CD** | GitHub Actions |
@@ -572,6 +372,19 @@ npm run anania-pipeline
 
 ---
 
+## 📄 Export PDF
+
+Utilizatorii autentificați pot descărca analiza hermeneutică a oricărui verset ca document PDF formatat. Exportul include toate cele 4 carduri AI și notițele personale ale utilizatorului.
+
+- Butonul **📄 PDF export** apare în antetul rezultatelor, lângă butonul de notițe.
+- Generarea se face server-side prin Puppeteer (Chromium headless) – fără dialog de printare.
+- **Local dev:** setează `PUPPETEER_EXECUTABLE_PATH` în `.env` (vezi [docs/pdf-export.md](docs/pdf-export.md)).
+- **Docker/Podman:** Chromium este instalat automat din Dockerfile; nicio configurare suplimentară.
+
+Pentru detalii complete (structura PDF, setup local, endpoint API), consultă **[docs/pdf-export.md](docs/pdf-export.md)**.
+
+---
+
 ## 🤝 Contributing
 
 Consultați [CONTRIBUTING.md](CONTRIBUTING.md) pentru ghidul de contribuție.
@@ -585,8 +398,23 @@ Arii de contribuție:
 - [x] Autentificare utilizator (JWT register/login) – implementată
 - [x] Notițe personale per verset – implementate
 - [x] Chatbot teologic RAG (conversație bazată pe corpusul patristic) – implementat
-- [ ] Export PDF analize
+- [x] Export PDF analize – implementat
 - [ ] Traducere interfață în alte limbi (i18n)
+
+### 💡 Sugestii viitoare / Future Suggestions
+
+- [ ] **Bookmark versete** – salvarea versetelor favorite cu etichete personalizate
+- [ ] **Profil utilizator** – pagină de setări (limbă implicită, traducere implicită, temă)
+- [ ] **Temă întunecată / Dark mode** – comutator light/dark integrat în UI
+- [ ] **Notificări push (PWA)** – memento-uri pentru studiu biblic zilnic
+- [ ] **Commentarii comunitare** – posibilitatea de a publica (opțional) notițe ca reflecții publice moderate
+- [ ] **Integrare Strong's Concordance** – afișare directă a numărului Strong și a definiției pentru cuvinte cheie din verset
+- [ ] **Comparare analize** – afișarea analizei a două versete diferite side-by-side
+- [ ] **Istoric analize** – log local/server al analizelor anterioare, cu posibilitate de revenire
+- [ ] **Suport corpus patristic suplimentar** – integrare CCEL (Christian Classics Ethereal Library) sau alte surse
+- [ ] **Rate limiting & caching** – cache Redis/in-memory pentru rezultatele OpenAI pentru a reduce costurile API
+- [ ] **Grafic de influențe filozofice** – vizualizare interactivă (D3.js) a rețelei de influențe patristice/filozofice identificate de AI
+- [ ] **Export DOCX / ePub** – formate suplimentare de export al analizelor
 
 ---
 
