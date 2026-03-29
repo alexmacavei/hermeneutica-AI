@@ -26,7 +26,7 @@
 
 **RO:** AI Hermeneutica Orthodoxa este o aplicație web full-stack care permite navigarea textului biblic – via API [helloao.org](https://bible.helloao.org) pentru traducerile remote și local pentru **Biblia Sinodală Română** și **Biblia Anania** – și oferă analiză hermeneutică ortodoxă prin modele OpenAI, studiu biblic paralel între toate traducerile disponibile, **căutare semantică vectorială** în textul biblic (pgvector), **autentificare utilizator** (JWT), **notițe personale** per verset și un **chatbot teologic RAG** accesibil utilizatorilor autentificați.
 
-Analiza unui verset generează 4 carduri:
+Funcționalitățile principale ale aplicației sunt:
 
 | Card | Conținut | Sursă |
 |------|----------|-------|
