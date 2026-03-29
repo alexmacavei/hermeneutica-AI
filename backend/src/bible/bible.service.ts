@@ -62,7 +62,7 @@ interface ApiTranslation {
 interface ApiBook {
   id: string;
   name: string;
-  numChapters: number;
+  numberOfChapters: number;
   order?: number;
 }
 
@@ -190,7 +190,7 @@ export class BibleService {
                 data.books.map((b) => ({
                   id: b.id,
                   name: b.name,
-                  numChapters: b.numChapters,
+                  numChapters: b.numberOfChapters,
                 })),
               );
             }
@@ -241,7 +241,7 @@ export class BibleService {
       books = data.books.map((b) => ({
         id: b.id,
         name: b.name,
-        numChapters: b.numChapters,
+        numChapters: b.numberOfChapters,
       }));
     }
 
