@@ -6,6 +6,7 @@ import { getSearchResults } from 'biblesdk';
 import { Test, TestingModule } from '@nestjs/testing';
 import { SearchResult, SearchService } from './search.service';
 import { AiService } from '../ai/ai.service';
+import { BibleService } from '../bible/bible.service';
 import { DatabaseService } from '../database/database.service';
 
 describe('SearchService', () => {
@@ -22,6 +23,11 @@ describe('SearchService', () => {
     getPool: jest.fn(),
   };
 
+  const mockBibleService = {
+    getBooks: jest.fn().mockResolvedValue([]),
+    getChapter: jest.fn().mockResolvedValue([]),
+  };
+
   beforeEach(async () => {
     mockPool = {
       query: jest.fn(),
@@ -35,6 +41,7 @@ describe('SearchService', () => {
       providers: [
         SearchService,
         { provide: AiService, useValue: mockAiService },
+        { provide: BibleService, useValue: mockBibleService },
         { provide: DatabaseService, useValue: mockDatabaseService },
       ],
     }).compile();
@@ -67,6 +74,7 @@ describe('SearchService', () => {
         providers: [
           SearchService,
           { provide: AiService, useValue: aiServiceWithoutKey },
+          { provide: BibleService, useValue: mockBibleService },
           { provide: DatabaseService, useValue: mockDatabaseService },
         ],
       }).compile();
