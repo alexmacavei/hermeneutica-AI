@@ -405,10 +405,10 @@ Arii de contribuție:
 
 - [ ] **Bookmark versete** – salvarea versetelor favorite cu etichete personalizate
 - [ ] **Profil utilizator** – pagină de setări (limbă implicită, traducere implicită, temă)
-- [ ] **Temă întunecată / Dark mode** – comutator light/dark integrat în UI
+- [x] **Temă întunecată / Dark mode** – comutator light/dark integrat în UI
 - [ ] **Notificări push (PWA)** – memento-uri pentru studiu biblic zilnic
 - [ ] **Commentarii comunitare** – posibilitatea de a publica (opțional) notițe ca reflecții publice moderate
-- [ ] **Integrare Strong's Concordance** – afișare directă a numărului Strong și a definiției pentru cuvinte cheie din verset
+- [x] **Integrare Strong's Concordance** – afișare directă a numărului Strong și a definiției pentru cuvinte cheie din verset
 - [ ] **Comparare analize** – afișarea analizei a două versete diferite side-by-side
 - [ ] **Istoric analize** – log local/server al analizelor anterioare, cu posibilitate de revenire
 - [ ] **Suport corpus patristic suplimentar** – integrare CCEL (Christian Classics Ethereal Library) sau alte surse
