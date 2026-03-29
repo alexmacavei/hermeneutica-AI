@@ -1,3 +1,8 @@
+jest.mock('biblesdk', () => ({
+  getSearchResults: jest.fn(),
+}));
+import { getSearchResults } from 'biblesdk';
+
 import { Test, TestingModule } from '@nestjs/testing';
 import { SearchResult, SearchService } from './search.service';
 import { AiService } from '../ai/ai.service';
@@ -24,6 +29,7 @@ describe('SearchService', () => {
     };
 
     mockDatabaseService.getPool.mockReturnValue(mockPool);
+    (getSearchResults as jest.Mock).mockResolvedValue([]);
 
     const module: TestingModule = await Test.createTestingModule({
       providers: [
@@ -126,6 +132,61 @@ describe('SearchService', () => {
         results: [],
         total: 0,
       });
+    });
+
+    it('should apply consensus boost when biblesdk returns overlapping verse', async () => {
+      const mockEmbedding = new Array(1536).fill(0.1);
+      mockAiService.generateEmbedding.mockResolvedValue(mockEmbedding);
+
+      mockPool.query.mockResolvedValue({
+        rows: [
+          {
+            translation_id: 'BSR',
+            book_id: 'JHN',
+            book_name: 'Ioan',
+            chapter_number: 3,
+            verse_number: 16,
+            verse_text: 'Căci Dumnezeu aşa a iubit lumea...',
+            similarity: 0.85,
+          },
+        ],
+      });
+
+      (getSearchResults as jest.Mock).mockResolvedValue([
+        { book: 'JHN', chapter: 3, verse: 16, score: 0.9 },
+      ]);
+
+      const result = await service.searchVerses('iubirea lui Dumnezeu', 'BSR', 5);
+
+      expect(result.results[0].consensusBoost).toBe(true);
+      expect(result.results[0].similarity).toBeCloseTo(0.93, 10);
+    });
+
+    it('should fall back gracefully when biblesdk throws', async () => {
+      const mockEmbedding = new Array(1536).fill(0.1);
+      mockAiService.generateEmbedding.mockResolvedValue(mockEmbedding);
+
+      mockPool.query.mockResolvedValue({
+        rows: [
+          {
+            translation_id: 'BSR',
+            book_id: 'JHN',
+            book_name: 'Ioan',
+            chapter_number: 3,
+            verse_number: 16,
+            verse_text: 'Căci Dumnezeu aşa a iubit lumea...',
+            similarity: 0.85,
+          },
+        ],
+      });
+
+      (getSearchResults as jest.Mock).mockRejectedValue(new Error('biblesdk network error'));
+
+      const result = await service.searchVerses('iubirea lui Dumnezeu', 'BSR', 5);
+
+      expect(result.results).toHaveLength(1);
+      expect(result.results[0].consensusBoost).toBe(false);
+      expect(result.results[0].similarity).toBe(0.85);
     });
   });
 

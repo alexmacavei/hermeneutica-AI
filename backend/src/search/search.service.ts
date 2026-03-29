@@ -1,8 +1,10 @@
 import { Injectable, Logger } from '@nestjs/common';
+import { getSearchResults } from 'biblesdk';
 import { AiService } from '../ai/ai.service';
 import { DatabaseService } from '../database/database.service';
 import {
   COUNT_INDEXED_VERSES,
+  LOOKUP_VERSE_BY_COORDINATES,
   SEARCH_VERSES_BY_EMBEDDING,
   UPSERT_VERSE_EMBEDDING,
 } from './search.queries';
@@ -76,12 +78,15 @@ export class SearchService {
       const embedding = await this.aiService.generateEmbedding(query);
       const vectorStr = `[${embedding.join(',')}]`;
 
-      const { rows } = await pool.query<VerseRow>(
-        SEARCH_VERSES_BY_EMBEDDING,
-        [vectorStr, translationId, limit],
-      );
+      const [pgResult, sdkResult] = await Promise.all([
+        pool.query<VerseRow>(SEARCH_VERSES_BY_EMBEDDING, [vectorStr, translationId, limit]),
+        getSearchResults(query).catch((err) => {
+          this.logger.warn('biblesdk search failed, falling back to local only', err);
+          return [];
+        }),
+      ]);
 
-      const results: SearchResult[] = rows.map((row) => ({
+      const localResults: SearchResult[] = pgResult.rows.map((row) => ({
         translationId: row.translation_id,
         bookId: row.book_id,
         bookName: row.book_name,
@@ -92,6 +97,8 @@ export class SearchService {
         reference: `${row.book_name} ${row.chapter_number}:${row.verse_number}`,
         consensusBoost: false,
       }));
+
+      const results = this.mergeWithSdkResults(localResults, sdkResult);
 
       return { query, translationId, results, total: results.length };
     } catch (error) {
